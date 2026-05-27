@@ -1,7 +1,3 @@
 {
-  "version": 2,
-  "routes": [
-    { "src": "/data/(.*)", "dest": "/data/$1" },
-    { "src": "/(.*)", "dest": "/index.html" }
-  ]
+  "version": 2
 }

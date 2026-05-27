@@ -1,0 +1,39 @@
+const { put, list } = require('@vercel/blob');
+
+module.exports = async function handler(req, res) {
+  if (req.method !== 'POST') { res.status(405).end(); return; }
+
+  const { type } = req.query;
+  if (type !== 'so' && type !== 'po') {
+    res.status(400).json({ error: 'type must be so or po' }); return;
+  }
+
+  const fileLastModified = parseInt(req.headers['x-file-lastmodified'] || '0');
+  const pathname = `procurement/${type}.xlsx`;
+
+  try {
+    // "If newer" check — compare file's lastModified against when blob was last uploaded
+    if (fileLastModified) {
+      const { blobs } = await list({ prefix: pathname });
+      const existing = blobs.find(b => b.pathname === pathname);
+      if (existing) {
+        const uploadedAt = new Date(existing.uploadedAt).getTime();
+        if (fileLastModified <= uploadedAt) {
+          res.status(409).json({ error: 'not_newer', uploadedAt: existing.uploadedAt });
+          return;
+        }
+      }
+    }
+
+    const blob = await put(pathname, req, {
+      access: 'public',
+      addRandomSuffix: false,
+    });
+
+    res.json({ url: blob.url, uploadedAt: blob.uploadedAt });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+};
+
+module.exports.config = { api: { bodyParser: false } };
