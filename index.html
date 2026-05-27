@@ -1283,7 +1283,7 @@ function renderChart(){
     const [y,m]=k.split('-');
     const isPast=k<todayKey,isCurr=k===todayKey;
     const col=isPast?'var(--red)':isCurr?'var(--ora)':'var(--acc)';
-    const h=Math.max(4,Math.round((byM[k]/max)*96));
+    const h=Math.max(4,Math.round((byM[k]/max)*44));
     const lbl=MN[+m]+(isCurr?'◀':'');
     const lc=isCurr?'var(--ora)':'var(--txt2)';
     return`<div class="bar-col">
