@@ -24,7 +24,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);direction:rtl
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(74,143,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(74,143,255,.018) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
 
 /* ── TOPBAR ── */
-.topbar{position:sticky;top:0;z-index:500;background:#0a0d13;border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;width:100%;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.4);gap:12px}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:500;background:#0a0d13;border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.4);gap:12px}
 .tb-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .ldot{width:9px;height:9px;border-radius:50%;background:var(--grn);animation:blink 2s infinite;flex-shrink:0}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -44,7 +44,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── UPLOAD ── */
-#upl{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:32px}
+#upl{position:fixed;top:52px;left:0;right:0;bottom:0;z-index:1;display:flex;align-items:center;justify-content:center;padding:32px;overflow-y:auto}
 .ucard{background:var(--sur);border:2px dashed var(--bdr);border-radius:16px;padding:56px 72px;text-align:center;max-width:500px;width:100%;cursor:pointer;transition:border-color .2s,background .2s}
 .ucard:hover,.ucard.dov{border-color:var(--acc);background:var(--acc-d)}
 .uico{font-size:52px;margin-bottom:14px}
@@ -409,7 +409,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 <div id="app">
 
   <!-- ══ BOSS VIEW ══ -->
-  <div id="boss-view" style="display:flex;flex-direction:column;gap:8px;padding:12px 20px;height:calc(100vh - 52px);overflow:hidden">
+  <div id="boss-view" style="display:flex;flex-direction:column;gap:8px;padding:12px 20px;position:fixed;top:52px;left:0;right:0;bottom:0;overflow:hidden">
     <div class="kpi-row">
       <div class="kpi kr"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריך האספקה שלהם עבר ועדיין אין להם הזמנת רכש (PO) או סטטוס "הוזמן מספק". דורשים טיפול מיידי.</span></span>באיחור ללא כיסוי</div><div class="kpi-val" id="bk1">—</div><div class="kpi-sub" id="bk1s"></div></div>
       <div class="kpi ko"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריכם עדיין לא עבר אך אין להם PO ואין סטטוס "הוזמן". יש לטפל בהם לפני שיהפכו לאיחור.</span></span>ממתין לטיפול</div><div class="kpi-val" id="bk2">—</div><div class="kpi-sub" id="bk2s"></div></div>
