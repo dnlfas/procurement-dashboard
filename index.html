@@ -584,6 +584,7 @@ function onLoaded(fname){
   applyFilters();
   renderToday();
   toast('✓ '+soGroups.length+' הזמנות נטענו');
+  if(!document.fullscreenElement){document.documentElement.requestFullscreen().then(()=>{document.getElementById('fsbtn').textContent='✕';}).catch(()=>{});}
 }
 
 
@@ -1042,6 +1043,7 @@ async function fetchNow() {
       applyFilters();
       renderBoss();
       renderToday();
+      if(!document.fullscreenElement){document.documentElement.requestFullscreen().then(()=>{document.getElementById('fsbtn').textContent='✕';}).catch(()=>{});}
     } catch(e) {
       document.getElementById('spin').style.display = 'none';
       setSettingsStatus('שגיאה בפענוח קובץ SO: ' + e.message, 'err');
