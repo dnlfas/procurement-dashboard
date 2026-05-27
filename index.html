@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מרכז שליטה — הזמנות פתוחות</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Heebo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1117;--sur:#161b26;--sur2:#1c2233;--sur3:#222a3d;
+  --bdr:#2a3349;
+  --acc:#4a8fff;--acc-d:#1e2f52;
+  --red:#ff4d4d;--red-d:#2a1010;--red-m:#3d1515;
+  --ora:#ffaa00;--ora-d:#2a1f00;
+  --grn:#22c55e;--grn-d:#0d2518;
+  --pur:#a78bfa;--pur-d:#1e1040;
+  --txt:#c8d0e0;--txt2:#5a6480;--txtb:#eef1fa;
+  --mono:'IBM Plex Mono',monospace;--sans:'Heebo',sans-serif;
+  --r:8px;--rp:10px;--rph:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);direction:rtl;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(74,143,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(74,143,255,.018) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+
+/* ── TOPBAR ── */
+.topbar{position:sticky;top:0;z-index:500;background:#0a0d13;border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.4);gap:12px}
+.tb-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.ldot{width:9px;height:9px;border-radius:50%;background:var(--grn);animation:blink 2s infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.tb-title{font-size:22px;font-weight:900;color:var(--txtb);letter-spacing:-.3px;white-space:nowrap}
+.tb-mid{display:flex;gap:0;border:1px solid var(--bdr);border-radius:6px;overflow:hidden;flex-shrink:0;max-width:none}
+.view-tab{padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;border:none;color:var(--txt2);transition:all .15s;white-space:nowrap;font-family:var(--sans)}
+.view-tab.on{background:var(--acc);color:#fff}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.fbadge{font-size:13px;font-family:var(--mono);color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{padding:6px 14px;border-radius:5px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s;white-space:nowrap}
+.btn:hover{opacity:.82}
+.btn-blue{background:var(--acc);color:#fff}
+.btn-ghost{background:rgba(255,255,255,.07);color:var(--txt);border:1px solid var(--bdr)}
+#fi{display:none}
+#spin{display:none;font-size:11px;color:var(--txt2)}
+#spin::after{content:'';display:inline-block;width:13px;height:13px;border:2px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite;margin-right:5px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── UPLOAD ── */
+#upl{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 52px);padding:32px}
+.ucard{background:var(--sur);border:2px dashed var(--bdr);border-radius:16px;padding:56px 72px;text-align:center;max-width:500px;width:100%;cursor:pointer;transition:border-color .2s,background .2s}
+.ucard:hover,.ucard.dov{border-color:var(--acc);background:var(--acc-d)}
+.uico{font-size:52px;margin-bottom:14px}
+.utit{font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:8px}
+.usub{font-size:14px;color:var(--txt2);margin-bottom:22px;line-height:1.8}
+.uhint{font-size:11px;color:var(--txt2);margin-top:12px;font-family:var(--mono)}
+
+/* ── APP ── */
+#app{display:none;position:relative;z-index:1}
+
+/* ════════════════════════════
+   BOSS VIEW
+════════════════════════════ */
+#boss-view{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 18px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;right:0;left:0;height:3px}
+.kpi.kr::before{background:var(--red)}.kpi.ko::before{background:var(--ora)}.kpi.kg::before{background:var(--grn)}.kpi.kb::before{background:var(--acc)}
+.kpi-lbl{font-size:13px;font-family:var(--mono);color:var(--txt2);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:6px}
+.kpi-val{font-size:36px;font-weight:900;line-height:1;color:var(--txtb)}
+.kpi.kr .kpi-val{color:var(--red)}.kpi.ko .kpi-val{color:var(--ora)}.kpi.kg .kpi-val{color:var(--grn)}
+.kpi-sub{font-size:12px;color:var(--txt2);margin-top:2px;font-family:var(--mono)}
+
+/* Boss bottom grid */
+.boss-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.panel{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden}
+.phead{padding:8px 14px;border-bottom:1px solid var(--bdr);font-size:13px;font-family:var(--mono);color:var(--txt2);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between}
+.pbody{padding:5px 10px;display:flex;flex-direction:column;gap:4px}
+
+/* chart bars */
+.chart-wrap{padding:7px 12px 6px}
+.bar-row{display:flex;align-items:flex-end;gap:5px;height:55px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar-fill{width:100%;border-radius:3px 3px 0 0}
+.bar-lbl{font-size:12px;font-family:var(--mono);color:var(--txt2)}
+.chart-legend{display:flex;gap:12px;margin-top:6px;padding:0 2px}
+.cl-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--txt2)}
+.cl-dot{width:7px;height:7px;border-radius:2px}
+
+/* risk rows */
+.risk-row{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;border-radius:4px;background:var(--sur2);border:0.5px solid var(--bdr);gap:6px}
+.risk-name{font-size:14px;color:var(--txtb);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.risk-badge{font-size:12px;font-family:var(--mono);padding:2px 8px;border-radius:10px;white-space:nowrap;font-weight:600;flex-shrink:0}
+.rb-red{background:var(--red-d);color:var(--red);border:1px solid rgba(255,77,77,.2)}
+.rb-ora{background:var(--ora-d);color:var(--ora);border:1px solid rgba(255,170,0,.2)}
+.rb-grn{background:var(--grn-d);color:var(--grn);border:1px solid rgba(34,197,94,.2)}
+.rb-pur{background:var(--pur-d);color:var(--pur);border:1px solid rgba(167,139,250,.2)}
+.rb-grey{background:var(--sur3);color:var(--txt2);border:1px solid var(--bdr)}
+
+/* coverage bar */
+.cov-wrap{padding:5px 10px;display:flex;flex-direction:column;gap:4px}
+.cov-row{display:flex;flex-direction:column;gap:3px}
+.cov-meta{display:flex;justify-content:space-between;align-items:center}
+.cov-name{font-size:13px;color:var(--txt)}
+.cov-pct{font-size:12px;font-family:var(--mono);color:var(--txt2)}
+.cov-track{height:5px;background:var(--bdr);border-radius:3px;overflow:hidden}
+.cov-fill{height:100%;border-radius:3px}
+
+/* ════════════════════════════
+   EMPLOYEE VIEW
+════════════════════════════ */
+#emp-view{display:none;padding:0}
+
+/* sub-tabs */
+.emp-tabs{background:var(--sur2);border-bottom:1px solid var(--bdr);padding:8px 20px;display:flex;align-items:center;gap:8px;position:sticky;top:52px;z-index:400}
+.etab{padding:5px 14px;border-radius:5px;font-size:12px;font-weight:700;cursor:pointer;background:transparent;border:1px solid transparent;color:var(--txt2);transition:all .15s;font-family:var(--sans)}
+.etab.on{background:var(--sur3);border-color:var(--bdr);color:var(--txtb)}
+.emp-body{padding:14px 20px}
+
+/* TODAY panel */
+.today-grid{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px}
+.today-list{display:flex;flex-direction:column;gap:4px}
+.today-item{display:grid;grid-template-columns:10px 1fr auto auto auto;gap:8px;align-items:center;padding:7px 10px;border-radius:5px}
+.ti-red{background:var(--red-d);border:1px solid rgba(192,57,43,.15)}.ti-ora{background:var(--ora-d);border:1px solid rgba(217,119,6,.15)}.ti-grey{background:var(--sur2);border:1px solid var(--bdr)}
+.ti-dot{width:7px;height:7px;border-radius:50%}
+.td-red{background:var(--red)}.td-ora{background:var(--ora)}.td-grey{background:#3a4460}
+.ti-mpn{font-family:var(--mono);font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ti-red .ti-mpn{color:var(--red);font-weight:700}.ti-ora .ti-mpn{color:var(--ora);font-weight:700}.ti-grey .ti-mpn{color:var(--txtb)}
+.ti-days{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700}
+.ti-so{font-family:var(--mono);font-size:12px;color:var(--txt2)}
+.ti-cust{font-size:13px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.more-hint{font-size:11px;color:var(--txt2);text-align:center;padding:6px;font-family:var(--mono)}
+
+/* SO list (employee) */
+.so-controls{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:9px 14px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:10px}
+.so-controls::-webkit-scrollbar{height:0}
+.ctl{font-size:10px;font-family:var(--mono);color:var(--txt2);white-space:nowrap;flex-shrink:0}
+select{background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:5px 8px;font-size:12px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;flex-shrink:0;cursor:pointer;max-width:150px}
+select:focus{border-color:var(--acc)}
+.chk{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--txt);flex-shrink:0}
+.chk input{accent-color:var(--acc);cursor:pointer;width:15px;height:15px}
+.cspc{flex:1;min-width:10px}
+.bexp{font-size:13px;font-family:var(--mono);padding:5px 12px;border-radius:4px;cursor:pointer;background:var(--sur3);border:1px solid var(--bdr);color:var(--txt2);white-space:nowrap;flex-shrink:0;transition:all .15s}
+.bexp:hover{border-color:var(--acc);color:var(--acc)}
+
+#so-content{display:flex;flex-direction:column;gap:7px}
+
+/* SO card */
+.socard{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;transition:box-shadow .15s}
+.socard:hover{box-shadow:0 3px 16px rgba(0,0,0,.3)}
+.socard.cr{border-right:4px solid var(--red)}.socard.co{border-right:4px solid var(--ora)}.socard.cg{border-right:4px solid var(--grn)}
+.sohdr{display:grid;grid-template-columns:auto 1fr auto auto auto minmax(140px,240px) 20px;align-items:center;padding:var(--rp) var(--rph);gap:12px;cursor:pointer;transition:background .1s}
+.sohdr:hover{background:var(--sur2)}
+.soid{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.stl{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.tl-r{background:var(--red);box-shadow:0 0 6px rgba(255,77,77,.45)}.tl-o{background:var(--ora)}.tl-g{background:var(--grn)}.tl-x{background:#3a4460}
+.sonum{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--acc);white-space:nowrap}
+.socpo{font-family:var(--mono);font-size:10px;color:var(--txt2);margin-top:1px}
+.socust{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sodate{font-family:var(--mono);font-size:13px;white-space:nowrap;flex-shrink:0}
+.sodate.past{color:var(--red);font-weight:700}.sodate.curr{color:var(--ora);font-weight:700}
+.sobadges{display:flex;gap:5px;align-items:center;flex-shrink:0}
+.badge{font-size:12px;font-family:var(--mono);padding:3px 9px;border-radius:12px;white-space:nowrap;font-weight:600;line-height:1.4}
+.b-r{background:var(--red-d);color:var(--red);border:1px solid rgba(255,77,77,.2)}
+.b-o{background:var(--ora-d);color:var(--ora);border:1px solid rgba(255,170,0,.2)}
+.b-g{background:var(--grn-d);color:var(--grn);border:1px solid rgba(34,197,94,.2)}
+.b-x{background:var(--sur3);color:var(--txt2);border:1px solid var(--bdr)}
+.b-a{background:var(--acc-d);color:var(--acc);border:1px solid rgba(74,143,255,.2)}
+.sonote-ta{width:100%;background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 6px;font-size:13px;font-family:var(--sans);color:var(--txt);resize:none;overflow:hidden;line-height:1.4;transition:all .12s}
+.sonote-ta:hover{border-color:var(--bdr);background:var(--sur3)}
+.sonote-ta:focus{border-color:var(--acc);background:var(--sur3);outline:none}
+.sonote-ta.hn{color:var(--acc);font-style:italic}
+.sochev{font-size:11px;color:var(--txt2);transition:transform .2s;text-align:center}
+.sochev.open{transform:rotate(180deg)}
+.sodet{display:none;border-top:1px solid var(--bdr)}
+.sodet.open{display:block}
+.suppstrip{display:flex;gap:5px;flex-wrap:wrap;padding:6px var(--rph);border-bottom:1px solid var(--bdr);background:var(--sur3)}
+
+/* lines table */
+.dtwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.lt{width:100%;border-collapse:collapse;min-width:640px}
+table.lt thead th{background:#1a2035;font-size:13px;font-family:var(--mono);color:#8899bb;letter-spacing:.7px;text-transform:uppercase;padding:8px var(--rph);text-align:right;border-bottom:2px solid var(--bdr);white-space:nowrap}
+table.lt tbody tr{transition:background .07s}
+table.lt tbody tr:hover{background:var(--sur2)}
+table.lt tbody tr.lno{background:var(--red-d)}
+table.lt tbody tr.lno:hover{background:var(--red-m)}
+table.lt tbody td{padding:var(--rp) var(--rph);font-size:13px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+table.lt tbody tr:last-child td{border-bottom:none}
+.lntl{width:8px;height:8px;border-radius:50%;display:inline-block}
+.mpn{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--txtb);max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qty{font-family:var(--mono);font-size:14px;text-align:center;color:var(--txtb);font-weight:600}
+.ddate{font-family:var(--mono);font-size:13px;white-space:nowrap}
+.ddate.past{color:var(--red);font-weight:700}.ddate.curr{color:var(--ora);font-weight:700}
+.db{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:3px}
+.db-r{background:var(--red-d);color:var(--red)}.db-o{background:var(--ora-d);color:var(--ora)}
+.stag{background:var(--acc-d);color:var(--acc);padding:2px 8px;border-radius:8px;font-size:10px;white-space:nowrap;display:inline-block;font-family:var(--mono)}
+.ptxt{font-family:var(--mono);font-size:10px;color:var(--txt2)}
+.sb{padding:3px 9px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap;display:inline-block;font-family:var(--mono)}
+.sb-ord{background:var(--grn-d);color:var(--grn);border:1px solid rgba(34,197,94,.2)}
+.sb-pnd{background:var(--ora-d);color:var(--ora);border:1px solid rgba(255,170,0,.2)}
+.sb-non{background:var(--sur3);color:var(--txt2);border:1px solid var(--bdr)}
+.sb-qc{background:var(--pur-d);color:var(--pur);border:1px solid rgba(167,139,250,.2)}
+.sb-can{background:var(--sur3);color:var(--txt2);text-decoration:line-through;border:1px solid var(--bdr)}
+.note-ta{width:100%;background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 6px;font-size:13px;font-family:var(--sans);color:var(--txt);resize:none;min-width:130px;overflow:hidden;line-height:1.4;transition:all .12s}
+.note-ta:hover{border-color:var(--bdr);background:var(--sur3)}
+.note-ta:focus{border-color:var(--acc);background:var(--sur3);outline:none}
+.note-ta.hn{color:var(--acc);font-style:italic}
+
+/* status select in table */
+.stat-sel{background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:4px 7px;font-size:12px;font-family:var(--mono);color:var(--txt);outline:none;direction:rtl;cursor:pointer;width:100%;transition:border-color .15s}
+.stat-sel:focus{border-color:var(--acc)}
+.stat-sel.s-ord{border-color:rgba(34,197,94,.4);color:var(--grn)}
+.stat-sel.s-pnd{border-color:rgba(255,170,0,.4);color:var(--ora)}
+.stat-sel.s-qc{border-color:rgba(167,139,250,.4);color:var(--pur)}
+.stat-sel.s-can{border-color:rgba(255,77,77,.2);color:var(--txt2)}
+.stat-sel.s-non{color:var(--txt2)}
+.stat-sel.s-grn{border-color:rgba(34,197,94,.4);color:var(--grn)}
+
+
+/* ── TOOLTIPS ── */
+.tip{position:relative;display:inline-flex;align-items:center}
+.tip-icon{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.12);color:var(--txt2);font-size:9px;font-family:var(--mono);display:inline-flex;align-items:center;justify-content:center;cursor:help;margin-right:5px;flex-shrink:0;border:1px solid var(--bdr);transition:background .15s}
+.tip-icon:hover{background:rgba(74,143,255,.3);color:var(--acc)}
+.tip-box{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#0a0d13;border:1px solid var(--bdr);border-radius:6px;padding:8px 11px;font-size:11px;font-family:var(--sans);color:var(--txt);line-height:1.6;white-space:normal;width:220px;z-index:9000;box-shadow:0 6px 20px rgba(0,0,0,.5);pointer-events:none}
+.tip-box::before{content:'';position:absolute;top:-5px;right:10px;width:8px;height:8px;background:#0a0d13;border-top:1px solid var(--bdr);border-right:1px solid var(--bdr);transform:rotate(-45deg)}
+.tip:hover .tip-box{display:block}
+/* tip left variant */
+.tip.tip-l .tip-box{right:auto;left:0}
+.tip.tip-l .tip-box::before{right:auto;left:10px}
+
+
+/* editable supplier / PO */
+.edit-inp{background:transparent;border:1px solid transparent;border-radius:4px;padding:3px 6px;font-size:13px;font-family:var(--mono);color:var(--txt);outline:none;width:100%;transition:all .12s;min-width:90px}
+.edit-inp:hover{border-color:var(--bdr);background:var(--sur3)}
+.edit-inp:focus{border-color:var(--acc);background:var(--sur3)}
+.edit-inp.has-ovr{color:var(--acc);font-style:italic}
+.edit-inp.auto-fill{color:var(--grn);font-style:italic}
+.edit-inp::placeholder{color:var(--txt2);font-style:normal}
+
+
+/* ── SO STATUS PANEL ── */
+.so-status-panel{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-top:0;min-height:40vh;height:40vh;display:flex;flex-direction:column}
+.ssp-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--sur2);border-bottom:1px solid var(--bdr);cursor:pointer;user-select:none}
+.ssp-head:hover{background:var(--sur3)}
+.ssp-title{font-size:13px;font-family:var(--mono);color:var(--txt2);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.ssp-badges{display:flex;gap:6px;align-items:center}
+.ssp-body{display:none}
+.ssp-body.open{display:flex;flex-direction:column;flex:1;overflow-y:auto;min-height:0}
+/* customer group */
+.cg-hdr{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--sur2);cursor:pointer;border-bottom:1px solid var(--bdr);user-select:none;transition:background .1s}
+.cg-hdr:hover{background:var(--sur3)}
+.cg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.cg-name{font-size:16px;color:var(--txtb);font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cg-body{display:none;border-bottom:1px solid var(--bdr)}
+.cg-body.open{display:block}
+/* SO row inside customer */
+.so-row{display:grid;grid-template-columns:24px 8px 1fr auto auto auto auto;align-items:center;gap:7px;padding:7px 14px 7px 28px;background:var(--sur);cursor:pointer;border-bottom:1px solid var(--bdr);transition:background .1s}
+.so-row:hover{background:var(--sur2)}
+.so-row:last-child{border-bottom:none}
+.so-row-dot{width:7px;height:7px;border-radius:50%}
+.so-row-num{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--acc)}
+.so-row-cpo{font-size:12px;color:var(--txt2);font-family:var(--mono);margin-right:6px}
+/* SO detail card */
+.so-detail-card{background:var(--sur2);border-bottom:1px solid var(--bdr);padding:10px 14px 10px 46px}
+.so-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:8px}
+.so-stat{background:var(--sur);border:1px solid var(--bdr);border-radius:5px;padding:7px 10px}
+.so-stat-lbl{font-size:12px;color:var(--txt2);margin-bottom:3px;font-family:var(--mono)}
+.so-stat-val{font-size:22px;font-weight:700;color:var(--txtb);line-height:1}
+.so-stat.s-red{background:var(--red-d);border-color:rgba(255,77,77,.2)}
+.so-stat.s-red .so-stat-lbl{color:rgba(255,77,77,.7)}
+.so-stat.s-red .so-stat-val{color:var(--red)}
+.so-actions{display:flex;gap:12px;align-items:center}
+.so-action-link{font-size:11px;color:var(--acc);cursor:pointer;font-family:var(--mono);background:none;border:none;padding:0;transition:opacity .15s}
+.so-action-link:hover{opacity:.75}
+.ssp-more{padding:6px 14px;font-size:11px;color:var(--acc);cursor:pointer;font-family:var(--mono);background:var(--sur2);border-top:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+
+
+/* ── SETTINGS PANEL ── */
+.settings-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;backdrop-filter:blur(2px)}
+.settings-overlay.open{display:flex;align-items:center;justify-content:center}
+.settings-card{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:28px 32px;width:520px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.settings-title{font-size:16px;font-weight:800;color:var(--txtb);margin-bottom:4px}
+.settings-sub{font-size:12px;color:var(--txt2);margin-bottom:22px;font-family:var(--mono)}
+.settings-field{margin-bottom:16px}
+.settings-label{font-size:11px;font-family:var(--mono);color:var(--txt2);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.settings-input{width:100%;background:var(--sur2);border:1px solid var(--bdr);border-radius:6px;padding:9px 12px;font-size:12px;font-family:var(--mono);color:var(--txtb);outline:none;transition:border-color .15s}
+.settings-input:focus{border-color:var(--acc)}
+.settings-input.has-val{border-color:rgba(74,143,255,.4);color:var(--acc)}
+.settings-row{display:flex;gap:10px;margin-top:20px}
+.settings-status{font-size:11px;font-family:var(--mono);color:var(--txt2);margin-top:12px;padding:8px 12px;background:var(--sur2);border-radius:5px;border:1px solid var(--bdr)}
+.settings-status.ok{color:var(--grn);border-color:rgba(34,197,94,.3);background:var(--grn-d)}
+.settings-status.err{color:var(--red);border-color:rgba(255,77,77,.3);background:var(--red-d)}
+.btn-settings{background:rgba(255,255,255,.08);color:var(--txt);border:1px solid var(--bdr);padding:5px 10px;border-radius:5px;font-size:13px;cursor:pointer;transition:all .15s}
+.btn-settings:hover{border-color:var(--acc);color:var(--acc)}
+
+
+/* ── WIZARD ── */
+#upl{align-items:center;justify-content:center;flex-direction:column}
+.wiz-card{display:flex;align-items:center;gap:16px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:16px 20px;margin-bottom:10px;transition:border-color .2s,background .2s;cursor:default}
+.wiz-card.dov{border-color:var(--acc);background:var(--acc-d)}
+.wiz-card.wiz-loaded{border-color:rgba(34,197,94,.4);background:var(--grn-d)}
+.wiz-card.wiz-optional{opacity:.85}
+.wiz-card-left{flex-shrink:0}
+.wiz-step-num{width:32px;height:32px;border-radius:50%;background:var(--sur3);border:2px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:700;color:var(--txt2)}
+.wiz-card.wiz-loaded .wiz-step-num{background:var(--grn-d);border-color:var(--grn);color:var(--grn)}
+.wiz-card-body{flex:1;min-width:0}
+.wiz-card-title{font-size:15px;font-weight:700;color:var(--txtb);margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.wiz-card-sub{font-size:12px;color:var(--txt2);margin-bottom:4px}
+.wiz-file{font-family:var(--mono);color:var(--acc)}
+.wiz-req{font-size:10px;background:rgba(255,77,77,.15);color:var(--red);padding:2px 7px;border-radius:10px;font-weight:600;font-family:var(--mono)}
+.wiz-opt{font-size:10px;background:var(--sur3);color:var(--txt2);padding:2px 7px;border-radius:10px;font-weight:600;font-family:var(--mono);border:1px solid var(--bdr)}
+.wiz-status{font-size:11px;font-family:var(--mono);color:var(--txt2)}
+.wiz-card.wiz-loaded .wiz-status{color:var(--grn)}
+.wiz-card-action{flex-shrink:0}
+
+.bics{display:inline-flex;align-items:center;padding:3px 7px;border-radius:5px;font-size:11px;font-family:var(--mono);cursor:pointer;border:1px solid var(--bdr);background:var(--sur3);color:var(--txt2);transition:all .15s;white-space:nowrap}
+.bics:hover{background:var(--acc-d);color:var(--acc);border-color:rgba(74,143,255,.4)}
+
+.empty{text-align:center;padding:44px;color:var(--txt2);font-size:16px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(70px);background:#0a0d13;color:#fff;padding:9px 20px;border-radius:6px;font-size:13px;font-family:var(--mono);transition:transform .25s;z-index:9999;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-left">
+    <div class="ldot"></div>
+    <div class="tb-title">מרכז שליטה — הזמנות פתוחות</div>
+  </div>
+  <div class="tb-mid">
+    <button class="view-tab on" id="tab-boss" onclick="setMainView('boss')">📊 מבט ניהולי</button>
+    <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">📋 מבט עובד</button>
+    <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">🏭 ספקים</button>
+  </div>
+  <div class="tb-right">
+    <div id="spin">טוען...</div>
+    <div class="fbadge" id="fbadge">לא טעון קובץ SO</div>
+    <div class="fbadge" id="fbadge-po" style="display:none"></div>
+    <button class="btn btn-ghost" id="wiz-reload-btn" style="display:none" onclick="showWizard()" title="טען קבצים מחדש">⬆ קבצים</button>
+    <button class="btn btn-ghost" id="expbtn" style="display:none" onclick="exportNotes()">⬇ CSV</button>
+    <button class="btn btn-ghost" id="suppbtn" onclick="document.getElementById('fi2').click()" title="טען קובץ מעקב ספקים — ימלא ספק ו-PO אוטומטית איפה שחסר">⬆ מעקב ספקים</button>
+    <div class="fbadge" id="suppbadge" style="display:none"></div>
+  </div>
+</div>
+<input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
+<input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
+
+<!-- UPLOAD -->
+<div id="upl">
+  <div style="max-width:560px;width:100%;margin:0 auto">
+
+    <!-- Wizard header -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">מרכז שליטה — הזמנות פתוחות</div>
+      <div style="font-size:13px;color:var(--txt2)">טען קובץ אחד או שניים להתחלה</div>
+    </div>
+
+    <!-- Step 1 — SO file (required) -->
+    <div class="wiz-card" id="wiz-so" ondragover="event.preventDefault();this.classList.add('dov')" ondragleave="this.classList.remove('dov')" ondrop="handleWizDrop(event,'so')">
+      <div class="wiz-card-left">
+        <div class="wiz-step-num" id="wiz-so-num">1</div>
+      </div>
+      <div class="wiz-card-body">
+        <div class="wiz-card-title">📄 הזמנות פתוחות <span class="wiz-req">נדרש</span></div>
+        <div class="wiz-card-sub">קובץ <span class="wiz-file">הזמנות_פתוחות.xlsx</span> — מיוצא מפריוריטי</div>
+        <div class="wiz-status" id="wiz-so-status">לא נטען</div>
+      </div>
+      <div class="wiz-card-action">
+        <button class="btn btn-blue" onclick="trigWiz('so')">בחר קובץ</button>
+      </div>
+    </div>
+
+    <!-- Step 2 — PO file (optional) -->
+    <div class="wiz-card wiz-optional" id="wiz-po" ondragover="event.preventDefault();this.classList.add('dov')" ondragleave="this.classList.remove('dov')" ondrop="handleWizDrop(event,'po')">
+      <div class="wiz-card-left">
+        <div class="wiz-step-num" id="wiz-po-num">2</div>
+      </div>
+      <div class="wiz-card-body">
+        <div class="wiz-card-title">📦 מעקב רכש <span class="wiz-opt">אופציונלי</span></div>
+        <div class="wiz-card-sub">קובץ <span class="wiz-file">מעקב_רכש.xlsx</span> — מבט ספקים ו-PO</div>
+        <div class="wiz-status" id="wiz-po-status">לא נטען</div>
+      </div>
+      <div class="wiz-card-action">
+        <button class="btn btn-ghost" onclick="trigWiz('po')">בחר קובץ</button>
+      </div>
+    </div>
+
+    <!-- Launch button -->
+    <div style="margin-top:20px;text-align:center">
+      <button class="btn btn-blue" id="wiz-launch" style="display:none;padding:12px 40px;font-size:15px;border-radius:8px" onclick="launchDashboard()">
+        🚀 פתח דשבורד
+      </button>
+      <div style="font-size:11px;color:var(--txt2);margin-top:12px;font-family:var(--mono)">הנתונים לא עוזבים את המחשב שלך · גרור קבצים לכאן</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- ══ BOSS VIEW ══ -->
+  <div id="boss-view" style="display:flex;flex-direction:column;gap:8px;padding:12px 20px">
+    <div class="kpi-row">
+      <div class="kpi kr"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריך האספקה שלהם עבר ועדיין אין להם הזמנת רכש (PO) או סטטוס "הוזמן מספק". דורשים טיפול מיידי.</span></span>באיחור ללא כיסוי</div><div class="kpi-val" id="bk1">—</div><div class="kpi-sub" id="bk1s"></div></div>
+      <div class="kpi ko"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריכם עדיין לא עבר אך אין להם PO ואין סטטוס "הוזמן". יש לטפל בהם לפני שיהפכו לאיחור.</span></span>ממתין לטיפול</div><div class="kpi-val" id="bk2">—</div><div class="kpi-sub" id="bk2s"></div></div>
+      <div class="kpi kg"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים עם הזמנת רכש (PO) קיימת או סטטוס "הוזמן מספק". הפריט מכוסה ואין צורך בפעולה.</span></span>מכוסה / הוזמן</div><div class="kpi-val" id="bk3">—</div><div class="kpi-sub" id="bk3s"></div></div>
+      <div class="kpi kb"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">מספר הזמנות המכירה (SO) הפתוחות הכולל, ומספר שורות הפריטים בתוכן.</span></span>סה"כ הזמנות</div><div class="kpi-val" id="bk4">—</div><div class="kpi-sub" id="bk4s"></div></div>
+    </div>
+
+    <div class="boss-grid">
+      <!-- Chart -->
+      <div class="panel">
+        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">מספר פריטים לפי חודש תאריך אספקה מבוקש. אדום = חודש שעבר, כתום = החודש הנוכחי, כחול = חודשים עתידיים.</span></span>תחזית לפי חודש אספקה</div>
+        <div class="chart-wrap">
+          <div class="bar-row" id="chart-bars"></div>
+          <div class="chart-legend">
+            <div class="cl-item"><div class="cl-dot" style="background:var(--red)"></div>עבר</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--ora)"></div>שוטף</div>
+            <div class="cl-item"><div class="cl-dot" style="background:var(--acc)"></div>עתיד</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customers at risk -->
+      <div class="panel">
+        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">לקוחות שיש להם פריטים באיחור ללא כיסוי. מספר הפריטים ותאריך האיחור המוקדם ביותר.</span></span>לקוחות בסיכון <span id="cust-count" style="color:var(--red)"></span></div>
+        <div class="pbody" id="cust-risk"></div>
+      </div>
+
+      <!-- Suppliers + coverage -->
+      <div class="panel">
+        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">ספקים עם הזמנות פתוחות. אדום = יש פריטים באיחור, סגול = בבקרת איכות, ירוק = הכל תקין.</span></span>ספקים פעילים</div>
+        <div class="pbody" id="supp-list"></div>
+        <div class="phead" style="margin-top:2px"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">אחוז הפריטים שיש להם PO או סטטוס "הוזמן" מתוך סך הפריטים הפתוחים של אותו לקוח.</span></span>כיסוי לפי לקוח</div>
+        <div class="cov-wrap" id="cov-list"></div>
+      </div>
+    </div>
+
+    <!-- SO STATUS PANEL -->
+    <div class="so-status-panel" id="ssp">
+      <div class="ssp-head" onclick="toggleSSP()">
+        <div class="ssp-title">סטטוס הזמנות פתוחות לפי לקוח</div>
+        <div class="ssp-badges">
+          <span class="badge b-x" id="ssp-badge-cust"></span>
+          <span class="badge b-r" id="ssp-badge-ovr"></span>
+          <span class="badge b-x" id="ssp-chev" style="font-size:11px;font-family:var(--mono)">▲</span>
+        </div>
+      </div>
+      <div class="ssp-body open" id="ssp-body">
+        <div id="ssp-list"></div>
+        <div class="ssp-more" id="ssp-more" style="display:none">
+          <span id="ssp-more-txt"></span>
+          <span onclick="sspShowAll()" style="cursor:pointer">הצג הכל ▸</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ EMPLOYEE VIEW ══ -->
+  <div id="emp-view">
+    <div class="emp-tabs">
+      <button class="etab on" id="et1" onclick="setEmpTab('today')">🔴 לטיפול היום</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">רשימת פריטים דחופים: תאריך אספקה עבר + אין PO + לא בוטל. ממוינים לפי גיל האיחור.</span></span>
+      <button class="etab" id="et2" onclick="setEmpTab('so')">📋 כל ההזמנות</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">כל הזמנות המכירה הפתוחות. לחץ על שורה לפתיחת פירוט הפריטים. אדום = יש איחורים, כתום = ממתין לטיפול, ירוק = הכל מכוסה.</span></span>
+      <div class="cspc"></div>
+      <div style="font-size:11px;font-family:var(--mono);color:var(--txt2)" id="emp-stat"></div>
+    </div>
+
+    <!-- TODAY sub-view -->
+    <div class="emp-body" id="tab-today">
+      <div class="today-grid">
+        <div class="panel" style="grid-column:1 / -1">
+          <div class="phead">פריטים דחופים — ללא PO + תאריך עבר <span id="today-count" style="color:var(--red)"></span></div>
+          <div style="padding:8px 10px;display:flex;flex-direction:column;gap:4px" id="today-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SO sub-view -->
+    <div class="emp-body" id="tab-so" style="display:none">
+      <div class="so-controls">
+        <span class="ctl"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">סינון להצגת הזמנות של לקוח ספציפי בלבד.</span></span>לקוח:</span>
+        <select id="fc" onchange="applyFilters()"><option value="">הכל</option></select>
+        <span class="ctl"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">סינון להצגת פריטים שמשויכים לספק ספציפי בלבד.</span></span>ספק:</span>
+        <select id="fs" onchange="applyFilters()"><option value="">הכל</option></select>
+        <label class="chk"><input type="checkbox" id="fu" onchange="applyFilters()"> לא מכוסים<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים ללא PO וללא סטטוס "הוזמן מספק".</span></span></label>
+        <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> באיחור<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים שתאריך האספקה המבוקש עבר.</span></span></label>
+        <div class="cspc"></div>
+        <button class="bexp" id="bex" onclick="expandAll(true)">פתח הכל ▾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">🔴 = יש פריט באיחור ללא כיסוי | 🟠 = יש פריט ללא PO | 🟢 = כל הפריטים מכוסים. המספרים בבאדג׳ים: כמות פריטים לפי קטגוריה.</span></span>
+      </div>
+      <div id="so-content"></div>
+    </div>
+  </div>
+  <!-- ══ SUPPLIER VIEW ══ -->
+  <div id="supp-view" style="display:none; padding:16px 20px;">
+    <div id="supp-nopo" style="text-align:center;padding:60px;color:var(--txt2)">
+      <div style="font-size:40px;margin-bottom:14px">📦</div>
+      <div style="font-size:16px;font-weight:600;color:var(--txtb);margin-bottom:8px">טען קובץ מעקב רכש</div>
+      <div style="font-size:13px;margin-bottom:20px;">לחץ על "⬆ PO" בסרגל העליון כדי לטעון את קובץ <span style="font-family:var(--mono)">מעקב_רכש.xlsx</span></div>
+      <button class="btn btn-blue" onclick="trigUpPO()">⬆ טען קובץ PO</button>
+    </div>
+    <div id="supp-content" style="display:none;flex-direction:column;gap:12px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="kpi kb"><div class="kpi-lbl">ספקים פעילים</div><div class="kpi-val" id="sk1">—</div><div class="kpi-sub" id="sk1s"></div></div>
+        <div class="kpi kr"><div class="kpi-lbl">שורות באיחור</div><div class="kpi-val" id="sk2">—</div><div class="kpi-sub" id="sk2s"></div></div>
+        <div class="kpi ko"><div class="kpi-lbl">שווי יתרה</div><div class="kpi-val" id="sk3">—</div><div class="kpi-sub" id="sk3s"></div></div>
+        <div class="kpi kg"><div class="kpi-lbl">מחוברים ל-SO</div><div class="kpi-val" id="sk4">—</div><div class="kpi-sub" id="sk4s"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="supp-search" placeholder="חפש ספק..." oninput="renderSuppliers()"
+          style="flex:1;background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:7px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl">
+        <label class="chk"><input type="checkbox" id="supp-ovr-only" onchange="renderSuppliers()"> באיחור בלבד</label>
+        <label class="chk"><input type="checkbox" id="supp-cross" onchange="renderSuppliers()"> הצלבת SO</label>
+      </div>
+      <div id="supp-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TODAY=new Date(2026,4,19);
+const NK='openorders_v5_notes';
+let allRows=[],soGroups=[],filteredGroups=[];
+let notes={},soReg={},statusOvr={},fieldOvr={},poData=[];
+try{statusOvr=JSON.parse(localStorage.getItem('oo_status')||'{}');}catch(e){}
+try{fieldOvr=JSON.parse(localStorage.getItem('oo_fields')||'{}');}catch(e){}
+try{notes=JSON.parse(localStorage.getItem(NK)||'{}');}catch(e){}
+
+function trigUp(){document.getElementById('fi').click();}
+let xlsxReady=false,xlsxQ=[];
+function withXLSX(cb){
+  if(xlsxReady){cb();return;}
+  xlsxQ.push(cb);
+  if(xlsxQ.length>1)return;
+  const sc=document.createElement('script');
+  sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  sc.onload=()=>{xlsxReady=true;xlsxQ.forEach(f=>f());xlsxQ=[];};
+  sc.onerror=()=>toast('שגיאה: בדוק חיבור אינטרנט');
+  document.head.appendChild(sc);
+}
+function handleDrop(e){e.preventDefault();document.getElementById('dropz').classList.remove('dov');if(e.dataTransfer.files[0])startParse(e.dataTransfer.files[0]);}
+function handleFile(e){if(e.target.files[0])startParse(e.target.files[0]);}
+function startParse(file){
+  document.getElementById('spin').style.display='inline';
+  withXLSX(()=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
+        const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        allRows=parseRows(raw);
+        soGroups=buildGroups(allRows);
+        onLoaded(file.name);
+      }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+function onLoaded(fname){
+  document.getElementById('spin').style.display='none';
+  document.getElementById('fbadge').textContent=fname;
+  document.getElementById('upl').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('expbtn').style.display='inline-flex';
+  fillSelects();
+  renderBoss();
+  applyFilters();
+  renderToday();
+  toast('✓ '+soGroups.length+' הזמנות נטענו');
+}
+
+
+// ── PO DATA ──
+let poRows = [], poLoaded = false;
+
+function trigUpPO(){ document.getElementById('fi-po').click(); }
+function handleFilePO(e){ if(e.target.files[0]) startParsePO(e.target.files[0]); }
+
+function startParsePO(file){
+  document.getElementById('spin').style.display='inline';
+  withXLSX(()=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
+        const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        console.log('PO raw rows:', raw.length, 'keys:', raw.length>0?Object.keys(raw[0]):[]);
+        poRows=parsePORows(raw);
+        console.log('PO parsed rows:', poRows.length);
+        poLoaded=true;
+        document.getElementById('spin').style.display='none';
+        const fpoBadge=document.getElementById('fbadge-po');
+        if(fpoBadge){fpoBadge.style.display='inline';fpoBadge.textContent=file.name+' · '+poRows.length+' שורות PO';}
+        // Switch to supplier tab so DOM elements exist
+        setMainView('supp');
+        const nopo=document.getElementById('supp-nopo');
+        const scont=document.getElementById('supp-content');
+        if(nopo)nopo.style.display='none';
+        if(scont){scont.style.display='flex';scont.style.flexDirection='column';}
+        renderSupplierKPIs();
+        renderSuppliers();
+        renderCoverage();
+        renderSSP();
+        toast('✓ קובץ PO נטען — '+poRows.length+' שורות');
+      }catch(err){ document.getElementById('spin').style.display='none'; toast('שגיאה PO: '+err.message); }
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function parsePORows(raw){
+  // find MPN column name dynamically (handles מק'ט apostrophe)
+  const mpnKey = raw.length>0 ? Object.keys(raw[0]).find(k=>k.includes('מק')||k.includes('מקט')||k==='מספר פריט') : null;
+  return raw.map(r=>{
+    const poNum=s(r['הזמנה']);
+    const mpn=s(mpnKey?r[mpnKey]:'');
+    if(!poNum&&!mpn)return null;
+    const supplier=s(r['שם ספק']);
+    const desc=s(r['תאור פריט']);
+    const qtyO=parseFloat(r['כמות בהזמנה'])||0;
+    const qtyS=parseFloat(r['כמות שסופקה'])||0;
+    const qtyR=parseFloat(r['יתרה לאספקה'])||0;
+    const valILS=parseFloat(r['שווי היתרה בשקלים'])||0;
+    const valOrig=parseFloat(r['שווי היתרה'])||0;
+    const currency=s(r['מטבע'])||'ILS';
+    let dd=null;
+    const rd=r['ת. אספקה'];
+    if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
+    else if(typeof rd==='number'&&rd>1){const d=new Date(Math.round((rd-25569)*86400000));dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+    else if(typeof rd==='string'&&rd){const d=new Date(rd);if(!isNaN(d))dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+    const isOvr=!!(dd&&dd<TODAY);
+    const isPartial=qtyS>0&&qtyR>0;
+    return{poNum,mpn,supplier,desc,qtyO,qtyS,qtyR,valILS,valOrig,currency,dd,isOvr,isPartial};
+  }).filter(Boolean);
+}
+
+function renderSupplierKPIs(){
+  const suppCount=[...new Set(poRows.map(r=>r.supplier).filter(Boolean))].length;
+  const ovrCount=poRows.filter(r=>r.isOvr).length;
+  const totalVal=poRows.reduce((s,r)=>s+r.valILS,0);
+  // cross-match with SO
+  const soMPNs=new Set(allRows.map(r=>r.mpn.trim().toUpperCase()));
+  const matched=poRows.filter(r=>soMPNs.has(r.mpn.trim().toUpperCase())).length;
+
+  document.getElementById('sk1').textContent=suppCount;
+  document.getElementById('sk1s').textContent=poRows.length+' שורות';
+  document.getElementById('sk2').textContent=ovrCount;
+  document.getElementById('sk2s').textContent=Math.round(ovrCount/poRows.length*100)+'% מהשורות';
+  document.getElementById('sk3').textContent='₪'+Math.round(totalVal/1000)+'K';
+  document.getElementById('sk3s').textContent='₪'+Math.round(poRows.filter(r=>r.isOvr).reduce((s,r)=>s+r.valILS,0)/1000)+'K באיחור';
+  document.getElementById('sk4').textContent=matched;
+  document.getElementById('sk4s').textContent='פריטים מחוברים ל-SO';
+}
+
+function renderSuppliers(){
+  const q=(document.getElementById('supp-search').value||'').toLowerCase();
+  const ovrOnly=document.getElementById('supp-ovr-only').checked;
+  const crossSO=document.getElementById('supp-cross').checked;
+  const soMPNs=new Set(allRows.map(r=>r.mpn.trim().toUpperCase()));
+
+  // Group by supplier
+  const byS={};
+  poRows.forEach(r=>{
+    const k=r.supplier||'— ללא ספק';
+    if(!byS[k])byS[k]={supplier:k,rows:[],ovrVal:0,totalVal:0};
+    byS[k].rows.push(r);
+    byS[k].totalVal+=r.valILS;
+    if(r.isOvr)byS[k].ovrVal+=r.valILS;
+  });
+
+  let groups=Object.values(byS).sort((a,b)=>b.ovrVal-a.ovrVal||b.totalVal-a.totalVal);
+
+  if(q)groups=groups.filter(g=>g.supplier.toLowerCase().includes(q));
+  if(ovrOnly)groups=groups.filter(g=>g.rows.some(r=>r.isOvr));
+
+  const el=document.getElementById('supp-cards');
+  if(!groups.length){el.innerHTML='<div class="empty">אין ספקים להצגה</div>';return;}
+
+  el.innerHTML=groups.map(g=>{
+    const ovrRows=g.rows.filter(r=>r.isOvr);
+    const partialRows=g.rows.filter(r=>r.isPartial);
+    const matched=crossSO?g.rows.filter(r=>soMPNs.has(r.mpn.trim().toUpperCase())):[];
+    const covPct=Math.round((g.rows.length-ovrRows.length)/g.rows.length*100);
+    const tl=ovrRows.length>0?'r':g.rows.some(r=>r.dd&&r.dd>TODAY&&!r.isOvr)?'g':'g';
+    const tlActual=ovrRows.length===g.rows.length?'r':ovrRows.length>0?'o':'g';
+    const cc=tlActual==='r'?'cr':tlActual==='o'?'co':'cg';
+    const sid='sp_'+g.supplier.replace(/[^a-zA-Z0-9]/g,'_').slice(0,20);
+
+    const badges=[];
+    if(ovrRows.length)badges.push(`<span class="badge b-r">🔴 ${ovrRows.length} באיחור</span>`);
+    if(partialRows.length)badges.push(`<span class="badge b-o">◑ ${partialRows.length} חלקי</span>`);
+    if(crossSO&&matched.length)badges.push(`<span class="badge b-a">🔗 ${matched.length} מחובר SO</span>`);
+
+    const ovrValFmt=ovrRows.length?` · ₪${Math.round(g.ovrVal/1000)}K באיחור`:'';
+
+    return`<div class="socard ${cc}" id="card_${sid}">
+      <div class="sohdr" onclick="togSO('${sid}')">
+        <div class="soid">
+          <span class="stl tl-${tlActual}"></span>
+          <div>
+            <div class="sonum" style="font-size:15px">${esc(g.supplier)}</div>
+            <div class="socpo">${g.rows.length} פריטים · ₪${Math.round(g.totalVal/1000)}K${ovrValFmt}</div>
+          </div>
+        </div>
+        <div style="flex:1"></div>
+        <div class="sobadges">${badges.join('')}</div>
+        <div style="display:flex;flex-direction:column;gap:2px;min-width:140px;margin:0 8px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt2);font-family:var(--mono)">
+            <span>כיסוי</span><span>${covPct}%</span>
+          </div>
+          <div style="height:4px;background:var(--bdr);border-radius:2px">
+            <div style="width:${covPct}%;height:100%;border-radius:2px;background:${covPct>60?'var(--grn)':covPct>30?'var(--ora)':'var(--red)'}"></div>
+          </div>
+        </div>
+        <div class="sochev" id="chev_${sid}">▼</div>
+      </div>
+      <div class="sodet" id="det_${sid}">
+        <div class="dtwrap">${buildPOTable(g.rows,soMPNs,crossSO)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function buildPOTable(rows,soMPNs,crossSO){
+  const sorted=[...rows].sort((a,b)=>{
+    if(a.isOvr&&!b.isOvr)return -1;if(!a.isOvr&&b.isOvr)return 1;
+    if(!a.dd)return 1;if(!b.dd)return -1;return a.dd-b.dd;
+  });
+  return`<table class="lt"><thead><tr>
+    <th style="width:12px"></th>
+    <th>פריט (MPN)</th>
+    <th>תיאור</th>
+    <th>PO</th>
+    <th>ת. אספקה</th>
+    <th>הוזמן</th>
+    <th>סופק</th>
+    <th>יתרה</th>
+    <th>ערך ₪</th>
+    ${crossSO?'<th>SO</th>':''}
+  </tr></thead><tbody>
+  ${sorted.map(r=>{
+    const dc=r.isOvr?'past':(r.dd&&r.dd-TODAY<30*86400000?'curr':'');
+    const dayB=r.isOvr?`<span class="db db-r">${Math.floor((TODAY-r.dd)/86400000)}י׳</span>`:'';
+    const tl=r.isOvr?'r':r.isPartial?'o':'g';
+    const soMatch=crossSO&&soMPNs.has(r.mpn.trim().toUpperCase());
+    return`<tr class="${r.isOvr?'lno':''}">
+      <td style="text-align:center"><span class="lntl tl-${tl}"></span></td>
+      <td><div class="mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div></td>
+      <td style="font-size:11px;color:var(--txt2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.desc)}">${esc(r.desc)}</td>
+      <td class="ptxt">${esc(r.poNum)}</td>
+      <td class="ddate ${dc}">${dayB}${fd(r.dd)}</td>
+      <td class="qty">${r.qtyO}</td>
+      <td class="qty" style="${r.qtyS>0?'color:var(--grn)':''}">${r.qtyS}</td>
+      <td class="qty" style="${r.isOvr?'color:var(--red)':''}">${r.qtyR}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--txt2);white-space:nowrap">₪${Math.round(r.valILS).toLocaleString()}</td>
+      ${crossSO?`<td>${soMatch?'<span class="badge b-a" style="font-size:10px">✓</span>':'<span style="color:var(--txt2);font-size:11px">—</span>'}</td>`:''}
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+
+// ── SO STATUS PANEL ──
+let sspOpen=true, sspAllOpen=false;
+function toggleSSP(){
+  sspOpen=!sspOpen;
+  document.getElementById('ssp-body').classList.toggle('open',sspOpen);
+  document.getElementById('ssp-chev').textContent=sspOpen?'▲':'▼';
+}
+function renderSSP(){
+  const byC={};
+  allRows.forEach(r=>{
+    const k=r.customer||'לא ידוע';
+    if(!byC[k])byC[k]={customer:k,sos:{}};
+    if(!byC[k].sos[r.so])byC[k].sos[r.so]={so:r.so,custPO:r.custPO,lines:[],minDate:null,maxDate:null,ovr:0,unc:0,cov:0};
+    const sg=byC[k].sos[r.so];
+    sg.lines.push(r);
+    if(r.dd){if(!sg.minDate||r.dd<sg.minDate)sg.minDate=r.dd;if(!sg.maxDate||r.dd>sg.maxDate)sg.maxDate=r.dd;}
+    if(r.isOvr&&r.cov!=='green')sg.ovr++;
+    else if(!r.isOvr&&r.cov!=='green')sg.unc++;
+    else if(r.cov==='green')sg.cov++;
+  });
+  const custArr=Object.values(byC).map(function(c){
+    const sos=Object.values(c.sos);
+    const totOvr=sos.reduce(function(s,g){return s+g.ovr;},0);
+    const totUnc=sos.reduce(function(s,g){return s+g.unc;},0);
+    const totCov=sos.reduce(function(s,g){return s+g.cov;},0);
+    const tl=totOvr>0?'r':totUnc>0?'o':'g';
+    return Object.assign({},c,{sos:sos,totOvr:totOvr,totUnc:totUnc,totCov:totCov,tl:tl});
+  }).sort(function(a,b){
+    const o={r:0,o:1,g:2};
+    return(o[a.tl]-o[b.tl])||b.totOvr-a.totOvr;
+  });
+
+  document.getElementById('ssp-badge-cust').textContent=custArr.length+' לקוחות';
+  document.getElementById('ssp-badge-ovr').textContent=allRows.filter(function(r){return r.isOvr&&r.cov!=='green';}).length+' באיחור';
+
+  const SHOW=5;
+  const el=document.getElementById('ssp-list');
+  const visible=sspAllOpen?custArr:custArr.slice(0,SHOW);
+  const poMPNs=new Set(poRows.map(function(r){return r.mpn.trim().toUpperCase();}));
+
+  var html2='';
+  visible.forEach(function(c){
+    const cid='cg_'+custArr.indexOf(c);
+    const sname=c.customer.replace(/\(.*?\)/g,'').replace(/בע"מ/g,'').trim().slice(0,28);
+    const tlC='tl-'+c.tl;
+    var bs='';
+    if(c.totOvr)bs+='<span class="badge b-r">🔴 '+c.totOvr+'</span>';
+    if(c.totUnc)bs+='<span class="badge b-o">⚠ '+c.totUnc+'</span>';
+    if(c.totCov)bs+='<span class="badge b-g">✓ '+c.totCov+'</span>';
+    bs+='<span class="badge b-x">'+c.sos.length+' הזמנות</span>';
+
+    var soHtml='';
+    var sortedSos=c.sos.slice().sort(function(a,b){
+      const o={r:0,o:1,g:2};
+      const at=a.ovr>0?'r':a.unc>0?'o':'g';
+      const bt=b.ovr>0?'r':b.unc>0?'o':'g';
+      return(o[at]-o[bt])||b.ovr-a.ovr;
+    });
+    sortedSos.forEach(function(g){
+      const gid='so_ssp_'+g.so.replace(/\W/g,'_');
+      const gtl=g.ovr>0?'r':g.unc>0?'o':'g';
+      const ds=g.minDate?fd(g.minDate)+(g.maxDate&&g.maxDate.getTime()!==g.minDate.getTime()?'–'+fd(g.maxDate):''):'—';
+      const dc=g.minDate&&g.minDate<TODAY?'past':(g.minDate&&g.minDate-TODAY<30*86400000?'curr':'');
+      var gbs='';
+      if(g.ovr)gbs+='<span class="badge b-r">🔴 '+g.ovr+'</span>';
+      if(g.unc)gbs+='<span class="badge b-o">⚠ '+g.unc+'</span>';
+      if(g.cov)gbs+='<span class="badge b-g">✓ '+g.cov+'</span>';
+      gbs+='<span class="badge b-x">'+g.lines.length+'</span>';
+      const matchedPO=g.lines.filter(function(r){return poMPNs.has(r.mpn.trim().toUpperCase());}).length;
+      const supps=[...new Set(g.lines.map(function(r){return r.supplier;}).filter(Boolean))];
+      const suppTxt=supps.length?supps.slice(0,2).join(', '):'—';
+      const soKey=g.so.replace(/'/g,"\\'");
+      soHtml+='<div class="so-row" onclick="togSODetail(\''+gid+'\')">'
+        +'<span></span>'
+        +'<span class="so-row-dot tl-'+gtl+'"></span>'
+        +'<div><span class="so-row-num">'+esc(g.so)+'</span><span class="so-row-cpo">'+esc(g.custPO)+'</span></div>'
+        +'<span class="ddate '+dc+'" style="font-size:11px;white-space:nowrap">'+ds+'</span>'
+        +'<div style="display:flex;gap:4px">'+gbs+'</div>'
+        +'<div class="so-chev" id="chev_'+gid+'">▼</div>'
+        +'</div>'
+        +'<div class="so-detail-card" id="det_'+gid+'" style="display:none">'
+          +'<div class="so-stat-grid">'
+            +'<div class="so-stat"><div class="so-stat-lbl">סה&quot;כ פריטים</div><div class="so-stat-val">'+g.lines.length+'</div></div>'
+            +(g.ovr?'<div class="so-stat s-red"><div class="so-stat-lbl">באיחור ללא כיסוי</div><div class="so-stat-val">'+g.ovr+'</div></div>':'<div class="so-stat"><div class="so-stat-lbl">באיחור ללא כיסוי</div><div class="so-stat-val" style="color:var(--grn)">0</div></div>')
+            +'<div class="so-stat"><div class="so-stat-lbl">ספקים</div><div class="so-stat-val" style="font-size:12px">'+suppTxt+'</div></div>'
+            +'<div class="so-stat"><div class="so-stat-lbl">התאמות PO</div><div class="so-stat-val" style="color:'+(matchedPO>0?'var(--acc)':'var(--txt2)')+'">'+matchedPO+'</div></div>'
+          +'</div>'
+          +'<div class="so-actions">'
+            +'<button class="so-action-link" onclick="event.stopPropagation();setMainView(\'emp\');setEmpTab(\'so\')">📋 פתח במבט עובד</button>'
+          +'</div>'
+        +'</div>';
+    });
+
+    html2+='<div class="cg-hdr" onclick="togCG(\''+cid+'\')">'
+      +'<span class="cg-dot '+tlC+'"></span>'
+      +'<span class="cg-name">'+esc(sname)+'</span>'
+      +'<div style="display:flex;gap:5px">'+bs+'</div>'
+      +'<div class="so-chev" id="chev_'+cid+'">▼</div>'
+      +'</div>'
+      +'<div class="cg-body" id="'+cid+'">'+soHtml+'</div>';
+  });
+  el.innerHTML=html2;
+
+  if(!sspAllOpen&&custArr.length>SHOW){
+    document.getElementById('ssp-more').style.display='flex';
+    document.getElementById('ssp-more-txt').textContent='מציג '+SHOW+' מתוך '+custArr.length+' לקוחות';
+  }else{
+    document.getElementById('ssp-more').style.display='none';
+  }
+}
+function togCG(id){
+  // close all other customer groups
+  document.getElementById('ssp-list').querySelectorAll('.cg-body').forEach(function(el){
+    if(el.id!==id){
+      el.classList.remove('open');
+      var chev=document.getElementById('chev_'+el.id);
+      if(chev)chev.classList.remove('open');
+    }
+  });
+  // toggle clicked
+  var el=document.getElementById(id);
+  var chev=document.getElementById('chev_'+id);
+  var isOpen=el.classList.contains('open');
+  el.classList.toggle('open',!isOpen);
+  if(chev)chev.classList.toggle('open',!isOpen);
+}
+function togSODetail(id){
+  var det=document.getElementById('det_'+id);
+  var chev=document.getElementById('chev_'+id);
+  if(!det)return;
+  var isOpen=det.style.display==='block';
+  // close all other SO details in same customer group
+  det.closest('.cg-body').querySelectorAll('[id^="det_so_ssp_"]').forEach(function(el){
+    if(el.id!==det.id){
+      el.style.display='none';
+      var c=document.getElementById('chev_'+el.id.replace('det_',''));
+      if(c)c.classList.remove('open');
+    }
+  });
+  det.style.display=isOpen?'none':'block';
+  if(chev)chev.classList.toggle('open',!isOpen);
+}
+function sspShowAll(){sspAllOpen=true;renderSSP();}
+
+
+// ── ONEDRIVE SETTINGS ──
+const SETTINGS_KEY = 'oo_gdrive_settings';
+let odSettings = {};
+try { odSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
+
+function openSettings(){
+  document.getElementById('set-so-url').value = odSettings.soUrl || '';
+  document.getElementById('set-po-url').value = odSettings.poUrl || '';
+  document.getElementById('settings-overlay').classList.add('open');
+  document.getElementById('btn-refresh-now').style.display = odSettings.soUrl ? 'inline-flex' : 'none';
+  setSettingsStatus('');
+}
+function closeSettings(){ document.getElementById('settings-overlay').classList.remove('open'); }
+function markInputChanged(el){ el.classList.toggle('has-val', !!el.value.trim()); }
+
+function setSettingsStatus(msg, type){
+  const el = document.getElementById('settings-status');
+  if(!msg){ el.style.display='none'; return; }
+  el.style.display = 'block';
+  el.className = 'settings-status' + (type ? ' '+type : '');
+  el.textContent = msg;
+}
+
+function saveAndFetch(){
+  const soUrl = document.getElementById('set-so-url').value.trim();
+  const poUrl = document.getElementById('set-po-url').value.trim();
+  if(!soUrl){ setSettingsStatus('נדרש לינק SO לפחות', 'err'); return; }
+  odSettings = { soUrl, poUrl, savedAt: new Date().toISOString() };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
+  setSettingsStatus('שומר ושולף...', '');
+  fetchNow();
+}
+
+function clearSettings(){
+  odSettings = {};
+  localStorage.removeItem(SETTINGS_KEY);
+  document.getElementById('set-so-url').value = '';
+  document.getElementById('set-po-url').value = '';
+  setSettingsStatus('ההגדרות נמחקו', '');
+  document.getElementById('btn-refresh-now').style.display = 'none';
+}
+
+// Convert Google Drive share link to direct download URL
+function gdToDirectUrl(shareUrl) {
+  if (!shareUrl) return null;
+  // Already a direct export URL
+  if (shareUrl.includes('export=download') || shareUrl.includes('uc?id=')) return shareUrl;
+  // Extract file ID from various Google Drive URL formats:
+  // https://drive.google.com/file/d/FILE_ID/view
+  // https://drive.google.com/open?id=FILE_ID
+  // https://docs.google.com/spreadsheets/d/FILE_ID/...
+  let fileId = null;
+  const m1 = shareUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  const m2 = shareUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  const m3 = shareUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) fileId = m1[1];
+  else if (m2) fileId = m2[1];
+  else if (m3) fileId = m3[1];
+  if (!fileId) return shareUrl; // can't parse, return as-is
+  return 'https://drive.google.com/uc?export=download&id=' + fileId;
+}
+
+async function fetchFileFromUrl(url, label) {
+  const directUrl = gdToDirectUrl(url);
+  if (!directUrl) return null;
+  setSettingsStatus('שולף ' + label + '...', '');
+  try {
+    const resp = await fetch(directUrl);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    // Google Drive may redirect to a virus scan page for large files
+    const ct = resp.headers.get('content-type') || '';
+    if (ct.includes('text/html')) {
+      throw new Error('Google Drive הציג דף HTML — ייתכן שהקובץ גדול מדי לאישור אוטומטי. נסה קובץ קטן יותר או השתמש בהעלאה ידנית.');
+    }
+    const buf = await resp.arrayBuffer();
+    if (buf.byteLength < 100) throw new Error('הקובץ שהתקבל ריק — בדוק שהשיתוף מוגדר כ"כל מי שיש לו קישור"');
+    console.log('GDrive fetch OK:', label, buf.byteLength, 'bytes');
+    return buf;
+  } catch(e) {
+    console.error('GDrive fetch error:', label, e.message);
+    throw e;
+  }
+}
+
+async function fetchNow() {
+  if (!odSettings.soUrl) { setSettingsStatus('אין לינק SO מוגדר', 'err'); return; }
+  document.getElementById('spin').style.display = 'inline';
+  setSettingsStatus('שולף קבצים מ-OneDrive...', '');
+
+  withXLSX(async () => {
+    // Fetch SO
+    let soBuf = null;
+    try { soBuf = await fetchFileFromUrl(odSettings.soUrl, 'הזמנות פתוחות'); }
+    catch(fetchErr) {
+      document.getElementById('spin').style.display = 'none';
+      setSettingsStatus('שגיאה: ' + fetchErr.message, 'err');
+      return;
+    }
+    if (!soBuf) {
+      document.getElementById('spin').style.display = 'none';
+      setSettingsStatus('שגיאה בשליפת קובץ SO — בדוק שהלינק נכון ושהשיתוף מוגדר כ"כל מי שיש לו קישור"', 'err');
+      return;
+    }
+    try {
+      const wb = XLSX.read(soBuf, {type:'array', cellDates:true, dense:true});
+      const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+      allRows = parseRows(raw);
+      soGroups = buildGroups(allRows);
+      document.getElementById('fbadge').textContent = 'OneDrive SO · ' + allRows.length + ' שורות';
+      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('expbtn').style.display = 'inline-flex';
+      fillSelects();
+      applyFilters();
+      renderBoss();
+      renderToday();
+    } catch(e) {
+      document.getElementById('spin').style.display = 'none';
+      setSettingsStatus('שגיאה בפענוח קובץ SO: ' + e.message, 'err');
+      return;
+    }
+
+    // Fetch PO if URL provided
+    if (odSettings.poUrl) {
+      const poBuf = await fetchFileFromUrl(odSettings.poUrl, 'מעקב רכש');
+      if (poBuf) {
+        try {
+          const wb2 = XLSX.read(poBuf, {type:'array', cellDates:true, dense:true});
+          const raw2 = XLSX.utils.sheet_to_json(wb2.Sheets[wb2.SheetNames[0]], {defval:''});
+          poRows = parsePORows(raw2);
+          poLoaded = true;
+          document.getElementById('fbadge-po').style.display = 'inline';
+          document.getElementById('fbadge-po').textContent = 'OneDrive PO · ' + poRows.length + ' שורות';
+          document.getElementById('supp-nopo').style.display = 'none';
+          document.getElementById('supp-content').style.display = 'flex';
+          document.getElementById('supp-content').style.flexDirection = 'column';
+          renderSupplierKPIs();
+          renderSuppliers();
+          renderCoverage();
+          renderSSP();
+        } catch(e2) {
+          console.warn('PO parse error:', e2);
+        }
+      }
+    }
+
+    document.getElementById('spin').style.display = 'none';
+    const now = new Date();
+    const timeStr = pad2(now.getHours())+':'+pad2(now.getMinutes());
+    odSettings.lastFetch = now.toISOString();
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
+    setSettingsStatus('✓ עודכן בהצלחה — ' + timeStr, 'ok');
+    document.getElementById('btn-refresh-now').style.display = 'inline-flex';
+  });
+}
+
+// Auto-fetch on load if settings exist
+window.addEventListener('DOMContentLoaded', function(){
+  if (odSettings.soUrl) {
+    setTimeout(fetchNow, 300);
+  }
+});
+
+
+// ── WIZARD ──
+let wizSOFile=null, wizPOFile=null;
+
+function trigWiz(type){
+  document.getElementById(type==='so'?'fi':'fi-po').click();
+}
+function handleWizDrop(e,type){
+  e.preventDefault();
+  document.getElementById(type==='so'?'wiz-so':'wiz-po').classList.remove('dov');
+  const f=e.dataTransfer.files[0];
+  if(f)loadWizFile(f,type);
+}
+function showWizard(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('upl').style.display='flex';
+  wizSOFile=null; wizPOFile=null;
+  resetWizCard('so'); resetWizCard('po');
+  document.getElementById('wiz-launch').style.display='none';
+}
+function resetWizCard(type){
+  const card=document.getElementById('wiz-'+type);
+  card.classList.remove('wiz-loaded');
+  document.getElementById('wiz-'+type+'-status').textContent='לא נטען';
+  document.getElementById('wiz-'+type+'-num').textContent=type==='so'?'1':'2';
+}
+
+// Override file input handlers for wizard
+function handleFile(e){if(e.target.files[0])loadWizFile(e.target.files[0],'so');}
+function handleFilePO(e){if(e.target.files[0])loadWizFile(e.target.files[0],'po');}
+
+function loadWizFile(file,type){
+  const card=document.getElementById('wiz-'+type);
+  const status=document.getElementById('wiz-'+type+'-status');
+  const num=document.getElementById('wiz-'+type+'-num');
+  status.textContent='טוען...';
+  withXLSX(()=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
+        const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        if(type==='so'){
+          wizSOFile={name:file.name,raw};
+          card.classList.add('wiz-loaded');
+          num.textContent='✓';
+          status.textContent=file.name+' · '+raw.length+' שורות';
+        } else {
+          wizPOFile={name:file.name,raw};
+          card.classList.add('wiz-loaded');
+          num.textContent='✓';
+          status.textContent=file.name+' · '+raw.length+' שורות';
+        }
+        // Show launch if SO is loaded
+        document.getElementById('wiz-launch').style.display=wizSOFile?'inline-flex':'none';
+      }catch(err){
+        status.textContent='שגיאה: '+err.message;
+        card.classList.remove('wiz-loaded');
+      }
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function launchDashboard(){
+  if(!wizSOFile){return;}
+  document.getElementById('spin').style.display='inline';
+  // Process SO
+  allRows=parseRows(wizSOFile.raw);
+  soGroups=buildGroups(allRows);
+  document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
+  // Process PO if loaded
+  if(wizPOFile){
+    poRows=parsePORows(wizPOFile.raw);
+    poLoaded=true;
+    document.getElementById('fbadge-po').style.display='inline';
+    document.getElementById('fbadge-po').textContent=wizPOFile.name+' · '+poRows.length+' שורות PO';
+  }
+  document.getElementById('spin').style.display='none';
+  document.getElementById('upl').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('expbtn').style.display='inline-flex';
+  document.getElementById('wiz-reload-btn').style.display='inline-flex';
+  if(wizPOFile){
+    document.getElementById('supp-nopo').style.display='none';
+    document.getElementById('supp-content').style.display='flex';
+    document.getElementById('supp-content').style.flexDirection='column';
+  }
+  fillSelects();
+  applyFilters();
+  renderBoss();
+  renderToday();
+  if(wizPOFile){renderSupplierKPIs();renderSuppliers();}
+  renderCoverage();
+  renderSSP();
+  toast('✓ דשבורד נטען — '+allRows.length+' פריטים SO'+(wizPOFile?' + '+poRows.length+' PO':''));
+}
+
+// ── PARSE ──
+function parseRows(raw){
+  return raw.map(r=>{
+    const so=s(r['הזמנה']),mpn=s(r['מספר פריט']);
+    if(!so&&!mpn)return null;
+    const customer=s(r['שם לקוח']);
+    const custPO=s(r['הז. רכש (לקוח)']);
+    const poNum=s(r['מספר הזמנת רכש']);
+    const supplier=s(r['שם ספק ']||r['שם ספק']);
+    const statusRaw=s(r['סטטוס פריט ']||r['סטטוס פריט']);
+    const qtyR=parseFloat(r['יתרה לאספקה'])||0;
+    const qtyO=parseFloat(r['כמות בהזמנה'])||0;
+    let dd=null;
+    const rd=r['ת. אספקה'];
+    if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
+    else if(typeof rd==='number'&&rd>1){const d=new Date(Math.round((rd-25569)*86400000));dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+    else if(typeof rd==='string'&&rd){const d=new Date(rd);if(!isNaN(d))dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+    let status='none';
+    const sl=statusRaw.trim();
+    if(sl==='הוזמן מהספק')status='ordered';
+    else if(sl==='טרם הוזמן')status='pending';
+    else if(sl.includes('בקרת איכות ספק')||sl.includes('מעבדה'))status='qc_supp';
+    else if(sl.includes('בקרת איכות'))status='qc';
+    else if(sl.includes('מחסן המוצא'))status='waiting_wh';
+    else if(sl.includes('נחת בארץ'))status='in_transit';
+    else if(sl.includes('הגשות למכס'))status='customs_sub';
+    else if(sl.includes('שוחרר ממכס'))status='customs_rel';
+    else if(sl.includes('שליחות')||sl.includes('BTS'))status='delivery_bts';
+    else if(sl.includes('סופק ללקוח'))status='supplied';
+    else if(sl.includes('סופק חלקי'))status='partial';
+    else if(sl.includes('ממתין לאספקה'))status='waiting_cust';
+    else if(sl.includes('איתור ספק'))status='sourcing';
+    else if(sl.includes('בוטל ע"י הלקוח')||sl.includes("בוטל ע'י הלקוח"))status='cancelled';
+    else if(sl.includes('בוטל ע"י BTS')||sl.includes("בוטל ע'י BTS"))status='cancelled_bts';
+    else if(sl.includes('בוטל'))status='cancelled';
+    else if(sl)status='other';
+    const isOvr=!!(dd&&dd<TODAY);
+    let cov='grey';
+    if(!!poNum||status==='ordered')cov='green';
+    else if(status!=='none'&&status!=='cancelled')cov='orange';
+    else if(isOvr)cov='red';
+    const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+  }).filter(Boolean);
+}
+
+function buildGroups(rows){
+  const m={};
+  rows.forEach(r=>{if(!m[r.so])m[r.so]={so:r.so,customer:r.customer,custPO:r.custPO,lines:[]};m[r.so].lines.push(r);});
+  return Object.values(m).map(calcG).sort((a,b)=>{
+    const o={red:0,orange:1,green:2,grey:3};
+    if(o[a.tl]!==o[b.tl])return o[a.tl]-o[b.tl];
+    if(!a.mn)return 1;if(!b.mn)return -1;return a.mn-b.mn;
+  });
+}
+function calcG(g){
+  const l=g.lines,ds=l.map(x=>x.dd).filter(Boolean);
+  g.mn=ds.length?new Date(Math.min(...ds.map(d=>d.getTime()))):null;
+  g.mx=ds.length?new Date(Math.max(...ds.map(d=>d.getTime()))):null;
+  g.ovr=l.filter(x=>x.isOvr&&x.cov!=='green').length;
+  g.unc=l.filter(x=>x.cov!=='green').length;
+  g.cov=l.filter(x=>x.cov==='green').length;
+  if(g.ovr>0)g.tl='red';else if(g.unc>0)g.tl='orange';else g.tl='green';
+  g.supps=[...new Set(l.map(x=>x.supplier).filter(Boolean))];
+  return g;
+}
+function s(v){return(v==null?'':String(v)).trim();}
+function p2(n){return String(n).padStart(2,'0');}
+function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fd(d){return d?p2(d.getDate())+'/'+p2(d.getMonth()+1)+'/'+String(d.getFullYear()).slice(2):'—';}
+
+// ── BOSS VIEW ──
+function renderBoss(){
+  const all=allRows;
+  const poMPNs=new Set(poRows.map(r=>r.mpn.trim().toUpperCase()));
+  // covered = has PO in SO file OR appears in PO file
+  const covFn=l=>l.cov==='green'||(poLoaded&&poMPNs.has(l.mpn.trim().toUpperCase()));
+  const ovr=all.filter(l=>l.isOvr&&!covFn(l)).length;
+  const pnd=all.filter(l=>!l.isOvr&&!covFn(l)).length;
+  const ord=all.filter(l=>covFn(l)).length;
+  const pct=Math.round(ord/all.length*100);
+  document.getElementById('bk1').textContent=ovr;
+  document.getElementById('bk1s').textContent='שורות פריטים';
+  document.getElementById('bk2').textContent=pnd;
+  document.getElementById('bk2s').textContent='שורות פריטים';
+  document.getElementById('bk3').textContent=ord;
+  document.getElementById('bk3s').textContent=pct+'% מהפריטים'+(poLoaded?' (כולל PO)':'');
+  document.getElementById('bk4').textContent=soGroups.length;
+  document.getElementById('bk4s').textContent=all.length+' פריטים';
+  renderChart();
+  renderCustRisk();
+  renderSuppList();
+  renderCoverage();
+  renderSSP();
+}
+
+function renderChart(){
+  const todayKey=TODAY.getFullYear()+'-'+p2(TODAY.getMonth()+1);
+  const byM={};
+  allRows.forEach(r=>{
+    if(!r.dd)return;
+    const k=r.dd.getFullYear()+'-'+p2(r.dd.getMonth()+1);
+    byM[k]=(byM[k]||0)+1;
+  });
+  const keys=Object.keys(byM).sort().slice(0,8);
+  const max=Math.max(...Object.values(byM));
+  const MN=['','ינו׳','פבר׳','מרץ','אפר׳','מאי','יוני','יולי','אוג׳','ספט׳','אוק׳','נוב׳','דצ׳'];
+  const el=document.getElementById('chart-bars');
+  el.innerHTML=keys.map(k=>{
+    const [y,m]=k.split('-');
+    const isPast=k<todayKey,isCurr=k===todayKey;
+    const col=isPast?'var(--red)':isCurr?'var(--ora)':'var(--acc)';
+    const h=Math.max(4,Math.round((byM[k]/max)*96));
+    const lbl=MN[+m]+(isCurr?'◀':'');
+    const lc=isCurr?'var(--ora)':'var(--txt2)';
+    return`<div class="bar-col">
+      <div class="bar-fill" style="height:${h}px;background:${col};opacity:${isCurr?1:isPast?.75:.6}" title="${byM[k]} פריטים — ${MN[+m]} ${y}"></div>
+      <div class="bar-lbl" style="color:${lc}">${lbl}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCustRisk(){
+  // All customers with any open (unsupplied) items
+  const byC={};
+  allRows.filter(r=>r.status!=='supplied'&&r.status!=='cancelled'&&r.status!=='cancelled_bts').forEach(r=>{
+    const k=r.customer||'לא ידוע';
+    if(!byC[k])byC[k]={total:0,ovr:0,unc:0,cov:0,earliest:null};
+    byC[k].total++;
+    if(r.isOvr&&r.cov!=='green'){
+      byC[k].ovr++;
+      if(!byC[k].earliest||r.dd<byC[k].earliest)byC[k].earliest=r.dd;
+    }
+    if(!r.isOvr&&r.cov!=='green')byC[k].unc++;
+    if(r.cov==='green')byC[k].cov++;
+  });
+  const sorted=Object.entries(byC).sort((a,b)=>{
+    // sort: has overdue first, then by overdue count desc, then total desc
+    if(b[1].ovr!==a[1].ovr)return b[1].ovr-a[1].ovr;
+    return b[1].total-a[1].total;
+  });
+  const el=document.getElementById('cust-risk');
+  document.getElementById('cust-count').textContent='('+sorted.length+')';
+  const shortName=n=>n.replace(/\(.*?\)/g,'').replace(/בע"מ/g,'').trim().slice(0,24);
+  el.innerHTML=sorted.map(([k,v])=>{
+    const badges=[];
+    if(v.ovr>0)badges.push(`<span class="risk-badge rb-red">🔴 ${v.ovr} באיחור</span>`);
+    if(v.unc>0)badges.push(`<span class="risk-badge rb-ora">⚠ ${v.unc} ממתין</span>`);
+    if(v.cov>0)badges.push(`<span class="risk-badge rb-grn">✓ ${v.cov}</span>`);
+    return`<div class="risk-row" style="flex-wrap:wrap;gap:6px">
+      <div class="risk-name" style="min-width:120px">${esc(shortName(k))}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">${badges.join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSuppList(){
+  const byS={};
+  allRows.filter(r=>r.supplier).forEach(r=>{
+    if(!byS[r.supplier])byS[r.supplier]={total:0,ovr:0,qc:0};
+    byS[r.supplier].total++;
+    if(r.isOvr&&r.cov!=='green')byS[r.supplier].ovr++;
+    if(r.status==='qc')byS[r.supplier].qc++;
+  });
+  const sorted=Object.entries(byS).sort((a,b)=>b[1].total-a[1].total).slice(0,6);
+  const el=document.getElementById('supp-list');
+  el.innerHTML=sorted.map(([k,v])=>{
+    const badgeCls=v.ovr>0?'rb-red':v.qc>0?'rb-pur':'rb-grn';
+    const badgeTxt=v.ovr>0?v.ovr+' באיחור':v.qc>0?v.qc+' QC':v.total+' פריטים';
+    return`<div class="risk-row">
+      <div class="risk-name">${esc(k)}</div>
+      <span class="risk-badge ${badgeCls}">${badgeTxt}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCoverage(){
+  const byC={};
+  const poMPNs=new Set(poRows.map(r=>r.mpn.trim().toUpperCase()));
+  allRows.forEach(r=>{
+    const k=(r.customer||'לא ידוע').replace(/\(.*?\)/g,'').replace(/בע"מ/g,'').trim().slice(0,20);
+    if(!byC[k])byC[k]={tot:0,cov:0,poCov:0};
+    byC[k].tot++;
+    if(r.cov==='green')byC[k].cov++;
+    if(poLoaded&&poMPNs.has(r.mpn.trim().toUpperCase()))byC[k].poCov++;
+  });
+  const el=document.getElementById('cov-list');
+  el.innerHTML=Object.entries(byC).sort((a,b)=>b[1].tot-a[1].tot).slice(0,5).map(function([k,v]){
+    // When PO loaded: use PO coverage %, otherwise SO coverage %
+    const soPct=Math.round(v.cov/v.tot*100);
+    const poPct=poLoaded?Math.round(v.poCov/v.tot*100):null;
+    const pct=poPct!==null?Math.max(soPct,poPct):soPct;
+    const col=pct>60?'var(--grn)':pct>30?'var(--ora)':'var(--red)';
+    const subLabel=poPct!==null
+      ?'SO: '+soPct+'% · PO: '+poPct+'%'
+      :soPct+'%';
+    return '<div class="cov-row">'
+      +'<div class="cov-meta"><span class="cov-name">'+esc(k)+'</span><span class="cov-pct" style="font-size:10px">'+subLabel+'</span></div>'
+      +'<div class="cov-track"><div class="cov-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+// ── TODAY VIEW ──
+function renderToday(){
+  const urgent=allRows
+    .filter(r=>r.isOvr&&r.cov!=='green'&&r.status!=='cancelled')
+    .sort((a,b)=>b.daysOvr-a.daysOvr);
+  document.getElementById('today-count').textContent='('+urgent.length+')';
+  const el=document.getElementById('today-list');
+  el.innerHTML=urgent.slice(0,20).map(r=>{
+    const cls=r.daysOvr>30?'ti-red':'ti-ora';
+    const dc=r.daysOvr>30?'td-red':'td-ora';
+    const bc=r.daysOvr>30?'db-r':'db-o';
+    return`<div class="today-item ${cls}">
+      <div class="ti-dot ${dc}"></div>
+      <div class="ti-mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div>
+      <span class="ti-cust" title="${esc(r.customer)}">${esc((r.customer||'').replace(/\(.*?\)/g,'').replace(/בע"מ/g,'').trim().slice(0,18))}</span>
+      <span class="db ${bc}">${r.daysOvr}י׳</span>
+      <span class="ti-so">${esc(r.so)}</span>
+    </div>`;
+  }).join('')+(urgent.length>20?`<div class="more-hint">+ ${urgent.length-20} פריטים נוספים</div>`:'');
+  const stat=`${urgent.length} פריטים דחופים · ${soGroups.length} הזמנות · ${allRows.length} פריטים סה"כ`;
+  document.getElementById('emp-stat').textContent=stat;
+}
+
+// ── SO VIEW ──
+function fillSelects(){
+  fillSel('fc',[...new Set(allRows.map(r=>r.customer).filter(Boolean))].sort());
+  fillSel('fs',[...new Set(allRows.map(r=>r.supplier).filter(Boolean))].sort());
+}
+function fillSel(id,items){
+  const sel=document.getElementById(id);
+  sel.innerHTML='<option value="">הכל</option>';
+  items.forEach(v=>{const o=document.createElement('option');o.value=o.textContent=v;sel.appendChild(o);});
+}
+function applyFilters(){
+  const fc=document.getElementById('fc').value;
+  const fs=document.getElementById('fs').value;
+  const fu=document.getElementById('fu').checked;
+  const fo=document.getElementById('fo').checked;
+  filteredGroups=soGroups.map(g=>{
+    let l=g.lines;
+    if(fc)l=l.filter(x=>x.customer===fc);
+    if(fs)l=l.filter(x=>x.supplier===fs);
+    if(fu)l=l.filter(x=>x.cov!=='green');
+    if(fo)l=l.filter(x=>x.isOvr);
+    if(!l.length)return null;
+    return calcG({...g,lines:l});
+  }).filter(Boolean);
+  soReg={};
+  filteredGroups.forEach(g=>{soReg[g.so]=g;});
+  renderSOList();
+}
+function renderSOList(){
+  const el=document.getElementById('so-content');
+  if(!filteredGroups.length){el.innerHTML='<div class="empty">אין הזמנות להצגה</div>';return;}
+  el.innerHTML=filteredGroups.map(renderSOCard).join('');
+}
+function renderSOCard(g){
+  const id='so_'+g.so.replace(/\W/g,'_');
+  const tc='tl-'+(g.tl==='red'?'r':g.tl==='orange'?'o':g.tl==='green'?'g':'x');
+  const cc='c'+(g.tl==='red'?'r':g.tl==='orange'?'o':'g');
+  const same=g.mn&&g.mx&&g.mn.getTime()===g.mx.getTime();
+  const ds=g.mn?(same?fd(g.mn):fd(g.mn)+'–'+fd(g.mx)):'—';
+  const dc=g.mn&&g.mn<TODAY?'past':(g.mn&&g.mn-TODAY<30*86400000?'curr':'');
+  const bs=[];
+  if(g.ovr)bs.push(`<span class="badge b-r">🔴 ${g.ovr}</span>`);
+  if(g.unc)bs.push(`<span class="badge b-o">⚠ ${g.unc}</span>`);
+  if(g.cov)bs.push(`<span class="badge b-g">✓ ${g.cov}</span>`);
+  bs.push(`<span class="badge b-x">${g.lines.length}</span>`);
+  const ss=g.supps.length?`<div class="suppstrip">${g.supps.slice(0,4).map(sv=>`<span class="badge b-a">${esc(sv)}</span>`).join('')}</div>`:'';
+  const snk='SO__'+g.so;
+  const sn=esc(notes[snk]||'');
+  return`<div class="socard ${cc}" id="card_${id}">
+    <div class="sohdr" onclick="hdrClk(event,'${id}')">
+      <div class="soid">
+        <span class="stl ${tc}"></span>
+        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}</div></div>
+      </div>
+      <div class="socust">${esc(g.customer)}</div>
+      <div class="sodate ${dc}">${ds}</div>
+      <div class="sobadges">${bs.join('')}</div>
+      <div onclick="event.stopPropagation();dlSOICS(soReg['${esc(g.so)}'])">
+        <button class="bics" title="הורד קובץ ICS לייבוא ליומן (Google Calendar, Outlook, Apple Calendar). תזכורת תוצג 7 ימים לפני תאריך האספקה, עם רשימת הפריטים.">📅 ICS</button>
+      </div>
+      <div onclick="event.stopPropagation()">
+        <textarea class="sonote-ta ${sn?'hn':''}" rows="1"
+          data-key="${esc(snk)}" placeholder="הערה להזמנה..."
+          onchange="saveNote(this)" oninput="autoH(this)">${sn}</textarea>
+      </div>
+      <div class="sochev" id="chev_${id}">▼</div>
+    </div>
+    <div class="sodet" id="det_${id}">
+      ${ss}
+      <div class="dtwrap">${buildLT(g.lines)}</div>
+    </div>
+  </div>`;
+}
+function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;togSO(id);}
+function togSO(id){
+  document.getElementById('det_'+id).classList.toggle('open');
+  document.getElementById('chev_'+id).classList.toggle('open');
+}
+function expandAll(v){
+  document.querySelectorAll('.sodet').forEach(d=>d.classList[v?'add':'remove']('open'));
+  document.querySelectorAll('.sochev').forEach(c=>c.classList[v?'add':'remove']('open'));
+  const b=document.getElementById('bex');
+  if(v){b.textContent='סגור הכל ▲';b.onclick=()=>expandAll(false);}
+  else{b.textContent='פתח הכל ▾';b.onclick=()=>expandAll(true);}
+}
+function buildLT(lines){
+  lines.forEach(r=>{});
+  return`<table class="lt"><thead><tr>
+    <th style="width:12px"></th><th>פריט (MPN)</th><th>ת. אספקה</th>
+    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th>
+    <th style="width:140px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
+  </tr></thead><tbody>${lines.map(buildLR).join('')}</tbody></table>`;
+}
+function buildLR(r){
+  const dc=r.isOvr?'past':(r.dd&&r.dd-TODAY<30*86400000?'curr':'');
+  const db=r.daysOvr>0?`<span class="db ${r.daysOvr>30?'db-r':'db-o'}">${r.daysOvr}י׳</span>`:'';
+  const suppOvr=fieldOvr[r.nk+'__supp'];
+  const poOvr=fieldOvr[r.nk+'__po'];
+  const suppVal=suppOvr!==undefined?suppOvr:r.supplier;
+  const poVal=poOvr!==undefined?poOvr:r.poNum;
+  const sh=`<input class="edit-inp${suppOvr!==undefined?' has-ovr':''}" type="text"
+    data-field="supp" data-key="${esc(r.nk)}"
+    value="${esc(suppVal)}" placeholder="ספק..."
+    onchange="saveField(this)" title="לחץ לעריכת שם הספק">`;
+  const ph=`<input class="edit-inp${poOvr!==undefined?' has-ovr':''}" type="text"
+    data-field="po" data-key="${esc(r.nk)}"
+    value="${esc(poVal)}" placeholder="PO..."
+    onchange="saveField(this)" title="לחץ לעריכת מספר הזמנת רכש">`;
+  // Determine effective status: manual override > PO cross-data > SO status
+  let poAutoStatus=null;
+  if(poLoaded){
+    const mpnUp=r.mpn.trim().toUpperCase();
+    const poMatch=poRows.find(p=>p.mpn.trim().toUpperCase()===mpnUp);
+    if(poMatch){
+      if(poMatch.qtyS>0&&poMatch.qtyR>0)poAutoStatus='partial';
+      else if(poMatch.qtyS>0&&poMatch.qtyR===0)poAutoStatus='supplied';
+      else if(poMatch.qtyR>0&&r.status==='none')poAutoStatus='ordered';
+    }
+  }
+  const effStatus=statusOvr[r.nk]||(poAutoStatus)||r.status;
+  const selCls=({'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-ord','qc_supp':'s-qc','qc':'s-qc','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can'})[effStatus]||'s-non';
+  const STATUSES=[
+    ['none','— ללא סטטוס','s-non'],
+    ['pending','טרם הוזמן','s-pnd'],
+    ['sourcing','איתור ספק','s-pnd'],
+    ['ordered','הוזמן מהספק','s-ord'],
+    ['waiting_wh','ממתין במחסן המוצא','s-ord'],
+    ['in_transit','נחת בארץ','s-ord'],
+    ['customs_sub','הגשות למכס','s-pnd'],
+    ['customs_rel','שוחרר ממכס','s-ord'],
+    ['delivery_bts','בשליחות ל-BTS','s-ord'],
+    ['qc_supp','בקרת איכות ספק / מעבדה','s-qc'],
+    ['qc','בבקרת איכות','s-qc'],
+    ['supplied','סופק ללקוח','s-grn'],
+    ['partial','סופק חלקי','s-pnd'],
+    ['waiting_cust','ממתין לאספקה ללקוח','s-pnd'],
+    ['cancelled','בוטל ע"י הלקוח','s-can'],
+    ['cancelled_bts','בוטל ע"י BTS','s-can'],
+  ];
+  const sbh=`<select class="stat-sel ${selCls}" data-key="${esc(r.nk)}" onchange="saveStatus(this)">
+    ${STATUSES.map(([v,l])=>`<option value="${v}" ${effStatus===v?'selected':''}>${l}</option>`).join('')}
+  </select>`;
+  const nv=esc(notes[r.nk]||'');
+  return`<tr class="${(r.isOvr&&r.cov!=='green')?'lno':''}">
+    <td style="text-align:center"><span class="lntl tl-${r.cov==='green'?'g':r.cov==='orange'?'o':r.cov==='red'?'r':'x'}"></span></td>
+    <td><div class="mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div></td>
+    <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
+    <td class="qty">${r.qtyR||r.qtyO}</td>
+    <td>${sh}</td><td>${ph}</td><td>${sbh}</td>
+    <td><textarea class="note-ta ${nv?'hn':''}" rows="1" data-key="${esc(r.nk)}"
+      placeholder="הוסף הערה..." onchange="saveNote(this)" oninput="autoH(this)">${nv}</textarea></td>
+  </tr>`;
+}
+
+// ── ICS ──
+function icsD(d){return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate());}
+function dlSOICS(g){
+  if(!g){toast('שגיאה');return;}
+  const lwd=g.lines.filter(l=>l.dd);
+  if(!lwd.length){toast('אין תאריכי אספקה בהזמנה זו');return;}
+  const now=new Date();
+  const dts=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T'+p2(now.getHours())+p2(now.getMinutes())+p2(now.getSeconds())+'Z';
+  const byR={};
+  lwd.forEach(r=>{const rem=new Date(r.dd.getTime()-7*86400000);const k=icsD(rem);if(!byR[k])byR[k]={rem,dd:r.dd,lines:[]};byR[k].lines.push(r);});
+  const evts=Object.values(byR).map(gr=>{
+    const rs=icsD(gr.rem),re=icsD(new Date(gr.rem.getTime()+86400000));
+    const uid=`so-${g.so}-${rs}-${Date.now()}@oo`.replace(/[^a-zA-Z0-9@\-]/g,'_');
+    const sum=`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${gr.lines.length} פריטים | ${fd(gr.dd)}`;
+    const desc=`הזמנה: ${g.so}\\nלקוח: ${g.customer||''}\\nת. אספקה: ${fd(gr.dd)}\\n\\nפריטים:\\n`+gr.lines.map(r=>`• ${r.mpn} — כמות: ${r.qtyR||r.qtyO} — ספק: ${r.supplier||'—'}`).join('\\n')+'\\n\\nתזכורת 7 ימים לפני.';
+    return['BEGIN:VEVENT',`UID:${uid}`,`DTSTAMP:${dts}`,`DTSTART;VALUE=DATE:${rs}`,`DTEND;VALUE=DATE:${re}`,`SUMMARY:${sum}`,`DESCRIPTION:${desc}`,'STATUS:CONFIRMED','TRANSP:TRANSPARENT','BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY',`DESCRIPTION:${sum}`,'END:VALARM','END:VEVENT'].join('\r\n');
+  });
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Open Orders Tracker//IL','CALSCALE:GREGORIAN','METHOD:PUBLISH',...evts,'END:VCALENDAR'].join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'}));
+  a.download=`reminder_${g.so.replace(/[^a-zA-Z0-9]/g,'_')}.ics`;
+  a.click();URL.revokeObjectURL(a.href);
+  toast('📅 '+Object.keys(byR).length+' תזכורת/ות הורדו עבור '+g.so);
+}
+
+// ── NOTES ──
+
+
+function tip(txt,left){
+  const d=left?'tip tip-l':'tip';
+  return`<span class="${d}"><span class="tip-icon">?</span><span class="tip-box">${txt}</span></span>`;
+}
+
+function handleSupplierFile(e){
+  if(!e.target.files[0])return;
+  const file=e.target.files[0];
+  document.getElementById('spin').style.display='inline';
+  withXLSX(()=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
+        const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+        poData=parsePOFile(raw);
+        const enriched=enrichRows();
+        document.getElementById('spin').style.display='none';
+        document.getElementById('suppbadge').style.display='inline';
+        document.getElementById('suppbadge').textContent=file.name+' · '+poData.length+' שורות';
+        renderBoss();
+        applyFilters();
+        renderToday();
+        toast('✓ '+enriched+' פריטים הועשרו מקובץ הספקים');
+      }catch(err){
+        document.getElementById('spin').style.display='none';
+        toast('שגיאה בקובץ ספקים: '+err.message);
+      }
+    };
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function parsePOFile(raw){
+  return raw.map(r=>{
+    // flexible column detection
+    const mpn=s(r["מק'ט"]||r['מקט']||r['MPN']||r['Part Number']||'');
+    const po=s(r['הזמנה']||r['PO']||r['מספר הזמנה']||'');
+    const supplier=s(r['שם ספק']||r['ספק']||r['Supplier']||'');
+    const suppId=s(r["מס' ספק"]||'');
+    const priceILS=s(r['מחיר סופי בשקלים']||r['מחיר']||'');
+    const currency=s(r['מטבע']||'');
+    const price=s(r['מחיר סופי']||'');
+    if(!mpn&&!po)return null;
+    return{mpn,po,supplier,suppId,priceILS,currency,price};
+  }).filter(Boolean);
+}
+
+function enrichRows(){
+  if(!poData.length||!allRows.length)return 0;
+
+  // Build MPN -> [{po, supplier, price}] map from PO file
+  const mpnMap={};
+  poData.forEach(p=>{
+    if(!p.mpn)return;
+    if(!mpnMap[p.mpn])mpnMap[p.mpn]=[];
+    // avoid duplicate POs for same MPN
+    if(!mpnMap[p.mpn].find(x=>x.po===p.po))
+      mpnMap[p.mpn].push({po:p.po,supplier:p.supplier,price:p.priceILS,currency:p.currency});
+  });
+
+  let count=0;
+  allRows.forEach(r=>{
+    // Only fill where BOTH supplier and poNum are empty (don't overwrite existing data)
+    const hasSupplier=!!(fieldOvr[r.nk+'__supp']||r.supplier);
+    const hasPO=!!(fieldOvr[r.nk+'__po']||r.poNum);
+    if(hasSupplier&&hasPO)return; // already has data
+
+    const matches=mpnMap[r.mpn];
+    if(!matches||!matches.length)return;
+
+    // If multiple POs, join them (comma separated)
+    const pos=matches.map(m=>m.po).filter(Boolean).join(', ');
+    const supps=[...new Set(matches.map(m=>m.supplier).filter(Boolean))].join(', ');
+
+    if(!hasSupplier&&supps){
+      // save as field override (shows in italic/blue = auto-filled)
+      if(!fieldOvr[r.nk+'__supp'])fieldOvr[r.nk+'__supp']=supps;
+      r.supplier=supps;
+    }
+    if(!hasPO&&pos){
+      if(!fieldOvr[r.nk+'__po'])fieldOvr[r.nk+'__po']=pos;
+      r.poNum=pos;
+      // update coverage
+      if(r.cov!=='green'){r.cov='green';}
+    }
+    // store price on row for display
+    if(!r.poPrice){
+      const totalILS=matches.reduce((sum,m)=>{
+        const v=parseFloat(m.price);
+        return sum+(isNaN(v)?0:v);
+      },0);
+      if(totalILS>0)r.poPrice=totalILS;
+    }
+    count++;
+  });
+  try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+  // rebuild SO groups with new data
+  soGroups=buildGroups(allRows);
+  return count;
+}
+
+function saveField(inp){
+  const key=inp.dataset.key+'__'+inp.dataset.field;
+  const val=inp.value.trim();
+  if(val)fieldOvr[key]=val;else delete fieldOvr[key];
+  inp.classList.toggle('has-ovr',!!fieldOvr[inp.dataset.key+'__'+inp.dataset.field]);
+  // update in-memory row
+  const row=allRows.find(r=>r.nk===inp.dataset.key);
+  if(row){
+    if(inp.dataset.field==='supp')row.supplier=val||row.supplier;
+    if(inp.dataset.field==='po'){
+      row.poNum=val;
+      if(val&&row.cov!=='green'){row.cov='green';}
+      else if(!val&&row.status==='none'){row.cov=row.isOvr?'red':'grey';}
+    }
+  }
+  try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+  toast('✓ '+(inp.dataset.field==='supp'?'ספק':'PO')+' עודכן');
+}
+
+function saveStatus(sel){
+  const key=sel.dataset.key,val=sel.value;
+  // update color class
+  const CM={'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-ord','qc_supp':'s-qc','qc':'s-qc','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can'};
+  sel.className='stat-sel '+(CM[val]||'s-non');
+  // save override
+  if(val==='none')delete statusOvr[key];else statusOvr[key]=val;
+  try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
+  // update coverage of corresponding row
+  const row=allRows.find(r=>r.nk===key);
+  if(row){
+    row.status=val==='none'?'none':val;
+    if(val==='ordered'||val==='in_transit')row.cov='green';
+    else if(val==='none'||val==='cancelled')row.cov=row.isOvr?'red':'grey';
+    else row.cov='orange';
+  }
+  toast('✓ סטטוס עודכן');
+}
+
+function saveNote(el){
+  const key=el.dataset.key,val=el.value.trim();
+  if(val)notes[key]=val;else delete notes[key];
+  el.classList.toggle('hn',!!val);
+  try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
+  toast('✓ הערה נשמרה');
+}
+function exportNotes(){
+  const lines=[['הזמנה','פריט','הערה']];
+  Object.entries(notes).forEach(([k,v])=>{const p=k.split('__');lines.push([p[0],p[1]||'(הזמנה)',v]);});
+  if(lines.length===1){toast('אין הערות לייצוא');return;}
+  const csv=lines.map(l=>l.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='הערות_מעקב.csv';a.click();
+  toast('✓ הערות יוצאו');
+}
+function autoH(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+
+// ── NAV ──
+function setMainView(v){
+  document.getElementById('boss-view').style.display=v==='boss'?'flex':'none';
+  document.getElementById('boss-view').style.flexDirection=v==='boss'?'column':'';
+  document.getElementById('emp-view').style.display=v==='emp'?'block':'none';
+  document.getElementById('supp-view').style.display=v==='supp'?'block':'none';
+  document.getElementById('tab-boss').classList.toggle('on',v==='boss');
+  document.getElementById('tab-emp').classList.toggle('on',v==='emp');
+  document.getElementById('tab-supp').classList.toggle('on',v==='supp');
+}
+function setEmpTab(t){
+  document.getElementById('tab-today').style.display=t==='today'?'block':'none';
+  document.getElementById('tab-so').style.display=t==='so'?'block':'none';
+  document.getElementById('et1').classList.toggle('on',t==='today');
+  document.getElementById('et2').classList.toggle('on',t==='so');
+}
+
+let _tt;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2600);}
+</script>
+
+<!-- SETTINGS OVERLAY -->
+<div class="settings-overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-card">
+    <div class="settings-title">⚙ הגדרות שליפה — Google Drive</div>
+    <div class="settings-sub">הדבק לינקי שיתוף של הקבצים מ-Google Drive. הדשבורד ישלוף אוטומטית בכל פתיחה.</div>
+
+    <div class="settings-field">
+      <div class="settings-label">📄 קובץ SO — הזמנות_פתוחות.xlsx</div>
+      <input class="settings-input" id="set-so-url" type="text"
+        placeholder="https://drive.google.com/file/d/.../view" oninput="markInputChanged(this)">
+      <div style="font-size:10px;color:var(--txt2);margin-top:4px;font-family:var(--mono)">
+        Google Drive → קובץ ← שתף ← כל מי שיש לו קישור ← העתק קישור
+      </div>
+    </div>
+
+    <div class="settings-field">
+      <div class="settings-label">📦 קובץ PO — מעקב_רכש.xlsx</div>
+      <input class="settings-input" id="set-po-url" type="text"
+        placeholder="https://drive.google.com/file/d/.../view" oninput="markInputChanged(this)">
+    </div>
+
+    <div id="settings-status" class="settings-status" style="display:none"></div>
+
+    <div class="settings-row">
+      <button class="btn btn-blue" onclick="saveAndFetch()">💾 שמור ושלוף עכשיו</button>
+      <button class="btn btn-ghost" onclick="fetchNow()" id="btn-refresh-now" style="display:none">🔄 רענן נתונים</button>
+      <button class="btn btn-ghost" onclick="clearSettings()" style="color:var(--red);border-color:rgba(255,77,77,.3)">✕ נקה</button>
+      <button class="btn btn-ghost" onclick="closeSettings()" style="margin-right:auto">סגור</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
