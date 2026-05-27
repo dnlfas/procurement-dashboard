@@ -345,6 +345,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
+    <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
   </div>
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
@@ -778,6 +779,10 @@ function buildPOTable(rows,soMPNs,crossSO){
 
 // ── SO STATUS PANEL ──
 let sspOpen=false, sspAllOpen=false;
+function toggleFullscreen(){
+  if(!document.fullscreenElement){document.documentElement.requestFullscreen();document.getElementById('fsbtn').textContent='✕';}
+  else{document.exitFullscreen();document.getElementById('fsbtn').textContent='⛶';}
+}
 function toggleSSP(){
   sspOpen=!sspOpen;
   document.getElementById('ssp-body').classList.toggle('open',sspOpen);
