@@ -341,10 +341,16 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="btn btn-ghost" id="expbtn" style="display:none" onclick="exportNotes()">⬇ CSV</button>
     <button class="btn btn-ghost" id="suppbtn" onclick="document.getElementById('fi2').click()" title="טען קובץ מעקב ספקים — ימלא ספק ו-PO אוטומטית איפה שחסר">⬆ מעקב ספקים</button>
     <div class="fbadge" id="suppbadge" style="display:none"></div>
+    <div style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
+    <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
+    <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
   </div>
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
 <input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
+<input type="file" id="fi-so-upload" accept=".xlsx" onchange="handleTopbarUpload(event,'so')" style="display:none">
+<input type="file" id="fi-po-upload" accept=".xlsx" onchange="handleTopbarUpload(event,'po')" style="display:none">
 
 <!-- UPLOAD -->
 <div id="upl">
@@ -1071,13 +1077,80 @@ async function fetchNow() {
   });
 }
 
-// Auto-fetch on load — use saved settings or fall back to bundled data files
-window.addEventListener('DOMContentLoaded', function(){
+// Auto-fetch on load — prefer blob URLs (uploaded by any user), fall back to saved settings or bundled files
+window.addEventListener('DOMContentLoaded', async function(){
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const res = await fetch('/api/urls', { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const urls = await res.json();
+      if (urls.soUrl) {
+        odSettings = { soUrl: urls.soUrl, poUrl: urls.poUrl || odSettings.poUrl || '/data/po.xlsx' };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
+      }
+    }
+  } catch(e) { /* no blob store yet or offline — use saved settings */ }
+
   if (!odSettings.soUrl) {
     odSettings = { soUrl: '/data/so.xlsx', poUrl: '/data/po.xlsx' };
   }
-  setTimeout(fetchNow, 300);
+  fetchNow();
 });
+
+async function handleTopbarUpload(e, type) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  const statusEl = document.getElementById('upload-status');
+  const showStatus = (msg, color) => {
+    statusEl.style.display = 'inline';
+    statusEl.style.color = color || 'var(--txt2)';
+    statusEl.textContent = msg;
+  };
+
+  showStatus('מעלה...', 'var(--acc)');
+  document.getElementById('spin').style.display = 'inline';
+
+  try {
+    const res = await fetch(`/api/upload?type=${type}`, {
+      method: 'POST',
+      body: file,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'x-file-lastmodified': String(file.lastModified)
+      }
+    });
+
+    if (res.status === 409) {
+      showStatus('⚠ הקובץ הנוכחי עדכני יותר', 'var(--ora)');
+      document.getElementById('spin').style.display = 'none';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+      return;
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showStatus('שגיאה: ' + (err.error || res.status), 'var(--red)');
+      document.getElementById('spin').style.display = 'none';
+      return;
+    }
+
+    const { url } = await res.json();
+    if (type === 'so') odSettings.soUrl = url;
+    else odSettings.poUrl = url;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
+
+    showStatus('✓ עודכן', 'var(--grn)');
+    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+    fetchNow();
+  } catch (err) {
+    showStatus('שגיאה בהעלאה', 'var(--red)');
+    document.getElementById('spin').style.display = 'none';
+  }
+}
 
 
 // ── WIZARD ──
