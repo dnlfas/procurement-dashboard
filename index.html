@@ -19,12 +19,12 @@
   --r:8px;--rp:10px;--rph:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{height:100%;overflow:hidden}
-body{background:var(--bg);color:var(--txt);font-family:var(--sans);direction:rtl;height:100%;overflow:hidden}
+html{width:100%;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);direction:rtl;width:100%;height:100%;overflow:hidden}
 body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(74,143,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(74,143,255,.018) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
 
 /* ── TOPBAR ── */
-.topbar{position:sticky;top:0;z-index:500;background:#0a0d13;border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.4);gap:12px}
+.topbar{position:sticky;top:0;z-index:500;background:#0a0d13;border-bottom:1px solid var(--bdr);padding:0 20px;height:52px;width:100%;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.4);gap:12px}
 .tb-left{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .ldot{width:9px;height:9px;border-radius:50%;background:var(--grn);animation:blink 2s infinite;flex-shrink:0}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -53,7 +53,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .uhint{font-size:11px;color:var(--txt2);margin-top:12px;font-family:var(--mono)}
 
 /* ── APP ── */
-#app{display:none;position:relative;z-index:1;height:100vh}
+#app{display:none;position:relative;z-index:1;width:100%;height:100vh}
 
 /* ════════════════════════════
    BOSS VIEW
