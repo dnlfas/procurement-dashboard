@@ -1018,7 +1018,7 @@ async function fetchNow() {
       allRows = parseRows(raw);
       soGroups = buildGroups(allRows);
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
-      document.getElementById('upload-screen').style.display = 'none';
+      document.getElementById('upl').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       document.getElementById('expbtn').style.display = 'inline-flex';
       fillSelects();
