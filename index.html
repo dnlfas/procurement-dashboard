@@ -411,16 +411,22 @@ table.lt tbody tr:last-child td{border-bottom:none}
     </div>
 
     <div class="boss-grid">
-      <!-- Chart -->
-      <div class="panel">
-        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">מספר פריטים לפי חודש תאריך אספקה מבוקש. אדום = חודש שעבר, כתום = החודש הנוכחי, כחול = חודשים עתידיים.</span></span>תחזית לפי חודש אספקה</div>
-        <div class="chart-wrap">
-          <div class="bar-row" id="chart-bars"></div>
-          <div class="chart-legend">
-            <div class="cl-item"><div class="cl-dot" style="background:var(--red)"></div>עבר</div>
-            <div class="cl-item"><div class="cl-dot" style="background:var(--ora)"></div>שוטף</div>
-            <div class="cl-item"><div class="cl-dot" style="background:var(--acc)"></div>עתיד</div>
+      <!-- Chart + Due This Week -->
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="panel">
+          <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">מספר פריטים לפי חודש תאריך אספקה מבוקש. אדום = חודש שעבר, כתום = החודש הנוכחי, כחול = חודשים עתידיים.</span></span>תחזית לפי חודש אספקה</div>
+          <div class="chart-wrap">
+            <div class="bar-row" id="chart-bars"></div>
+            <div class="chart-legend">
+              <div class="cl-item"><div class="cl-dot" style="background:var(--red)"></div>עבר</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--ora)"></div>שוטף</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--acc)"></div>עתיד</div>
+            </div>
           </div>
+        </div>
+        <div class="panel">
+          <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריך האספקה שלהם הוא בשבעת הימים הקרובים ועדיין אין להם כיסוי PO. דורשים הזמנה מיידית.</span></span>לטיפול השבוע <span id="due-week-count" style="color:var(--ora)"></span></div>
+          <div class="pbody" id="due-week-list"></div>
         </div>
       </div>
 
@@ -1261,6 +1267,7 @@ function renderBoss(){
   document.getElementById('bk4').textContent=soGroups.length;
   document.getElementById('bk4s').textContent=all.length+' פריטים';
   renderChart();
+  renderDueThisWeek();
   renderCustRisk();
   renderSuppList();
   renderCoverage();
@@ -1291,6 +1298,35 @@ function renderChart(){
       <div class="bar-lbl" style="color:${lc}">${lbl}</div>
     </div>`;
   }).join('');
+}
+
+function renderDueThisWeek(){
+  const WEEK=7*86400000;
+  const items=allRows.filter(r=>{
+    if(!r.dd||r.isOvr)return false;
+    if(r.cov==='green')return false;
+    if(r.status==='cancelled'||r.status==='cancelled_bts'||r.status==='supplied')return false;
+    const diff=r.dd-TODAY;
+    return diff>=0&&diff<=WEEK;
+  }).sort((a,b)=>a.dd-b.dd);
+  const el=document.getElementById('due-week-list');
+  const cnt=document.getElementById('due-week-count');
+  if(!items.length){
+    el.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--txt2);text-align:center;font-family:var(--mono)">אין פריטים לטיפול השבוע ✓</div>';
+    cnt.textContent='';
+    return;
+  }
+  cnt.textContent=items.length;
+  const show=items.slice(0,8);
+  el.innerHTML=show.map(r=>{
+    const days=Math.floor((r.dd-TODAY)/86400000);
+    const cls=days<=2?'rb-red':days<=4?'rb-ora':'rb-grn';
+    return`<div class="risk-row">
+      <span class="risk-badge ${cls}" style="min-width:28px;text-align:center">${days}י׳</span>
+      <div class="risk-name" style="font-size:13px;font-family:var(--mono)">${esc(r.mpn)}</div>
+      <div style="font-size:12px;color:var(--txt2);flex-shrink:0;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.customer||'')}</div>
+    </div>`;
+  }).join('')+(items.length>8?`<div style="font-size:11px;color:var(--txt2);text-align:center;padding:4px 0;font-family:var(--mono)">+${items.length-8} נוספים</div>`:'');
 }
 
 function renderCustRisk(){
