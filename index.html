@@ -1133,8 +1133,10 @@ async function handleTopbarUpload(e, type) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      showStatus('שגיאה: ' + (err.error || res.status), 'var(--red)');
+      const msg = (err.error || '').includes('token') ? 'Blob store לא מחובר ב-Vercel' : ('שגיאה: ' + (err.error || res.status));
+      showStatus(msg, 'var(--red)');
       document.getElementById('spin').style.display = 'none';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
       return;
     }
 
