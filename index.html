@@ -996,7 +996,7 @@ async function fetchFileFromUrl(url, label) {
 async function fetchNow() {
   if (!odSettings.soUrl) { setSettingsStatus('אין לינק SO מוגדר', 'err'); return; }
   document.getElementById('spin').style.display = 'inline';
-  setSettingsStatus('שולף קבצים מ-OneDrive...', '');
+  setSettingsStatus('שולף קבצים...', '');
 
   withXLSX(async () => {
     // Fetch SO
@@ -1017,7 +1017,7 @@ async function fetchNow() {
       const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
       allRows = parseRows(raw);
       soGroups = buildGroups(allRows);
-      document.getElementById('fbadge').textContent = 'OneDrive SO · ' + allRows.length + ' שורות';
+      document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upload-screen').style.display = 'none';
       document.getElementById('app').style.display = 'block';
       document.getElementById('expbtn').style.display = 'inline-flex';
@@ -1041,7 +1041,7 @@ async function fetchNow() {
           poRows = parsePORows(raw2);
           poLoaded = true;
           document.getElementById('fbadge-po').style.display = 'inline';
-          document.getElementById('fbadge-po').textContent = 'OneDrive PO · ' + poRows.length + ' שורות';
+          document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
           document.getElementById('supp-nopo').style.display = 'none';
           document.getElementById('supp-content').style.display = 'flex';
           document.getElementById('supp-content').style.flexDirection = 'column';
@@ -1065,11 +1065,12 @@ async function fetchNow() {
   });
 }
 
-// Auto-fetch on load if settings exist
+// Auto-fetch on load — use saved settings or fall back to bundled data files
 window.addEventListener('DOMContentLoaded', function(){
-  if (odSettings.soUrl) {
-    setTimeout(fetchNow, 300);
+  if (!odSettings.soUrl) {
+    odSettings = { soUrl: '/data/so.xlsx', poUrl: '/data/po.xlsx' };
   }
+  setTimeout(fetchNow, 300);
 });
 
 
