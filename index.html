@@ -320,13 +320,16 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .toast.show{transform:translateX(-50%) translateY(0)}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
 
+/* desktop/TV: boss-view fills screen below fixed topbar */
+@media (min-width:769px){
+  #boss-view{position:fixed;top:52px;left:0;right:0;bottom:0;overflow:hidden}
+}
 /* ── RESPONSIVE ── */
 @media (max-width:768px){
   .kpi-row{grid-template-columns:repeat(2,1fr)}
   .boss-grid{grid-template-columns:1fr 1fr;flex:none;min-height:0}
   .boss-grid>*{min-height:300px}
   .panel{min-height:200px}
-  #boss-view{position:static;height:auto;overflow:visible;padding-bottom:20px}
 }
 @media (max-width:480px){
   .boss-grid{grid-template-columns:1fr}
@@ -433,7 +436,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 <div id="app">
 
   <!-- ══ BOSS VIEW ══ -->
-  <div id="boss-view" style="display:flex;flex-direction:column;gap:8px;padding:12px 20px;position:fixed;top:52px;left:0;right:0;bottom:0;overflow:hidden">
+  <div id="boss-view" style="display:flex;flex-direction:column;gap:8px;padding:12px 20px">
     <div class="kpi-row">
       <div class="kpi kr"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריך האספקה שלהם עבר ועדיין אין להם הזמנת רכש (PO) או סטטוס "הוזמן מספק". דורשים טיפול מיידי.</span></span>באיחור ללא כיסוי</div><div class="kpi-val" id="bk1">—</div><div class="kpi-sub" id="bk1s"></div></div>
       <div class="kpi ko"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריכם עדיין לא עבר אך אין להם PO ואין סטטוס "הוזמן". יש לטפל בהם לפני שיהפכו לאיחור.</span></span>ממתין לטיפול</div><div class="kpi-val" id="bk2">—</div><div class="kpi-sub" id="bk2s"></div></div>
