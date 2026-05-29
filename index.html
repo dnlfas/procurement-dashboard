@@ -327,6 +327,19 @@ table.lt tbody tr:last-child td{border-bottom:none}
 }
 /* ── RESPONSIVE ── */
 @media (max-width:768px){
+  /* two-row topbar */
+  .topbar{height:auto;flex-wrap:wrap;padding:6px 16px;gap:6px}
+  .tb-left{flex:1;order:1;min-width:0}
+  .tb-title{font-size:17px;overflow:hidden;text-overflow:ellipsis}
+  #fsbtn{order:2}
+  .tb-mid{order:3;width:100%}
+  .view-tab{flex:1;text-align:center}
+  .tb-right{display:none}
+  /* content offset for taller topbar */
+  #app{padding-top:96px}
+  #upl{top:96px}
+  .emp-tabs{top:96px}
+  /* layout */
   .kpi-row{grid-template-columns:repeat(2,1fr)}
   .boss-grid{grid-template-columns:1fr 1fr;flex:none;min-height:0}
   .boss-grid>*{min-height:300px}
@@ -334,10 +347,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
 }
 @media (max-width:480px){
   .boss-grid{grid-template-columns:1fr}
-  .tb-mid{display:none}
   .fbadge{display:none}
   .tb-divider{display:none}
-  .tb-title{font-size:16px}
 }
 /* portrait mobile: SSP customer rows wrap to two lines */
 @media (max-width:768px) and (orientation:portrait){
