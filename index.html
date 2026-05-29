@@ -588,6 +588,26 @@ try{statusOvr=JSON.parse(localStorage.getItem('oo_status')||'{}');}catch(e){}
 try{fieldOvr=JSON.parse(localStorage.getItem('oo_fields')||'{}');}catch(e){}
 try{notes=JSON.parse(localStorage.getItem(NK)||'{}');}catch(e){}
 
+function applyOverridesToRows(rows){
+  rows.forEach(function(row){
+    const suppOvr=fieldOvr[row.nk+'__supp'];
+    const poOvr=fieldOvr[row.nk+'__po'];
+    const stOvr=statusOvr[row.nk];
+    if(suppOvr!==undefined)row.supplier=suppOvr;
+    if(poOvr!==undefined){
+      row.poNum=poOvr;
+      if(poOvr&&row.cov!=='green')row.cov='green';
+      else if(!poOvr&&row.status==='none')row.cov=row.isOvr?'red':'grey';
+    }
+    if(stOvr!==undefined){
+      row.status=stOvr;
+      if(stOvr==='ordered'||stOvr==='in_transit')row.cov='green';
+      else if(stOvr==='none'||stOvr==='cancelled')row.cov=row.isOvr?'red':'grey';
+      else row.cov='orange';
+    }
+  });
+}
+
 function trigUp(){document.getElementById('fi').click();}
 let xlsxReady=false,xlsxQ=[];
 function withXLSX(cb){
@@ -611,6 +631,7 @@ function startParse(file){
         const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
         const raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
         allRows=parseRows(raw);
+        applyOverridesToRows(allRows);
         soGroups=buildGroups(allRows);
         onLoaded(file.name);
       }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
@@ -1081,6 +1102,7 @@ async function fetchNow() {
       const wb = XLSX.read(soBuf, {type:'array', cellDates:true, dense:true});
       const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
       allRows = parseRows(raw);
+      applyOverridesToRows(allRows);
       soGroups = buildGroups(allRows);
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upl').style.display = 'none';
@@ -1277,6 +1299,7 @@ function launchDashboard(){
   document.getElementById('spin').style.display='inline';
   // Process SO
   allRows=parseRows(wizSOFile.raw);
+  applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
   document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
   // Process PO if loaded
