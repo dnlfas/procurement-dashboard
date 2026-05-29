@@ -346,25 +346,24 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .boss-grid{grid-template-columns:1fr 1fr;flex:none;min-height:0}
   .boss-grid>*{min-height:300px}
   .panel{min-height:200px}
+  /* SSP SO card header: switch to flex-wrap so nothing overflows */
+  #ssp .sohdr{display:flex;flex-wrap:wrap;align-items:center}
+  #ssp .sohdr .soid{flex:1;min-width:0;overflow:hidden}
+  #ssp .sohdr .soid .sonum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #ssp .sohdr .sobadges{flex-shrink:0}
+  #ssp .sohdr .sochev{flex-shrink:0}
+  #ssp .ssp-cov{width:100%;min-width:0;order:10;margin:4px 0 0}
 }
 @media (max-width:480px){
   .boss-grid{grid-template-columns:1fr}
   .fbadge{display:none}
   .tb-divider{display:none}
 }
-/* portrait mobile: SSP customer rows wrap to two lines */
+/* portrait mobile: customer rows and emp-view SO headers wrap to two lines */
 @media (max-width:768px) and (orientation:portrait){
   .cg-hdr{flex-wrap:wrap}
   .cg-name{white-space:normal}
   .cg-badges{order:4;width:100%;padding-right:17px;padding-top:4px}
-  /* SSP supplier SO card header: coverage bar moves to row 2 on narrow screens */
-  #ssp .sohdr{grid-template-columns:auto 1fr auto 20px}
-  #ssp .sohdr .soid{grid-column:1;grid-row:1;min-width:0;overflow:hidden}
-  #ssp .sohdr .soid .sonum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #ssp .sohdr>:nth-child(2){grid-column:2;grid-row:1}
-  #ssp .sohdr .sobadges{grid-column:3;grid-row:1}
-  #ssp .sohdr .sochev{grid-column:4;grid-row:1}
-  #ssp .ssp-cov{grid-column:1/-1;grid-row:2;min-width:0;margin:4px 0 2px;width:100%}
   /* employee-view SO card header: info on row 1, ICS+note on row 2 */
   #emp-view .sohdr{grid-template-columns:auto 1fr auto auto 20px}
   #emp-view .sohdr .soid{grid-column:1;grid-row:1}
