@@ -250,6 +250,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .cg-hdr:hover{background:var(--sur3)}
 .cg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .cg-name{font-size:16px;color:var(--txtb);font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cg-badges{display:flex;gap:5px;flex-shrink:0}
 .cg-body{display:none;border-bottom:1px solid var(--bdr)}
 .cg-body.open{display:block}
 /* SO row inside customer */
@@ -337,6 +338,12 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .fbadge{display:none}
   .tb-divider{display:none}
   .tb-title{font-size:16px}
+}
+/* portrait mobile: SSP customer rows wrap to two lines */
+@media (max-width:768px) and (orientation:portrait){
+  .cg-hdr{flex-wrap:wrap}
+  .cg-name{white-space:normal}
+  .cg-badges{order:4;width:100%;padding-right:17px;padding-top:4px}
 }
 /* phone landscape: wide but short — release fixed boss-view so it scrolls */
 @media (max-height:500px) and (orientation:landscape){
@@ -806,7 +813,7 @@ function buildPOTable(rows,soMPNs,crossSO){
 
 
 // ── SO STATUS PANEL ──
-let sspOpen=false, sspAllOpen=false;
+let sspOpen=window.innerWidth<=768, sspAllOpen=false;
 function toggleFullscreen(){
   if(!document.fullscreenElement){document.documentElement.requestFullscreen();document.getElementById('fsbtn').textContent='✕';}
   else{document.exitFullscreen();document.getElementById('fsbtn').textContent='⛶';}
@@ -817,6 +824,8 @@ function toggleSSP(){
   document.getElementById('ssp-chev').textContent=sspOpen?'▲':'▼';
 }
 function renderSSP(){
+  document.getElementById('ssp-body').classList.toggle('open',sspOpen);
+  document.getElementById('ssp-chev').textContent=sspOpen?'▲':'▼';
   const byC={};
   allRows.forEach(r=>{
     const k=r.customer||'לא ידוע';
@@ -905,8 +914,8 @@ function renderSSP(){
     html2+='<div class="cg-hdr" onclick="togCG(\''+cid+'\')">'
       +'<span class="cg-dot '+tlC+'"></span>'
       +'<span class="cg-name">'+esc(sname)+'</span>'
-      +'<div style="display:flex;gap:5px">'+bs+'</div>'
       +'<div class="so-chev" id="chev_'+cid+'">▼</div>'
+      +'<div class="cg-badges">'+bs+'</div>'
       +'</div>'
       +'<div class="cg-body" id="'+cid+'">'+soHtml+'</div>';
   });
