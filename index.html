@@ -323,7 +323,9 @@ table.lt tbody tr:last-child td{border-bottom:none}
 /* ── RESPONSIVE ── */
 @media (max-width:768px){
   .kpi-row{grid-template-columns:repeat(2,1fr)}
-  .boss-grid{grid-template-columns:1fr 1fr}
+  .boss-grid{grid-template-columns:1fr 1fr;flex:none;min-height:0}
+  .boss-grid>*{min-height:300px}
+  .panel{min-height:200px}
   #boss-view{position:static;height:auto;overflow:visible;padding-bottom:20px}
 }
 @media (max-width:480px){
@@ -336,7 +338,9 @@ table.lt tbody tr:last-child td{border-bottom:none}
 /* phone landscape: wide but short — release fixed boss-view so it scrolls */
 @media (max-height:500px) and (orientation:landscape){
   .kpi-row{grid-template-columns:repeat(2,1fr)}
-  .boss-grid{grid-template-columns:1fr 1fr}
+  .boss-grid{grid-template-columns:1fr 1fr;flex:none;min-height:0}
+  .boss-grid>*{min-height:300px}
+  .panel{min-height:200px}
   #boss-view{position:static;height:auto;overflow:visible;padding-bottom:20px}
 }
 </style>
