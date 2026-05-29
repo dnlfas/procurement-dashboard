@@ -588,6 +588,27 @@ try{statusOvr=JSON.parse(localStorage.getItem('oo_status')||'{}');}catch(e){}
 try{fieldOvr=JSON.parse(localStorage.getItem('oo_fields')||'{}');}catch(e){}
 try{notes=JSON.parse(localStorage.getItem(NK)||'{}');}catch(e){}
 
+// ── BLOB OVERRIDE SYNC ──
+let _syncTimer=null;
+function syncOverrides(){
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(function(){
+    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes});
+    fetch('/api/overrides',{method:'POST',body:payload,headers:{'Content-Type':'application/json'}}).catch(function(){});
+  },1200);
+}
+async function loadOverridesFromBlob(){
+  try{
+    const res=await fetch('/api/overrides');
+    if(!res.ok)return;
+    const d=await res.json();
+    if(d.fieldOvr){Object.assign(fieldOvr,d.fieldOvr);localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}
+    if(d.statusOvr){Object.assign(statusOvr,d.statusOvr);localStorage.setItem('oo_status',JSON.stringify(statusOvr));}
+    if(d.notes){Object.assign(notes,d.notes);localStorage.setItem(NK,JSON.stringify(notes));}
+    if(allRows.length){applyOverridesToRows(allRows);soGroups=buildGroups(allRows);applyFilters();renderBoss();}
+  }catch(e){}
+}
+
 function applyOverridesToRows(rows){
   rows.forEach(function(row){
     const suppOvr=fieldOvr[row.nk+'__supp'];
@@ -1172,6 +1193,7 @@ window.addEventListener('DOMContentLoaded', async function(){
   if (!odSettings.soUrl) {
     odSettings = { soUrl: '/data/so.xlsx', poUrl: '/data/po.xlsx' };
   }
+  loadOverridesFromBlob();
   fetchNow();
 });
 
@@ -1864,6 +1886,7 @@ function enrichRows(){
     count++;
   });
   try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+  syncOverrides();
   // rebuild SO groups with new data
   soGroups=buildGroups(allRows);
   return count;
@@ -1885,6 +1908,7 @@ function saveField(inp){
     }
   }
   try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+  syncOverrides();
   toast('✓ '+(inp.dataset.field==='supp'?'ספק':'PO')+' עודכן');
 }
 
@@ -1896,6 +1920,7 @@ function saveStatus(sel){
   // save override
   if(val==='none')delete statusOvr[key];else statusOvr[key]=val;
   try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
+  syncOverrides();
   // update coverage of corresponding row
   const row=allRows.find(r=>r.nk===key);
   if(row){
@@ -1912,6 +1937,7 @@ function saveNote(el){
   if(val)notes[key]=val;else delete notes[key];
   el.classList.toggle('hn',!!val);
   try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
+  syncOverrides();
   toast('✓ הערה נשמרה');
 }
 function exportNotes(){
