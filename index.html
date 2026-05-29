@@ -319,6 +319,20 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(70px);background:#0a0d13;color:#fff;padding:9px 20px;border-radius:6px;font-size:13px;font-family:var(--mono);transition:transform .25s;z-index:9999;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.35)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+/* ── RESPONSIVE ── */
+@media (max-width:768px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .boss-grid{grid-template-columns:1fr 1fr}
+  #boss-view{position:static;height:auto;overflow:visible;padding-bottom:20px}
+}
+@media (max-width:480px){
+  .boss-grid{grid-template-columns:1fr}
+  .tb-mid{display:none}
+  .fbadge{display:none}
+  .tb-divider{display:none}
+  .tb-title{font-size:16px}
+}
 </style>
 </head>
 <body>
@@ -341,7 +355,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="btn btn-ghost" id="wiz-reload-btn" style="display:none" onclick="showWizard()" title="טען קבצים מחדש">⬆ קבצים</button>
     <button id="expbtn" style="display:none"></button>
     <div id="suppbadge" style="display:none"></div>
-    <div style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
+    <div class="tb-divider" style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
@@ -584,7 +598,7 @@ function onLoaded(fname){
   applyFilters();
   renderToday();
   toast('✓ '+soGroups.length+' הזמנות נטענו');
-  if(!document.fullscreenElement){document.documentElement.requestFullscreen().then(()=>{document.getElementById('fsbtn').textContent='✕';}).catch(()=>{});}
+  if(!document.fullscreenElement&&window.innerWidth>768){document.documentElement.requestFullscreen().then(()=>{document.getElementById('fsbtn').textContent='✕';}).catch(()=>{});}
 }
 
 
@@ -1043,7 +1057,7 @@ async function fetchNow() {
       applyFilters();
       renderBoss();
       renderToday();
-      if(!document.fullscreenElement){document.documentElement.requestFullscreen().then(()=>{document.getElementById('fsbtn').textContent='✕';}).catch(()=>{});}
+      if(!document.fullscreenElement&&window.innerWidth>768){document.documentElement.requestFullscreen().then(()=>{document.getElementById('fsbtn').textContent='✕';}).catch(()=>{});}
     } catch(e) {
       document.getElementById('spin').style.display = 'none';
       setSettingsStatus('שגיאה בפענוח קובץ SO: ' + e.message, 'err');
