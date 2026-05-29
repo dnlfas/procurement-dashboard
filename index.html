@@ -252,7 +252,14 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .cg-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .cg-name{font-size:16px;color:var(--txtb);font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cg-badges{display:flex;gap:5px;flex-shrink:0}
-.ssp-cov{display:flex;flex-direction:column;gap:2px;min-width:140px;margin:0 8px}
+.ssp-cov{display:flex;flex-direction:column;gap:2px}
+.ssp-hdr{display:flex;flex-direction:column;gap:6px;padding:var(--rp) var(--rph);cursor:pointer;transition:background .1s}
+.ssp-hdr:hover{background:var(--sur2)}
+.ssp-hr1{display:flex;align-items:center;gap:8px}
+.ssp-hr1 .soid{flex:1 1 0;min-width:0;overflow:hidden}
+.ssp-hr1 .soid .sonum{overflow:hidden;text-overflow:ellipsis}
+.ssp-hr1 .sobadges{flex-shrink:0}
+.ssp-hr1 .sochev{flex-shrink:0}
 .cg-body{display:none;border-bottom:1px solid var(--bdr)}
 .cg-body.open{display:block}
 /* SO row inside customer */
@@ -346,13 +353,6 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .boss-grid{grid-template-columns:1fr 1fr;flex:none;min-height:0}
   .boss-grid>*{min-height:300px}
   .panel{min-height:200px}
-  /* SSP SO card header: switch to flex-wrap so nothing overflows */
-  #ssp .sohdr{display:flex;flex-wrap:wrap;align-items:center}
-  #ssp .sohdr .soid{flex:1;min-width:0;overflow:hidden}
-  #ssp .sohdr .soid .sonum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #ssp .sohdr .sobadges{flex-shrink:0}
-  #ssp .sohdr .sochev{flex-shrink:0}
-  #ssp .ssp-cov{width:100%;min-width:0;order:10;margin:4px 0 0}
 }
 @media (max-width:480px){
   .boss-grid{grid-template-columns:1fr}
@@ -817,16 +817,18 @@ function renderSuppliers(){
     const ovrValFmt=ovrRows.length?` · ₪${Math.round(g.ovrVal/1000)}K באיחור`:'';
 
     return`<div class="socard ${cc}" id="card_${sid}">
-      <div class="sohdr" onclick="togSO('${sid}')">
-        <div class="soid">
-          <span class="stl tl-${tlActual}"></span>
-          <div>
-            <div class="sonum" style="font-size:15px">${esc(g.supplier)}</div>
-            <div class="socpo">${g.rows.length} פריטים · ₪${Math.round(g.totalVal/1000)}K${ovrValFmt}</div>
+      <div class="ssp-hdr" onclick="togSO('${sid}')">
+        <div class="ssp-hr1">
+          <div class="soid">
+            <span class="stl tl-${tlActual}"></span>
+            <div>
+              <div class="sonum" style="font-size:15px">${esc(g.supplier)}</div>
+              <div class="socpo">${g.rows.length} פריטים · ₪${Math.round(g.totalVal/1000)}K${ovrValFmt}</div>
+            </div>
           </div>
+          <div class="sobadges">${badges.join('')}</div>
+          <div class="sochev" id="chev_${sid}">▼</div>
         </div>
-        <div style="flex:1"></div>
-        <div class="sobadges">${badges.join('')}</div>
         <div class="ssp-cov">
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt2);font-family:var(--mono)">
             <span>כיסוי</span><span>${covPct}%</span>
@@ -835,7 +837,6 @@ function renderSuppliers(){
             <div style="width:${covPct}%;height:100%;border-radius:2px;background:${covPct>60?'var(--grn)':covPct>30?'var(--ora)':'var(--red)'}"></div>
           </div>
         </div>
-        <div class="sochev" id="chev_${sid}">▼</div>
       </div>
       <div class="sodet" id="det_${sid}">
         <div class="dtwrap">${buildPOTable(g.rows,soMPNs,crossSO)}</div>
