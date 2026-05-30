@@ -358,6 +358,13 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .rfq-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .rfq-del{margin-right:auto;opacity:.4;font-size:11px;font-family:var(--mono);cursor:pointer;background:none;border:none;color:var(--red);padding:2px 6px}
 .rfq-del:hover{opacity:1}
+.rfq-tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.rfq-tbl th{color:var(--txt2);font-weight:600;padding:4px 8px;border-bottom:1px solid var(--bdr);text-align:right;white-space:nowrap}
+.rfq-tbl td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt);vertical-align:middle}
+.rfq-tbl tr:last-child td{border-bottom:none}
+.rfq-tbl .tc-mpn{color:var(--acc);font-weight:600}
+.rfq-row-inp{background:var(--sur3);border:1px solid var(--bdr);border-radius:4px;padding:4px 7px;font-size:12px;font-family:var(--mono);color:var(--txt);outline:none;width:100%;min-width:0}
+.rfq-row-inp:focus{border-color:rgba(74,143,255,.5)}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(70px);background:#0a0d13;color:#fff;padding:9px 20px;border-radius:6px;font-size:13px;font-family:var(--mono);transition:transform .25s;z-index:9999;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.35)}
 .toast.show{transform:translateX(-50%) translateY(0)}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
@@ -2127,19 +2134,35 @@ function closeQR(){document.getElementById('qr-modal').style.display='none';}
 
 <!-- RFQ MODAL -->
 <div id="rfq-modal" onclick="if(event.target===this)closeRFQModal()" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
-  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(440px,94vw);display:flex;flex-direction:column;gap:14px">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(660px,96vw);display:flex;flex-direction:column;gap:14px">
     <div style="font-size:16px;font-weight:700;color:var(--txtb)">💬 בקשת הצעת מחיר חדשה</div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">לקוח *</label>
-      <input id="rfq-f-cust" type="text" placeholder="שם הלקוח" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:14px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="flex:2;min-width:160px;display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">לקוח *</label>
+        <input id="rfq-f-cust" type="text" placeholder="שם הלקוח" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:14px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%">
+      </div>
+      <div style="flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">מספר בקשה <span style="opacity:.6">(אופציונלי)</span></label>
+        <input id="rfq-f-req" type="text" placeholder="RFQ-2026-045" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:13px;font-family:var(--mono);color:var(--txt);outline:none;direction:ltr;width:100%">
+      </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">מספר בקשה <span style="opacity:.6">(אופציונלי)</span></label>
-      <input id="rfq-f-req" type="text" placeholder="לדוגמה: RFQ-2026-045" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:14px;font-family:var(--mono);color:var(--txt);outline:none;direction:ltr;width:100%">
-    </div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">פריטים / תיאור</label>
-      <textarea id="rfq-f-items" placeholder="רשימת פריטים, MPN, כמויות..." rows="3" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical"></textarea>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">פריטים</label>
+        <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="addRFQRow()">＋ שורה</button>
+      </div>
+      <div style="overflow-x:auto;border:1px solid var(--bdr);border-radius:6px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)">
+          <thead><tr>
+            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:120px">MPN</th>
+            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:90px">MFG</th>
+            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:60px">כמות</th>
+            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:80px">הערות</th>
+            <th style="width:28px;border-bottom:1px solid var(--bdr)"></th>
+          </tr></thead>
+          <tbody id="rfq-items-body"></tbody>
+        </table>
+      </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
       <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">תאריך ושעת קבלה</label>
@@ -2259,7 +2282,10 @@ function renderRFQList(){
   else if(_rfqFilter==='closed') list=list.filter(r=>r.status==='closed'||r.status==='cancelled');
 
   // search
-  if(sl) list=list.filter(r=>(r.customer||'').toLowerCase().includes(sl)||(r.reqNum||'').toLowerCase().includes(sl)||(r.items||'').toLowerCase().includes(sl));
+  if(sl) list=list.filter(r=>{
+    const istr=Array.isArray(r.items)?r.items.map(i=>Object.values(i).join(' ')).join(' '):(r.items||'');
+    return (r.customer||'').toLowerCase().includes(sl)||(r.reqNum||'').toLowerCase().includes(sl)||istr.toLowerCase().includes(sl);
+  });
 
   list.sort((a,b)=>rfqSortKey(a)-rfqSortKey(b));
 
@@ -2283,7 +2309,7 @@ function renderRFQList(){
         ${rfqStatusBadge(rec.status)}
         ${cd.label?`<span class="rfq-countdown ${cd.cls}">${cd.label}</span>`:''}
       </div>
-      ${rec.items?`<div class="rfq-items">${esc(rec.items)}</div>`:''}
+      ${rfqItemsTable(rec.items)}
       <div class="rfq-meta">
         <span>נכנס: ${fmtDT(rec.receivedAt)}</span>
         <span>דדליין: ${fmtDT(rfqDeadline(rec))}</span>
@@ -2350,6 +2376,45 @@ function stopRFQTimer(){
   if(_rfqTimer){clearInterval(_rfqTimer);_rfqTimer=null;}
 }
 
+function rfqItemsTable(items){
+  if(!items||!items.length) return '';
+  if(!Array.isArray(items)) return `<div class="rfq-items">${esc(items)}</div>`;
+  return `<div style="overflow-x:auto"><table class="rfq-tbl">
+    <thead><tr><th>MPN</th><th>MFG</th><th>כמות</th><th>הערות</th></tr></thead>
+    <tbody>${items.map(r=>`<tr>
+      <td class="tc-mpn">${esc(r.mpn||'')}</td>
+      <td>${esc(r.mfg||'')}</td>
+      <td>${esc(r.qty||'')}</td>
+      <td>${esc(r.notes||'')}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function addRFQRow(p){
+  p=p||{};
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td style="padding:3px 5px"><input class="rfq-row-inp" placeholder="MPN" value="${esc(p.mpn||'')}"></td>
+    <td style="padding:3px 5px"><input class="rfq-row-inp" placeholder="MFG" value="${esc(p.mfg||'')}"></td>
+    <td style="padding:3px 5px"><input class="rfq-row-inp" placeholder="כמות" style="max-width:70px" value="${esc(p.qty||'')}"></td>
+    <td style="padding:3px 5px"><input class="rfq-row-inp" placeholder="הערות" value="${esc(p.notes||'')}"></td>
+    <td style="padding:3px 5px;text-align:center"><button onclick="removeRFQRow(this)" style="background:none;border:none;color:var(--txt2);cursor:pointer;font-size:15px;padding:0 2px;line-height:1" title="מחק שורה">✕</button></td>
+  `;
+  document.getElementById('rfq-items-body').appendChild(tr);
+}
+
+function removeRFQRow(btn){
+  const body=document.getElementById('rfq-items-body');
+  if(body.rows.length>1) btn.closest('tr').remove();
+}
+
+function getRFQItems(){
+  return [...document.getElementById('rfq-items-body').rows].map(tr=>{
+    const inp=tr.querySelectorAll('input');
+    return {mpn:inp[0].value.trim(),mfg:inp[1].value.trim(),qty:inp[2].value.trim(),notes:inp[3].value.trim()};
+  }).filter(r=>r.mpn||r.mfg||r.qty||r.notes);
+}
+
 function openRFQModal(prefill){
   const now=new Date();
   const pad=n=>String(n).padStart(2,'0');
@@ -2357,10 +2422,13 @@ function openRFQModal(prefill){
   const p=prefill||{};
   document.getElementById('rfq-f-cust').value=p.customer||'';
   document.getElementById('rfq-f-req').value=p.reqNum||'';
-  document.getElementById('rfq-f-items').value=p.items||'';
   document.getElementById('rfq-f-date').value=p.receivedDate||local;
+  const body=document.getElementById('rfq-items-body');
+  body.innerHTML='';
+  const rows=Array.isArray(p.items)&&p.items.length?p.items:null;
+  if(rows) rows.forEach(r=>addRFQRow(r)); else addRFQRow();
   document.getElementById('rfq-modal').style.display='flex';
-  setTimeout(()=>document.getElementById(p.customer?'rfq-f-items':'rfq-f-cust').focus(),50);
+  setTimeout(()=>document.getElementById('rfq-f-cust').focus(),50);
 }
 
 function closeRFQModal(){document.getElementById('rfq-modal').style.display='none';}
@@ -2404,7 +2472,7 @@ function submitRFQModal(){
   const cust=document.getElementById('rfq-f-cust').value.trim();
   if(!cust){document.getElementById('rfq-f-cust').focus();return;}
   const req=document.getElementById('rfq-f-req').value.trim();
-  const items=document.getElementById('rfq-f-items').value.trim();
+  const items=getRFQItems();
   const dateVal=document.getElementById('rfq-f-date').value;
   const receivedAt=dateVal?new Date(dateVal).getTime():Date.now();
   const rec={id:rfqUid(),customer:cust,reqNum:req,items,receivedAt,status:'new',notes:'',responseAt:null};

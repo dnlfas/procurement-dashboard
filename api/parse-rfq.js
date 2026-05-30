@@ -19,7 +19,11 @@ module.exports = async function handler(req, res) {
 Return ONLY a valid JSON object with exactly these fields:
 - customer: string (company or person name sending the request, or "" if unknown)
 - reqNum: string (reference/RFQ/inquiry number if explicitly mentioned, or "")
-- items: string (complete list of parts/items requested — preserve MPN codes, quantities, and descriptions; use newlines to separate items)
+- items: array of objects, one per line item. Each object has:
+    mpn (part number / MPN / catalog code, or ""),
+    mfg (manufacturer name, or ""),
+    qty (quantity as string including unit if mentioned, or ""),
+    notes (packaging type, reel/cut-tape, special notes for this item, or "")
 - receivedDate: string (ISO datetime "YYYY-MM-DDTHH:MM" if the email date is found, otherwise "")
 Output only the JSON object. No explanation, no markdown, no code fences.`,
       messages: [{ role: 'user', content: emailText }],
