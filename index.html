@@ -643,6 +643,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
       <button class="rfq-ftab" id="rfqf-sent" onclick="setRFQFilter('sent')">נשלחו</button>
       <button class="rfq-ftab" id="rfqf-closed" onclick="setRFQFilter('closed')">סגורות</button>
       <input class="rfq-search" id="rfq-search" type="text" placeholder="חפש לקוח או מספר בקשה..." oninput="renderRFQList()">
+      <button class="btn btn-ghost" onclick="openEmailPasteModal()">📧 מאימייל</button>
       <button class="btn btn-blue" onclick="openRFQModal()">＋ הוסף בקשה</button>
     </div>
     <div id="rfq-list" style="display:flex;flex-direction:column;gap:8px"></div>
@@ -2109,6 +2110,20 @@ function _renderQR(){
 function closeQR(){document.getElementById('qr-modal').style.display='none';}
 </script>
 
+<!-- EMAIL PASTE MODAL -->
+<div id="rfq-email-modal" onclick="if(event.target===this)closeEmailPasteModal()" style="display:none;position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(520px,95vw);display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📧 ניתוח בקשה מאימייל</div>
+    <div style="font-size:13px;color:var(--txt2)">הדבק את תוכן המייל המלא — ה-AI יחלץ את שם הלקוח, מספר הבקשה, הפריטים והתאריך.</div>
+    <textarea id="rfq-email-ta" rows="10" placeholder="הדבק כאן את המייל..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical"></textarea>
+    <div id="rfq-email-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeEmailPasteModal()">ביטול</button>
+      <button class="btn btn-blue" id="rfq-email-submit" onclick="submitEmailParse()">✨ נתח עם AI</button>
+    </div>
+  </div>
+</div>
+
 <!-- RFQ MODAL -->
 <div id="rfq-modal" onclick="if(event.target===this)closeRFQModal()" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(440px,94vw);display:flex;flex-direction:column;gap:14px">
@@ -2334,19 +2349,55 @@ function stopRFQTimer(){
   if(_rfqTimer){clearInterval(_rfqTimer);_rfqTimer=null;}
 }
 
-function openRFQModal(){
+function openRFQModal(prefill){
   const now=new Date();
   const pad=n=>String(n).padStart(2,'0');
   const local=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
-  document.getElementById('rfq-f-cust').value='';
-  document.getElementById('rfq-f-req').value='';
-  document.getElementById('rfq-f-items').value='';
-  document.getElementById('rfq-f-date').value=local;
+  const p=prefill||{};
+  document.getElementById('rfq-f-cust').value=p.customer||'';
+  document.getElementById('rfq-f-req').value=p.reqNum||'';
+  document.getElementById('rfq-f-items').value=p.items||'';
+  document.getElementById('rfq-f-date').value=p.receivedDate||local;
   document.getElementById('rfq-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('rfq-f-cust').focus(),50);
+  setTimeout(()=>document.getElementById(p.customer?'rfq-f-items':'rfq-f-cust').focus(),50);
 }
 
 function closeRFQModal(){document.getElementById('rfq-modal').style.display='none';}
+
+// ── EMAIL PASTE / AI PARSE ──
+function openEmailPasteModal(){
+  document.getElementById('rfq-email-ta').value='';
+  document.getElementById('rfq-email-err').style.display='none';
+  document.getElementById('rfq-email-modal').style.display='flex';
+  _setEmailParsing(false);
+  setTimeout(()=>document.getElementById('rfq-email-ta').focus(),50);
+}
+function closeEmailPasteModal(){document.getElementById('rfq-email-modal').style.display='none';}
+
+function _setEmailParsing(on){
+  document.getElementById('rfq-email-submit').disabled=on;
+  document.getElementById('rfq-email-submit').textContent=on?'מנתח...':'✨ נתח עם AI';
+}
+
+async function submitEmailParse(){
+  const emailText=document.getElementById('rfq-email-ta').value.trim();
+  if(!emailText) return;
+  document.getElementById('rfq-email-err').style.display='none';
+  _setEmailParsing(true);
+  try{
+    const resp=await fetch('/api/parse-rfq',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({emailText})});
+    const json=await resp.json();
+    if(!resp.ok||!json.ok) throw new Error(json.error||'שגיאה לא ידועה');
+    closeEmailPasteModal();
+    openRFQModal(json.data);
+    toast('✓ AI זיהה את הפרטים — בדוק ואשר');
+  }catch(e){
+    const el=document.getElementById('rfq-email-err');
+    el.textContent='שגיאה: '+e.message;
+    el.style.display='block';
+    _setEmailParsing(false);
+  }
+}
 
 function submitRFQModal(){
   const cust=document.getElementById('rfq-f-cust').value.trim();
