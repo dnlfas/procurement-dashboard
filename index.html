@@ -373,8 +373,9 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .tb-left{flex:1;order:1;min-width:0}
   .tb-title{font-size:17px;overflow:hidden;text-overflow:ellipsis}
   #fsbtn{order:2}
-  .tb-mid{order:3;width:100%}
-  .view-tab{flex:1;text-align:center}
+  .tb-mid{order:3;width:100%;overflow-x:auto;scrollbar-width:none}
+  .tb-mid::-webkit-scrollbar{display:none}
+  .view-tab{flex:0 0 auto;text-align:center}
   .tb-right{display:none}
   /* content offset for taller topbar */
   #app{padding-top:96px}
