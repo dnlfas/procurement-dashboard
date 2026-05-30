@@ -408,6 +408,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
+    <button class="btn btn-ghost" onclick="showQR()" title="QR קוד לפתיחה במכשיר אחר">📱 QR</button>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
   </div>
 </div>
@@ -2023,5 +2024,33 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
     </div>
   </div>
 </div>
+<!-- QR modal -->
+<div id="qr-modal" onclick="closeQR()" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;text-align:center;min-width:240px">
+    <div style="font-size:13px;color:var(--txt2);font-family:var(--mono);margin-bottom:14px">סרוק לפתיחה במכשיר אחר</div>
+    <div id="qr-canvas" style="background:#fff;padding:10px;border-radius:8px;display:inline-block;line-height:0"></div>
+    <div id="qr-url" style="margin-top:12px;font-size:11px;color:var(--acc);font-family:var(--mono);word-break:break-all;direction:ltr"></div>
+    <button class="btn btn-ghost" style="margin-top:14px" onclick="closeQR()">סגור</button>
+  </div>
+</div>
+<script>
+function showQR(){
+  const modal=document.getElementById('qr-modal');
+  modal.style.display='flex';
+  if(window.QRCode){_renderQR();return;}
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+  s.onload=_renderQR;
+  document.head.appendChild(s);
+}
+function _renderQR(){
+  const url=location.origin+(location.pathname==='/'?'':location.pathname);
+  document.getElementById('qr-url').textContent=url;
+  const c=document.getElementById('qr-canvas');
+  c.innerHTML='';
+  new QRCode(c,{text:url,width:200,height:200,colorDark:'#000000',colorLight:'#ffffff'});
+}
+function closeQR(){document.getElementById('qr-modal').style.display='none';}
+</script>
 </body>
 </html>
