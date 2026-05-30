@@ -25,7 +25,7 @@ Output only the JSON object. No explanation, no markdown, no code fences.`,
       messages: [{ role: 'user', content: emailText }],
     });
 
-    const raw = message.content[0].text.trim();
+    const raw = message.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
     const parsed = JSON.parse(raw);
     res.json({ ok: true, data: parsed });
   } catch (e) {
