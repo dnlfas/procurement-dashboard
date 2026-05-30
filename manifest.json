@@ -1,0 +1,20 @@
+{
+  "name": "מרכז שליטה — הזמנות פתוחות",
+  "short_name": "מרכז שליטה",
+  "description": "לוח ניהול הזמנות מכירה ורכש",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#0a0d13",
+  "theme_color": "#0a0d13",
+  "lang": "he",
+  "dir": "rtl",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
