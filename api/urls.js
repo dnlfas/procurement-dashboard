@@ -1,6 +1,8 @@
 const { list } = require('@vercel/blob');
+const { isAuthed } = require('./_auth');
 
 module.exports = async function handler(req, res) {
+  if (!isAuthed(req)) return res.status(401).json({ error: 'unauthenticated' });
   try {
     const { blobs } = await list({ prefix: 'procurement/' });
     const result = {};

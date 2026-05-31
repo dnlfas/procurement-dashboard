@@ -1,9 +1,11 @@
 const { put, list } = require('@vercel/blob');
+const { isAuthed } = require('./_auth');
 
 const PATHNAME = 'procurement/overrides.json';
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-store');
+  if (!isAuthed(req)) return res.status(401).json({ error: 'unauthenticated' });
 
   if (req.method === 'GET') {
     try {

@@ -1,8 +1,9 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const { isAuthed } = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-store');
-
+  if (!isAuthed(req)) return res.status(401).json({ error: 'unauthenticated' });
   if (req.method !== 'POST') return res.status(405).end();
 
   try {

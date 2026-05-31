@@ -425,6 +425,24 @@ table.lt tbody tr:last-child td{border-bottom:none}
 </style>
 </head>
 <body>
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="position:fixed;inset:0;z-index:2000;background:#0a0d13;display:flex;align-items:center;justify-content:center">
+  <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:14px;padding:36px 32px;width:min(360px,92vw);display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center">
+    <img src="/icon.png" style="width:72px;height:72px;border-radius:16px;object-fit:contain">
+    <div>
+      <div style="font-size:18px;font-weight:800;color:var(--txtb)">מרכז שליטה</div>
+      <div style="font-size:12px;color:var(--txt2);margin-top:4px;font-family:var(--mono)">הזמנות פתוחות — BTS</div>
+    </div>
+    <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+      <input id="ls-pw" type="password" placeholder="סיסמה" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()"
+        style="width:100%;background:var(--sur3);border:1px solid var(--bdr);border-radius:7px;padding:10px 14px;font-size:15px;font-family:var(--sans);color:var(--txt);outline:none;text-align:center;direction:ltr">
+      <div id="ls-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)">סיסמה שגויה — נסה שנית</div>
+      <button class="btn btn-blue" style="width:100%;padding:10px;font-size:15px" onclick="doLogin()">כניסה</button>
+    </div>
+  </div>
+</div>
+
 
 <!-- TOPBAR -->
 <div class="topbar">
@@ -451,6 +469,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
     <button class="btn btn-ghost" onclick="showQR()" title="QR קוד לפתיחה במכשיר אחר">📱 QR</button>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
+    <button class="btn btn-ghost" onclick="doLogout()" title="יציאה" style="color:var(--txt2)">⎋</button>
   </div>
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
@@ -1256,8 +1275,8 @@ async function fetchNow() {
   });
 }
 
-// Auto-fetch on load — prefer blob URLs (uploaded by any user), fall back to saved settings or bundled files
-window.addEventListener('DOMContentLoaded', async function(){
+// ── AUTH ──
+async function initApp(){
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 3000);
@@ -1277,7 +1296,32 @@ window.addEventListener('DOMContentLoaded', async function(){
   }
   loadOverridesFromBlob();
   fetchNow();
-});
+}
+
+async function checkAuth(){
+  try {
+    const r = await fetch('/api/check-auth');
+    const j = await r.json();
+    if (j.ok) { document.getElementById('login-screen').style.display='none'; initApp(); }
+  } catch(e) { /* network error — keep login screen */ }
+}
+
+async function doLogin(){
+  const pw = document.getElementById('ls-pw').value;
+  document.getElementById('ls-err').style.display='none';
+  try {
+    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
+    if (r.ok) { document.getElementById('login-screen').style.display='none'; initApp(); }
+    else { document.getElementById('ls-err').style.display='block'; document.getElementById('ls-pw').select(); }
+  } catch(e) { document.getElementById('ls-err').style.display='block'; }
+}
+
+async function doLogout(){
+  await fetch('/api/logout',{method:'POST'}).catch(()=>{});
+  location.reload();
+}
+
+window.addEventListener('DOMContentLoaded', checkAuth);
 
 async function handleTopbarUpload(e, type) {
   const file = e.target.files[0];
