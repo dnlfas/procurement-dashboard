@@ -1823,7 +1823,7 @@ function buildLT(lines){
   return`<table class="lt"><thead><tr>
     <th style="width:12px"></th><th>פריט (MPN)</th><th>ת. אספקה</th>
     <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th>
-    <th style="width:140px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
+    <th style="width:170px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
   </tr></thead><tbody>${lines.map(buildLR).join('')}</tbody></table>`;
 }
 function buildLR(r){
