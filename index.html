@@ -722,8 +722,8 @@ function applyOverridesToRows(rows){
     }
     if(stOvr!==undefined){
       row.status=stOvr;
-      if(stOvr==='ordered'||stOvr==='in_transit')row.cov='green';
-      else if(stOvr==='none'||stOvr==='cancelled')row.cov=row.isOvr?'red':'grey';
+      if(['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'].includes(stOvr))row.cov='green';
+      else if(stOvr==='none'||stOvr==='cancelled'||stOvr==='cancelled_bts')row.cov=row.isOvr?'red':'grey';
       else row.cov='orange';
     }
   });
@@ -1515,8 +1515,9 @@ function parseRows(raw){
     else if(sl)status='other';
     const isOvr=!!(dd&&dd<TODAY);
     let cov='grey';
-    if(!!poNum||status==='ordered')cov='green';
-    else if(status!=='none'&&status!=='cancelled')cov='orange';
+    const GREEN_ST=['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'];
+    if(!!poNum||GREEN_ST.includes(status))cov='green';
+    else if(status!=='none'&&status!=='cancelled'&&status!=='cancelled_bts')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
     return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
@@ -2051,8 +2052,8 @@ function saveStatus(sel){
   const row=allRows.find(r=>r.nk===key);
   if(row){
     row.status=val==='none'?'none':val;
-    if(val==='ordered'||val==='in_transit')row.cov='green';
-    else if(val==='none'||val==='cancelled')row.cov=row.isOvr?'red':'grey';
+    if(['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'].includes(val))row.cov='green';
+    else if(val==='none'||val==='cancelled'||val==='cancelled_bts')row.cov=row.isOvr?'red':'grey';
     else row.cov='orange';
   }
   toast('✓ סטטוס עודכן');
