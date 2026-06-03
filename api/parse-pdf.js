@@ -1,5 +1,6 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { put } = require('@vercel/blob');
+const { isAuthed } = require('./_auth');
 
 const SO_PROMPT = `You extract sales order (SO) line items from a procurement document (Hebrew or English).
 Return ONLY a valid JSON array. Each element is one line item with these fields:
@@ -31,6 +32,7 @@ Output only the JSON array. No explanation, no markdown, no code fences.`;
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-store');
+  if (!isAuthed(req)) return res.status(401).json({ error: 'unauthenticated' });
   if (req.method !== 'POST') return res.status(405).end();
 
   const { type } = req.query;

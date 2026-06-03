@@ -1,7 +1,9 @@
 const { put, list } = require('@vercel/blob');
+const { isAuthed } = require('./_auth');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).end(); return; }
+  if (!isAuthed(req)) return res.status(401).json({ error: 'unauthenticated' });
 
   const { type } = req.query;
   if (type !== 'so' && type !== 'po') {
