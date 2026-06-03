@@ -11,7 +11,8 @@ module.exports = async function handler(req, res) {
   }
 
   const fileLastModified = parseInt(req.headers['x-file-lastmodified'] || '0');
-  const pathname = `procurement/${type}.xlsx`;
+  const format = req.query.format === 'pdf' ? 'pdf' : 'xlsx';
+  const pathname = `procurement/${type}.${format}`;
 
   try {
     // "If newer" check — compare file's lastModified against when blob was last uploaded
