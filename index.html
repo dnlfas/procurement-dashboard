@@ -1127,6 +1127,58 @@ function updatePdfButtons() {
   if (pb) { pb.href = pdfUrls.po || '#'; pb.style.display = pdfUrls.po ? '' : 'none'; }
 }
 
+function convertAISoRows(rows) {
+  return rows.map(r => {
+    const so = r.so || '', mpn = r.mpn || '';
+    if (!so && !mpn) return null;
+    const statusRaw = r.status || '';
+    const sl = statusRaw.trim();
+    let status = 'none';
+    if (sl === 'הוזמן מהספק') status = 'ordered';
+    else if (sl === 'טרם הוזמן') status = 'pending';
+    else if (sl.includes('בקרת איכות ספק') || sl.includes('מעבדה')) status = 'qc_supp';
+    else if (sl.includes('בקרת איכות')) status = 'qc';
+    else if (sl.includes('מחסן המוצא')) status = 'waiting_wh';
+    else if (sl.includes('נחת בארץ')) status = 'in_transit';
+    else if (sl.includes('הגשות למכס')) status = 'customs_sub';
+    else if (sl.includes('שוחרר ממכס')) status = 'customs_rel';
+    else if (sl.includes('שליחות') || sl.includes('BTS')) status = 'delivery_bts';
+    else if (sl.includes('סופק ללקוח')) status = 'supplied';
+    else if (sl.includes('סופק חלקי')) status = 'partial';
+    else if (sl.includes('ממתין לאספקה')) status = 'waiting_cust';
+    else if (sl.includes('איתור ספק')) status = 'sourcing';
+    else if (sl.includes('בוטל ע"י הלקוח') || sl.includes("בוטל ע'י הלקוח")) status = 'cancelled';
+    else if (sl.includes('בוטל ע"י BTS') || sl.includes("בוטל ע'י BTS")) status = 'cancelled_bts';
+    else if (sl.includes('בוטל')) status = 'cancelled';
+    else if (sl) status = 'other';
+    const qtyO = parseFloat(r.qtyOrdered) || 0;
+    const qtyR = parseFloat(r.qtyRemaining) || 0;
+    let dd = null;
+    if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    const isOvr = !!(dd && dd < TODAY);
+    const daysOvr = (isOvr && dd) ? Math.floor((TODAY - dd) / 86400000) : 0;
+    let cov = 'grey';
+    if (!!r.poNum || status === 'ordered') cov = 'green';
+    else if (status !== 'none' && status !== 'cancelled') cov = 'orange';
+    else if (isOvr) cov = 'red';
+    return { so, mpn, customer: r.customer || '', custPO: r.custPO || '', poNum: r.poNum || '', supplier: r.supplier || '', statusRaw, status, qtyO, qtyR, dd, cov, daysOvr, isOvr, nk: so + '__' + mpn };
+  }).filter(Boolean);
+}
+
+function convertAIPORows(rows) {
+  return rows.map(r => {
+    const poNum = r.poNum || '', mpn = r.mpn || '';
+    if (!poNum && !mpn) return null;
+    let dd = null;
+    if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    const isOvr = !!(dd && dd < TODAY);
+    const qtyO = parseFloat(r.qtyOrdered) || 0;
+    const qtyS = parseFloat(r.qtySupplied) || 0;
+    const qtyR = parseFloat(r.qtyRemaining) || 0;
+    return { poNum, mpn, supplier: r.supplier || '', desc: r.description || '', qtyO, qtyS, qtyR, valILS: parseFloat(r.valueILS) || 0, valOrig: parseFloat(r.valueILS) || 0, currency: r.currency || 'ILS', dd, isOvr, isPartial: qtyS > 0 && qtyR > 0 };
+  }).filter(Boolean);
+}
+
 async function handleTopbarUpload(e, type) {
   const file = e.target.files[0];
   e.target.value = '';
@@ -1140,44 +1192,73 @@ async function handleTopbarUpload(e, type) {
     statusEl.textContent = msg;
   };
 
-  showStatus('מעלה...', 'var(--acc)');
+  showStatus(isPdf ? 'מנתח PDF...' : 'מעלה...', 'var(--acc)');
   document.getElementById('spin').style.display = 'inline';
 
   try {
-    const format = isPdf ? 'pdf' : 'xlsx';
-    const res = await fetch(`/api/upload?type=${type}&format=${format}`, {
-      method: 'POST',
-      body: file,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'x-file-lastmodified': String(file.lastModified)
-      }
-    });
-
-    if (res.status === 409) {
-      showStatus('⚠ הקובץ הנוכחי עדכני יותר', 'var(--ora)');
-      document.getElementById('spin').style.display = 'none';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
-      return;
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      const msg = (err.error || '').includes('token') ? 'Blob store לא מחובר ב-Vercel' : ('שגיאה: ' + (err.error || res.status));
-      showStatus(msg, 'var(--red)');
-      document.getElementById('spin').style.display = 'none';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
-      return;
-    }
-
-    const { url } = await res.json();
     if (isPdf) {
+      const res = await fetch(`/api/parse-pdf?type=${type}`, {
+        method: 'POST',
+        body: file,
+        headers: { 'Content-Type': 'application/octet-stream' }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showStatus('שגיאה: ' + (err.error || res.status), 'var(--red)');
+        document.getElementById('spin').style.display = 'none';
+        setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
+        return;
+      }
+      const { rows, url } = await res.json();
+      if (type === 'so') {
+        allRows = convertAISoRows(rows);
+        soGroups = buildGroups(allRows);
+        document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
+        document.getElementById('upl').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        fillSelects();
+        applyFilters();
+        renderBoss();
+        renderToday();
+      } else {
+        poRows = convertAIPORows(rows);
+        poLoaded = true;
+        document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
+        document.getElementById('fbadge-po').style.display = 'inline';
+        renderSupplierKPIs();
+        renderSuppliers();
+        renderCoverage();
+        renderSSP();
+      }
       pdfUrls[type] = url;
       updatePdfButtons();
-      showStatus('✓ PDF עודכן', 'var(--grn)');
+      showStatus('✓ PDF עודכן — ' + rows.length + ' שורות', 'var(--grn)');
       document.getElementById('spin').style.display = 'none';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+      setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
     } else {
+      const res = await fetch(`/api/upload?type=${type}`, {
+        method: 'POST',
+        body: file,
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-file-lastmodified': String(file.lastModified)
+        }
+      });
+      if (res.status === 409) {
+        showStatus('⚠ הקובץ הנוכחי עדכני יותר', 'var(--ora)');
+        document.getElementById('spin').style.display = 'none';
+        setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = (err.error || '').includes('token') ? 'Blob store לא מחובר ב-Vercel' : ('שגיאה: ' + (err.error || res.status));
+        showStatus(msg, 'var(--red)');
+        document.getElementById('spin').style.display = 'none';
+        setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
+        return;
+      }
+      const { url } = await res.json();
       if (type === 'so') odSettings.soUrl = url;
       else odSettings.poUrl = url;
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
@@ -1186,7 +1267,7 @@ async function handleTopbarUpload(e, type) {
       fetchNow();
     }
   } catch (err) {
-    showStatus('שגיאה בהעלאה', 'var(--red)');
+    showStatus('שגיאה: ' + err.message, 'var(--red)');
     document.getElementById('spin').style.display = 'none';
   }
 }
