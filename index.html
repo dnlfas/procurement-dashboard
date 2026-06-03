@@ -352,14 +352,16 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <div style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
+    <a id="so-pdf-view" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="display:none" title="פתח SO PDF">📄 SO</a>
+    <a id="po-pdf-view" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="display:none" title="פתח PO PDF">📄 PO</a>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
   </div>
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
 <input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
-<input type="file" id="fi-so-upload" accept=".xlsx" onchange="handleTopbarUpload(event,'so')" style="display:none">
-<input type="file" id="fi-po-upload" accept=".xlsx" onchange="handleTopbarUpload(event,'po')" style="display:none">
+<input type="file" id="fi-so-upload" accept=".xlsx,.xls,.pdf" onchange="handleTopbarUpload(event,'so')" style="display:none">
+<input type="file" id="fi-po-upload" accept=".xlsx,.xls,.pdf" onchange="handleTopbarUpload(event,'po')" style="display:none">
 
 <!-- UPLOAD -->
 <div id="upl">
@@ -939,6 +941,7 @@ function sspShowAll(){sspAllOpen=true;renderSSP();}
 const SETTINGS_KEY = 'oo_gdrive_settings';
 let odSettings = {};
 try { odSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
+let pdfUrls = { so: '', po: '' };
 
 function openSettings(){
   document.getElementById('set-so-url').value = odSettings.soUrl || '';
@@ -1105,6 +1108,9 @@ window.addEventListener('DOMContentLoaded', async function(){
         odSettings = { soUrl: urls.soUrl, poUrl: urls.poUrl || odSettings.poUrl || '/data/po.xlsx' };
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
       }
+      if (urls.soPdfUrl) pdfUrls.so = urls.soPdfUrl;
+      if (urls.poPdfUrl) pdfUrls.po = urls.poPdfUrl;
+      updatePdfButtons();
     }
   } catch(e) { /* no blob store yet or offline — use saved settings */ }
 
@@ -1114,11 +1120,19 @@ window.addEventListener('DOMContentLoaded', async function(){
   fetchNow();
 });
 
+function updatePdfButtons() {
+  const sb = document.getElementById('so-pdf-view');
+  const pb = document.getElementById('po-pdf-view');
+  if (sb) { sb.href = pdfUrls.so || '#'; sb.style.display = pdfUrls.so ? '' : 'none'; }
+  if (pb) { pb.href = pdfUrls.po || '#'; pb.style.display = pdfUrls.po ? '' : 'none'; }
+}
+
 async function handleTopbarUpload(e, type) {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
 
+  const isPdf = file.name.toLowerCase().endsWith('.pdf');
   const statusEl = document.getElementById('upload-status');
   const showStatus = (msg, color) => {
     statusEl.style.display = 'inline';
@@ -1130,7 +1144,8 @@ async function handleTopbarUpload(e, type) {
   document.getElementById('spin').style.display = 'inline';
 
   try {
-    const res = await fetch(`/api/upload?type=${type}`, {
+    const format = isPdf ? 'pdf' : 'xlsx';
+    const res = await fetch(`/api/upload?type=${type}&format=${format}`, {
       method: 'POST',
       body: file,
       headers: {
@@ -1156,13 +1171,20 @@ async function handleTopbarUpload(e, type) {
     }
 
     const { url } = await res.json();
-    if (type === 'so') odSettings.soUrl = url;
-    else odSettings.poUrl = url;
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
-
-    showStatus('✓ עודכן', 'var(--grn)');
-    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
-    fetchNow();
+    if (isPdf) {
+      pdfUrls[type] = url;
+      updatePdfButtons();
+      showStatus('✓ PDF עודכן', 'var(--grn)');
+      document.getElementById('spin').style.display = 'none';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+    } else {
+      if (type === 'so') odSettings.soUrl = url;
+      else odSettings.poUrl = url;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
+      showStatus('✓ עודכן', 'var(--grn)');
+      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+      fetchNow();
+    }
   } catch (err) {
     showStatus('שגיאה בהעלאה', 'var(--red)');
     document.getElementById('spin').style.display = 'none';
