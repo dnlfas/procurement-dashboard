@@ -713,6 +713,7 @@ function applyOverridesToRows(rows){
   rows.forEach(function(row){
     const suppOvr=fieldOvr[row.nk+'__supp'];
     const poOvr=fieldOvr[row.nk+'__po'];
+    const trackOvr=fieldOvr[row.nk+'__tracking'];
     const stOvr=statusOvr[row.nk];
     if(suppOvr!==undefined)row.supplier=suppOvr;
     if(poOvr!==undefined){
@@ -720,6 +721,7 @@ function applyOverridesToRows(rows){
       if(poOvr&&row.cov!=='green')row.cov='green';
       else if(!poOvr)row.cov=row.qtyR===0?'grey':row.isOvr?'red':'orange';
     }
+    if(trackOvr)row.tracking=trackOvr;
     if(stOvr!==undefined){
       row.status=stOvr;
       if(['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'].includes(stOvr))row.cov='green';
@@ -1957,7 +1959,7 @@ function buildLT(lines){
   lines.forEach(r=>{});
   return`<table class="lt"><thead><tr>
     <th style="width:12px"></th><th>פריט (MPN)</th><th>ת. אספקה</th>
-    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th>
+    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">מספר מעקב משלוח. עדכון יעביר את הסטטוס אוטומטית ל"בשליחות ל-BTS".</span></span>מעקב</th>
     <th style="width:170px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
   </tr></thead><tbody>${lines.map(buildLR).join('')}</tbody></table>`;
 }
@@ -1976,6 +1978,11 @@ function buildLR(r){
     data-field="po" data-key="${esc(r.nk)}"
     value="${esc(poVal)}" placeholder="PO..."
     onchange="saveField(this)" title="לחץ לעריכת מספר הזמנת רכש">`;
+  const trackOvr=fieldOvr[r.nk+'__tracking'];
+  const th=`<input class="edit-inp${trackOvr?'has-ovr':''}" type="text"
+    data-field="tracking" data-key="${esc(r.nk)}"
+    value="${esc(trackOvr||'')}" placeholder="מעקב..."
+    onchange="saveField(this)" title="מספר מעקב — יעביר סטטוס לבשליחות ל-BTS">`;
   // Determine effective status: manual override > PO cross-data > SO status
   let poAutoStatus=null;
   if(poLoaded){
@@ -2016,7 +2023,7 @@ function buildLR(r){
     <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
-    <td>${sh}</td><td>${ph}</td><td>${sbh}</td>
+    <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
     <td><textarea class="note-ta ${nv?'hn':''}" rows="1" data-key="${esc(r.nk)}"
       placeholder="הוסף הערה..." onchange="saveNote(this)" oninput="autoH(this)">${nv}</textarea></td>
   </tr>`;
@@ -2158,19 +2165,29 @@ function saveField(inp){
   const val=inp.value.trim();
   if(val)fieldOvr[key]=val;else delete fieldOvr[key];
   inp.classList.toggle('has-ovr',!!fieldOvr[inp.dataset.key+'__'+inp.dataset.field]);
-  // update in-memory row
   const row=allRows.find(r=>r.nk===inp.dataset.key);
   if(row){
     if(inp.dataset.field==='supp')row.supplier=val||row.supplier;
     if(inp.dataset.field==='po'){
       row.poNum=val;
-      if(val&&row.cov!=='green'){row.cov='green';}
-      else if(!val&&row.status==='none'){row.cov=row.isOvr?'red':'grey';}
+      if(val&&row.cov!=='green')row.cov='green';
+      else if(!val&&row.status==='none')row.cov=row.isOvr?'red':'grey';
+    }
+    if(inp.dataset.field==='tracking'&&val){
+      // auto-advance status to delivery_bts
+      statusOvr[row.nk]='delivery_bts';
+      row.status='delivery_bts';
+      row.cov='green';
+      localStorage.setItem('oo_status',JSON.stringify(statusOvr));
+      // update the status dropdown in the same row if visible
+      const sel=inp.closest('tr')?.querySelector('.stat-sel');
+      if(sel){sel.value='delivery_bts';sel.className='stat-sel s-ord';}
     }
   }
   try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
   syncOverrides();
-  toast('✓ '+(inp.dataset.field==='supp'?'ספק':'PO')+' עודכן');
+  const labels={'supp':'ספק','po':'PO','tracking':'מעקב'};
+  toast('✓ '+(labels[inp.dataset.field]||inp.dataset.field)+' עודכן'+(inp.dataset.field==='tracking'&&val?' — סטטוס עודכן לבשליחות ל-BTS':''));
 }
 
 function saveStatus(sel){
