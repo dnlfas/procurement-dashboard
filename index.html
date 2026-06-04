@@ -1264,6 +1264,7 @@ function launchDashboard(){
 
 // ── PARSE ──
 function parseRows(raw){
+  if(raw.length){console.log('[SO columns]',Object.keys(raw[0]));}
   let _so='',_cust='',_custPO='';
   return raw.map(r=>{
     const rawSO=s(r['הזמנה']),mpn=s(r['מספר פריט']);
@@ -1313,8 +1314,17 @@ function parseRows(raw){
     return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
+function _dbgSO(rows){
+  const custs=[...new Set(rows.map(r=>r.customer))];
+  console.log('[SO parsed]',rows.length,'rows,',custs.length,'unique customers:',custs);
+  const noCust=rows.filter(r=>!r.customer);
+  if(noCust.length)console.log('[SO no-customer rows]',noCust.length,'rows, SOs:',[...new Set(noCust.map(r=>r.so))]);
+  const noSO=rows.filter(r=>!r.so);
+  if(noSO.length)console.log('[SO no-SO rows]',noSO.length,'rows');
+}
 
 function buildGroups(rows){
+  _dbgSO(rows);
   const m={};
   rows.forEach(r=>{if(!m[r.so])m[r.so]={so:r.so,customer:r.customer,custPO:r.custPO,lines:[]};m[r.so].lines.push(r);});
   Object.values(m).forEach(g=>{
