@@ -466,8 +466,6 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <div class="tb-divider" style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
-    <a id="so-pdf-view" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="display:none" title="פתח SO PDF">📄 SO</a>
-    <a id="po-pdf-view" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="display:none" title="פתח PO PDF">📄 PO</a>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
     <button class="btn btn-ghost" onclick="showQR()" title="QR קוד לפתיחה במכשיר אחר">📱 QR</button>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
@@ -476,8 +474,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
 <input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
-<input type="file" id="fi-so-upload" accept=".xlsx,.xls,.pdf" onchange="handleTopbarUpload(event,'so')" style="display:none">
-<input type="file" id="fi-po-upload" accept=".xlsx,.xls,.pdf" onchange="handleTopbarUpload(event,'po')" style="display:none">
+<input type="file" id="fi-so-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'so')" style="display:none">
+<input type="file" id="fi-po-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'po')" style="display:none">
 
 <!-- UPLOAD -->
 <div id="upl">
@@ -1123,8 +1121,6 @@ function sspShowAll(){sspAllOpen=true;renderSSP();}
 const SETTINGS_KEY = 'oo_gdrive_settings';
 let odSettings = {};
 try { odSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
-let pdfUrls = { so: '', po: '' };
-
 function openSettings(){
   document.getElementById('set-so-url').value = odSettings.soUrl || '';
   document.getElementById('set-po-url').value = odSettings.poUrl || '';
@@ -1187,7 +1183,7 @@ async function fetchFileFromUrl(url, label) {
   if (!directUrl) return null;
   setSettingsStatus('שולף ' + label + '...', '');
   try {
-    const resp = await fetch(directUrl);
+    const resp = await fetch(directUrl, { cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     // Google Drive may redirect to a virus scan page for large files
     const ct = resp.headers.get('content-type') || '';
@@ -1273,7 +1269,7 @@ async function fetchNow() {
 
     document.getElementById('spin').style.display = 'none';
     const now = new Date();
-    const timeStr = pad2(now.getHours())+':'+pad2(now.getMinutes());
+    const timeStr = p2(now.getHours())+':'+p2(now.getMinutes());
     odSettings.lastFetch = now.toISOString();
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
     setSettingsStatus('✓ עודכן בהצלחה — ' + timeStr, 'ok');
@@ -1294,9 +1290,6 @@ async function initApp(){
         odSettings = { soUrl: urls.soUrl, poUrl: urls.poUrl || odSettings.poUrl || '/data/po.xlsx' };
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
       }
-      if (urls.soPdfUrl) pdfUrls.so = urls.soPdfUrl;
-      if (urls.poPdfUrl) pdfUrls.po = urls.poPdfUrl;
-      updatePdfButtons();
     }
   } catch(e) { /* no blob store yet or offline — use saved settings */ }
 
@@ -1332,61 +1325,71 @@ async function doLogout(){
 
 window.addEventListener('DOMContentLoaded', checkAuth);
 
-function updatePdfButtons() {
-  const sb = document.getElementById('so-pdf-view');
-  const pb = document.getElementById('po-pdf-view');
-  if (sb) { sb.href = pdfUrls.so || '#'; sb.style.display = pdfUrls.so ? '' : 'none'; }
-  if (pb) { pb.href = pdfUrls.po || '#'; pb.style.display = pdfUrls.po ? '' : 'none'; }
-}
-
-function convertAISoRows(rows) {
-  return rows.map(r => {
-    const so = r.so || '', mpn = r.mpn || '';
-    if (!so && !mpn) return null;
-    const statusRaw = r.status || '';
-    const sl = statusRaw.trim();
-    let status = 'none';
-    if (sl === 'הוזמן מהספק') status = 'ordered';
-    else if (sl === 'טרם הוזמן') status = 'pending';
-    else if (sl.includes('בקרת איכות ספק') || sl.includes('מעבדה')) status = 'qc_supp';
-    else if (sl.includes('בקרת איכות')) status = 'qc';
-    else if (sl.includes('מחסן המוצא')) status = 'waiting_wh';
-    else if (sl.includes('נחת בארץ')) status = 'in_transit';
-    else if (sl.includes('הגשות למכס')) status = 'customs_sub';
-    else if (sl.includes('שוחרר ממכס')) status = 'customs_rel';
-    else if (sl.includes('שליחות') || sl.includes('BTS')) status = 'delivery_bts';
-    else if (sl.includes('סופק ללקוח')) status = 'supplied';
-    else if (sl.includes('סופק חלקי')) status = 'partial';
-    else if (sl.includes('ממתין לאספקה')) status = 'waiting_cust';
-    else if (sl.includes('איתור ספק')) status = 'sourcing';
-    else if (sl.includes('בוטל ע"י הלקוח') || sl.includes("בוטל ע'י הלקוח")) status = 'cancelled';
-    else if (sl.includes('בוטל ע"י BTS') || sl.includes("בוטל ע'י BTS")) status = 'cancelled_bts';
-    else if (sl.includes('בוטל')) status = 'cancelled';
-    else if (sl) status = 'other';
-    const qtyO = parseFloat(r.qtyOrdered) || 0;
-    const qtyR = parseFloat(r.qtyRemaining) || 0;
-    let dd = null;
-    if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    const isOvr = !!(dd && dd < TODAY);
-    const daysOvr = (isOvr && dd) ? Math.floor((TODAY - dd) / 86400000) : 0;
-    const GREEN_ST2=['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'];
-    let cov=qtyR===0?'grey':isOvr?'red':'orange';
-    if(!!r.poNum||GREEN_ST2.includes(status))cov='green';
-    return { so, mpn, customer: r.customer || '', custPO: r.custPO || '', desc: r.description || '', poNum: r.poNum || '', supplier: r.supplier || '', statusRaw, status, qtyO, qtyR, dd, cov, daysOvr, isOvr, nk: so + '__' + mpn };
-  }).filter(Boolean);
-}
-
-function convertAIPORows(rows) {
-  return rows.map(r => {
-    const poNum = r.poNum || '', mpn = r.mpn || '';
-    if (!poNum && !mpn) return null;
-    let dd = null;
-    if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    const isOvr = !!(dd && dd < TODAY);
-    const qtyO = parseFloat(r.qtyOrdered) || 0;
-    const qtyS = parseFloat(r.qtySupplied) || 0;
-    const qtyR = parseFloat(r.qtyRemaining) || 0;
-    return { poNum, mpn, supplier: r.supplier || '', desc: r.description || '', qtyO, qtyS, qtyR, valILS: parseFloat(r.valueILS) || 0, valOrig: parseFloat(r.valueILS) || 0, currency: r.currency || 'ILS', dd, isOvr, isPartial: qtyS > 0 && qtyR > 0 };
+// ── PARSE ──
+function _findKey(keys,needles){return keys.find(k=>needles.some(n=>k.includes(n)))||needles[0];}
+function parseRows(raw){
+  if(!raw.length)return[];
+  const keys=Object.keys(raw[0]);
+  console.log('[SO columns]',keys);
+  const K={
+    so:     _findKey(keys,['הזמנה']),
+    mpn:    _findKey(keys,['מספר פריט','מק"ט',"מק'ט",'מקט']),
+    cust:   _findKey(keys,['שם לקוח']),
+    custPO: _findKey(keys,['הז. רכש','הזמנת רכש (לקוח)']),
+    poNum:  _findKey(keys,['מספר הזמנת רכש']),
+    supp:   _findKey(keys,['שם ספק']),
+    status: _findKey(keys,['סטטוס פריט']),
+    qtyR:   _findKey(keys,['יתרה לאספקה']),
+    qtyO:   _findKey(keys,['כמות בהזמנה']),
+    date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
+  };
+  console.log('[SO keys used]',K);
+  let _so='',_cust='',_custPO='';
+  return raw.map(r=>{
+    const rawSO=s(r[K.so]),mpn=s(r[K.mpn]);
+    const rawCust=s(r[K.cust]);
+    const rawCustPO=s(r[K.custPO]);
+    if(rawSO){_so=rawSO;_cust=rawCust;_custPO=rawCustPO;}
+    const so=rawSO||_so;
+    if(!so&&!mpn)return null;
+    const customer=rawCust||_cust;
+    const custPO=rawCustPO||_custPO;
+    const poNum=s(r[K.poNum]);
+    const supplier=s(r[K.supp]);
+    const statusRaw=s(r[K.status]);
+    const qtyR=parseFloat(r[K.qtyR])||0;
+    const qtyO=parseFloat(r[K.qtyO])||0;
+    let dd=null;
+    const rd=r[K.date];
+    if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
+    else if(typeof rd==='number'&&rd>1){const d=new Date(Math.round((rd-25569)*86400000));dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+    else if(typeof rd==='string'&&rd){const d=new Date(rd);if(!isNaN(d))dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+    let status='none';
+    const sl=statusRaw.trim();
+    if(sl==='הוזמן מהספק')status='ordered';
+    else if(sl==='טרם הוזמן')status='pending';
+    else if(sl.includes('בקרת איכות ספק')||sl.includes('מעבדה'))status='qc_supp';
+    else if(sl.includes('בקרת איכות'))status='qc';
+    else if(sl.includes('מחסן המוצא'))status='waiting_wh';
+    else if(sl.includes('נחת בארץ'))status='in_transit';
+    else if(sl.includes('הגשות למכס'))status='customs_sub';
+    else if(sl.includes('שוחרר ממכס'))status='customs_rel';
+    else if(sl.includes('שליחות')||sl.includes('BTS'))status='delivery_bts';
+    else if(sl.includes('סופק ללקוח'))status='supplied';
+    else if(sl.includes('סופק חלקי'))status='partial';
+    else if(sl.includes('ממתין לאספקה'))status='waiting_cust';
+    else if(sl.includes('איתור ספק'))status='sourcing';
+    else if(sl.includes('בוטל ע"י הלקוח')||sl.includes("בוטל ע'י הלקוח"))status='cancelled';
+    else if(sl.includes('בוטל ע"י BTS')||sl.includes("בוטל ע'י BTS"))status='cancelled_bts';
+    else if(sl.includes('בוטל'))status='cancelled';
+    else if(sl)status='other';
+    const isOvr=!!(dd&&dd<TODAY);
+    let cov='grey';
+    if(!!poNum||status==='ordered')cov='green';
+    else if(status!=='none'&&status!=='cancelled')cov='orange';
+    else if(isOvr)cov='red';
+    const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 
@@ -1395,7 +1398,6 @@ async function handleTopbarUpload(e, type) {
   e.target.value = '';
   if (!file) return;
 
-  const isPdf = file.name.toLowerCase().endsWith('.pdf');
   const statusEl = document.getElementById('upload-status');
   const showStatus = (msg, color) => {
     statusEl.style.display = 'inline';
@@ -1403,85 +1405,71 @@ async function handleTopbarUpload(e, type) {
     statusEl.textContent = msg;
   };
 
-  showStatus(isPdf ? 'מנתח PDF...' : 'מעלה...', 'var(--acc)');
+  showStatus('קורא קובץ...', 'var(--acc)');
   document.getElementById('spin').style.display = 'inline';
 
   try {
-    if (isPdf) {
-      const res = await fetch(`/api/parse-pdf?type=${type}`, {
-        method: 'POST',
-        body: file,
-        headers: { 'Content-Type': 'application/octet-stream' }
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showStatus('שגיאה: ' + (err.error || res.status), 'var(--red)');
-        document.getElementById('spin').style.display = 'none';
-        setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
-        return;
-      }
-      const { rows, url } = await res.json();
-      if (type === 'so') {
-        allRows = convertAISoRows(rows);
-        applyOverridesToRows(allRows);
-        soGroups = buildGroups(allRows);
-        if(poLoaded){linkPOtoSO();}
-        document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
-        document.getElementById('upl').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        fillSelects();
-        applyFilters();
-        renderBoss();
-        renderToday();
-      } else {
-        poRows = convertAIPORows(rows);
-        poLoaded = true;
-        linkPOtoSO();
-        applyFilters();
-        renderBoss();
-        document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
-        document.getElementById('fbadge-po').style.display = 'inline';
-        renderSupplierKPIs();
-        renderSuppliers();
-        renderCoverage();
-        renderSSP();
-      }
-      pdfUrls[type] = url;
-      updatePdfButtons();
-      showStatus('✓ PDF עודכן — ' + rows.length + ' שורות', 'var(--grn)');
+    const buf = await file.arrayBuffer();
+    showStatus('מעלה...', 'var(--acc)');
+    const res = await fetch(`/api/upload?type=${type}`, {
+      method: 'POST',
+      body: buf,
+      headers: { 'Content-Type': 'application/octet-stream' }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = (err.error || '').includes('token') ? 'Blob store לא מחובר ב-Vercel' : ('שגיאה: ' + (err.error || res.status));
+      showStatus(msg, 'var(--red)');
       document.getElementById('spin').style.display = 'none';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
-    } else {
-      const res = await fetch(`/api/upload?type=${type}`, {
-        method: 'POST',
-        body: file,
-        headers: {
-          'Content-Type': 'application/octet-stream',
-          'x-file-lastmodified': String(file.lastModified)
-        }
-      });
-      if (res.status === 409) {
-        showStatus('⚠ הקובץ הנוכחי עדכני יותר', 'var(--ora)');
-        document.getElementById('spin').style.display = 'none';
-        setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
-        return;
-      }
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const msg = (err.error || '').includes('token') ? 'Blob store לא מחובר ב-Vercel' : ('שגיאה: ' + (err.error || res.status));
-        showStatus(msg, 'var(--red)');
-        document.getElementById('spin').style.display = 'none';
-        setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
-        return;
-      }
-      const { url } = await res.json();
-      if (type === 'so') odSettings.soUrl = url;
-      else odSettings.poUrl = url;
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
-      showStatus('✓ עודכן', 'var(--grn)');
-      setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
-      fetchNow();
+      setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
+      return;
     }
+    const { url } = await res.json();
+    if (type === 'so') odSettings.soUrl = url;
+    else odSettings.poUrl = url;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
+    showStatus('מעבד...', 'var(--acc)');    withXLSX(() => {
+      try {
+        const wb = XLSX.read(buf, {type:'array', cellDates:true, dense:true});
+        const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+        if (type === 'so') {
+          allRows = parseRows(raw);
+          applyOverridesToRows(allRows);
+          soGroups = buildGroups(allRows);
+          if (poLoaded) linkPOtoSO();
+          document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
+          document.getElementById('upl').style.display = 'none';
+          document.getElementById('app').style.display = 'block';
+          document.getElementById('expbtn').style.display = 'inline-flex';
+          fillSelects();
+          applyFilters();
+          renderBoss();
+          renderToday();
+          showStatus('✓ SO עודכן — ' + allRows.length + ' שורות', 'var(--grn)');
+        } else {
+          poRows = parsePORows(raw);
+          poLoaded = true;
+          linkPOtoSO();
+          applyFilters();
+          renderBoss();
+          document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
+          document.getElementById('fbadge-po').style.display = 'inline';
+          document.getElementById('supp-nopo').style.display = 'none';
+          document.getElementById('supp-content').style.display = 'flex';
+          document.getElementById('supp-content').style.flexDirection = 'column';
+          renderSupplierKPIs();
+          renderSuppliers();
+          renderCoverage();
+          renderSSP();
+          showStatus('✓ PO עודכן — ' + poRows.length + ' שורות', 'var(--grn)');
+        }
+        document.getElementById('spin').style.display = 'none';
+        setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+      } catch(parseErr) {
+        showStatus('שגיאה בפענוח: ' + parseErr.message, 'var(--red)');
+        document.getElementById('spin').style.display = 'none';
+      }
+    });
   } catch (err) {
     showStatus('שגיאה: ' + err.message, 'var(--red)');
     document.getElementById('spin').style.display = 'none';
@@ -1589,32 +1577,90 @@ function launchDashboard(){
 }
 
 // ── PARSE ──
+function _findKey(keys,needles){return keys.find(k=>needles.some(n=>k.includes(n)))||needles[0];}
 function parseRows(raw){
+  if(!raw.length)return[];
+  const keys=Object.keys(raw[0]);
+  console.log('[SO columns]',keys);
+  const K={
+    so:   _findKey(keys,['הזמנה']),
+    mpn:  _findKey(keys,['מספר פריט','מק"ט',"מק'ט",'מקט']),
+    cust: _findKey(keys,['שם לקוח']),
+    custPO: _findKey(keys,['הז. רכש','הזמנת רכש (לקוח)']),
+    poNum:  _findKey(keys,['מספר הזמנת רכש']),
+    supp:   _findKey(keys,['שם ספק']),
+    status: _findKey(keys,['סטטוס פריט']),
+    qtyR:   _findKey(keys,['יתרה לאספקה']),
+    qtyO:   _findKey(keys,['כמות בהזמנה']),
+    date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
+  };
+  console.log('[SO keys used]',K);
+  let _so='',_cust='',_custPO='';
   return raw.map(r=>{
-    const so=s(r['הזמנה']),mpn=s(r['מספר פריט']);
+    const rawSO=s(r[K.so]),mpn=s(r[K.mpn]);
+    const rawCust=s(r[K.cust]);
+    const rawCustPO=s(r[K.custPO]);
+    // Forward-fill SO/customer/custPO for merged-cell SAP exports
+    if(rawSO){_so=rawSO;_cust=rawCust;_custPO=rawCustPO;}
+    const so=rawSO||_so;
     if(!so&&!mpn)return null;
-    const customer=s(r['שם לקוח']);
-    const custPO=s(r['הז. רכש (לקוח)']);
-    const desc=s(r['תאור פריט']);
-    const qtyR=parseFloat(r['יתרה לאספקה'])||0;
-    const qtyO=parseFloat(r['כמות בהזמנה'])||0;
+    const customer=rawCust||_cust;
+    const custPO=rawCustPO||_custPO;
+    const poNum=s(r[K.poNum]);
+    const supplier=s(r[K.supp]);
+    const statusRaw=s(r[K.status]);
+    const qtyR=parseFloat(r[K.qtyR])||0;
+    const qtyO=parseFloat(r[K.qtyO])||0;
     let dd=null;
-    const rd=r['ת. אספקה'];
+    const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
     else if(typeof rd==='number'&&rd>1){const d=new Date(Math.round((rd-25569)*86400000));dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
     else if(typeof rd==='string'&&rd){const d=new Date(rd);if(!isNaN(d))dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
-    const status=qtyR===0?'supplied':'none';
+    let status='none';
+    const sl=statusRaw.trim();
+    if(sl==='הוזמן מהספק')status='ordered';
+    else if(sl==='טרם הוזמן')status='pending';
+    else if(sl.includes('בקרת איכות ספק')||sl.includes('מעבדה'))status='qc_supp';
+    else if(sl.includes('בקרת איכות'))status='qc';
+    else if(sl.includes('מחסן המוצא'))status='waiting_wh';
+    else if(sl.includes('נחת בארץ'))status='in_transit';
+    else if(sl.includes('הגשות למכס'))status='customs_sub';
+    else if(sl.includes('שוחרר ממכס'))status='customs_rel';
+    else if(sl.includes('שליחות')||sl.includes('BTS'))status='delivery_bts';
+    else if(sl.includes('סופק ללקוח'))status='supplied';
+    else if(sl.includes('סופק חלקי'))status='partial';
+    else if(sl.includes('ממתין לאספקה'))status='waiting_cust';
+    else if(sl.includes('איתור ספק'))status='sourcing';
+    else if(sl.includes('בוטל ע"י הלקוח')||sl.includes("בוטל ע'י הלקוח"))status='cancelled';
+    else if(sl.includes('בוטל ע"י BTS')||sl.includes("בוטל ע'י BTS"))status='cancelled_bts';
+    else if(sl.includes('בוטל'))status='cancelled';
+    else if(sl)status='other';
     const isOvr=!!(dd&&dd<TODAY);
     let cov='grey';
-    if(qtyR>0)cov=isOvr?'red':'orange';
+    if(!!poNum||status==='ordered')cov='green';
+    else if(status!=='none'&&status!=='cancelled')cov='orange';
+    else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,desc,poNum:'',supplier:'',statusRaw:'',status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
+}
+function _dbgSO(rows){
+  const custs=[...new Set(rows.map(r=>r.customer))];
+  console.log('[SO parsed]',rows.length,'rows,',custs.length,'unique customers:',custs);
+  const noCust=rows.filter(r=>!r.customer);
+  if(noCust.length)console.log('[SO no-customer rows]',noCust.length,'rows, SOs:',[...new Set(noCust.map(r=>r.so))]);
+  const noSO=rows.filter(r=>!r.so);
+  if(noSO.length)console.log('[SO no-SO rows]',noSO.length,'rows');
 }
 
 function buildGroups(rows){
+  _dbgSO(rows);
   const m={};
   rows.forEach(r=>{if(!m[r.so])m[r.so]={so:r.so,customer:r.customer,custPO:r.custPO,lines:[]};m[r.so].lines.push(r);});
+  Object.values(m).forEach(g=>{
+    const c=g.customer||g.lines.find(r=>r.customer)?.customer||'';
+    if(c){g.customer=c;g.lines.forEach(r=>{if(!r.customer)r.customer=c;});}
+  });
   return Object.values(m).map(calcG).sort((a,b)=>{
     const o={red:0,orange:1,green:2,grey:3};
     if(o[a.tl]!==o[b.tl])return o[a.tl]-o[b.tl];
@@ -1637,11 +1683,29 @@ function linkPOtoSO(){
   const mpnSet=new Set(poRows.filter(p=>p.qtyR>0).map(p=>p.mpn.trim().toUpperCase()));
   const byMPN={};
   poRows.filter(p=>p.qtyR>0).forEach(p=>{const k=p.mpn.trim().toUpperCase();if(!byMPN[k])byMPN[k]=p;});
+  const byMPNAll={};
+  poRows.forEach(p=>{const k=p.mpn.trim().toUpperCase();if(!byMPNAll[k])byMPNAll[k]=p;});
+  let statusChanged=false;
   allRows.forEach(r=>{
     const k=r.mpn.trim().toUpperCase();
     if((r.cov==='orange'||r.cov==='red')&&mpnSet.has(k))r.cov='green';
     if(!r.supplier&&byMPN[k])r.supplier=byMPN[k].supplier;
+    if(statusOvr[r.nk]===undefined){
+      const p=byMPNAll[k];
+      if(p){
+        let inferred=null;
+        if(p.qtyS>0&&p.qtyR>0)inferred='partial';
+        else if(p.qtyS>0&&p.qtyR===0)inferred='supplied';
+        else if(p.qtyR>0)inferred='ordered';
+        if(inferred){statusOvr[r.nk]=inferred;statusChanged=true;}
+      }
+    }
   });
+  if(statusChanged){
+    localStorage.setItem('oo_status',JSON.stringify(statusOvr));
+    applyOverridesToRows(allRows);
+    syncOverrides();
+  }
   soGroups=buildGroups(allRows);
 }
 function s(v){return(v==null?'':String(v)).trim();}
@@ -1894,6 +1958,11 @@ function renderSOCard(g){
       <div onclick="event.stopPropagation();dlSOICS(soReg['${esc(g.so)}'])">
         <button class="bics" title="הורד קובץ ICS לייבוא ליומן (Google Calendar, Outlook, Apple Calendar). תזכורת תוצג 7 ימים לפני תאריך האספקה, עם רשימת הפריטים.">📅 ICS</button>
       </div>
+      <div class="so-actions" onclick="event.stopPropagation()">
+        <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','ordered')" title="סמן את כל הפריטים בהזמנה כ'הוזמן מהספק'">📦 הוזמן</button>
+        <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','supplied')" title="סמן את כל הפריטים בהזמנה כ'סופק ללקוח'">✅ סופק</button>
+        <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','cancelled')" title="סמן את כל הפריטים בהזמנה כ'בוטל ע&quot;י הלקוח'">❌ בוטל</button>
+      </div>
       <div onclick="event.stopPropagation()">
         <textarea class="sonote-ta ${sn?'hn':''}" rows="1"
           data-key="${esc(snk)}" placeholder="הערה להזמנה..."
@@ -1907,7 +1976,15 @@ function renderSOCard(g){
     </div>
   </div>`;
 }
-function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;togSO(id);}
+function setSOStatus(soNum,status){
+  allRows.filter(r=>r.so===soNum&&r.status!=='cancelled'&&r.status!=='cancelled_bts').forEach(r=>{statusOvr[r.nk]=status;});
+  localStorage.setItem('oo_status',JSON.stringify(statusOvr));
+  applyOverridesToRows(allRows);
+  soGroups=buildGroups(allRows);
+  syncOverrides();
+  applyFilters();
+}
+function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;togSO(id);}
 function togSO(id){
   document.getElementById('det_'+id).classList.toggle('open');
   document.getElementById('chev_'+id).classList.toggle('open');
