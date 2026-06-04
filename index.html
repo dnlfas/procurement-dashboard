@@ -1125,19 +1125,17 @@ async function handleTopbarUpload(e, type) {
     statusEl.textContent = msg;
   };
 
-  showStatus('מעלה...', 'var(--acc)');
+  showStatus('קורא קובץ...', 'var(--acc)');
   document.getElementById('spin').style.display = 'inline';
 
   try {
-    // Read file buffer first (while uploading happens in parallel)
-    const [res, buf] = await Promise.all([
-      fetch(`/api/upload?type=${type}`, {
-        method: 'POST',
-        body: file,
-        headers: { 'Content-Type': 'application/octet-stream' }
-      }),
-      file.arrayBuffer()
-    ]);
+    const buf = await file.arrayBuffer();
+    showStatus('מעלה...', 'var(--acc)');
+    const res = await fetch(`/api/upload?type=${type}`, {
+      method: 'POST',
+      body: buf,
+      headers: { 'Content-Type': 'application/octet-stream' }
+    });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const msg = (err.error || '').includes('token') ? 'Blob store לא מחובר ב-Vercel' : ('שגיאה: ' + (err.error || res.status));
@@ -1150,9 +1148,7 @@ async function handleTopbarUpload(e, type) {
     if (type === 'so') odSettings.soUrl = url;
     else odSettings.poUrl = url;
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
-    // Parse the uploaded file directly — no round-trip to blob
-    showStatus('מעבד...', 'var(--acc)');
-    withXLSX(() => {
+    showStatus('מעבד...', 'var(--acc)');    withXLSX(() => {
       try {
         const wb = XLSX.read(buf, {type:'array', cellDates:true, dense:true});
         const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
