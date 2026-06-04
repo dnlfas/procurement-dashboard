@@ -720,7 +720,7 @@ function applyOverridesToRows(rows){
     if(poOvr!==undefined){
       row.poNum=poOvr;
       if(poOvr&&row.cov!=='green')row.cov='green';
-      else if(!poOvr&&row.status==='none')row.cov=row.isOvr?'red':'grey';
+      else if(!poOvr)row.cov=row.qtyR===0?'grey':row.isOvr?'red':'orange';
     }
     if(stOvr!==undefined){
       row.status=stOvr;
@@ -1253,6 +1253,9 @@ async function fetchNow() {
           const raw2 = XLSX.utils.sheet_to_json(wb2.Sheets[wb2.SheetNames[0]], {defval:''});
           poRows = parsePORows(raw2);
           poLoaded = true;
+          linkPOtoSO();
+          applyFilters();
+          renderBoss();
           document.getElementById('fbadge-po').style.display = 'inline';
           document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
           document.getElementById('supp-nopo').style.display = 'none';
@@ -1366,11 +1369,10 @@ function convertAISoRows(rows) {
     if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
     const isOvr = !!(dd && dd < TODAY);
     const daysOvr = (isOvr && dd) ? Math.floor((TODAY - dd) / 86400000) : 0;
-    let cov = 'grey';
-    if (!!r.poNum || status === 'ordered') cov = 'green';
-    else if (status !== 'none' && status !== 'cancelled') cov = 'orange';
-    else if (isOvr) cov = 'red';
-    return { so, mpn, customer: r.customer || '', custPO: r.custPO || '', poNum: r.poNum || '', supplier: r.supplier || '', statusRaw, status, qtyO, qtyR, dd, cov, daysOvr, isOvr, nk: so + '__' + mpn };
+    const GREEN_ST2=['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'];
+    let cov=qtyR===0?'grey':isOvr?'red':'orange';
+    if(!!r.poNum||GREEN_ST2.includes(status))cov='green';
+    return { so, mpn, customer: r.customer || '', custPO: r.custPO || '', desc: r.description || '', poNum: r.poNum || '', supplier: r.supplier || '', statusRaw, status, qtyO, qtyR, dd, cov, daysOvr, isOvr, nk: so + '__' + mpn };
   }).filter(Boolean);
 }
 
@@ -1421,7 +1423,9 @@ async function handleTopbarUpload(e, type) {
       const { rows, url } = await res.json();
       if (type === 'so') {
         allRows = convertAISoRows(rows);
+        applyOverridesToRows(allRows);
         soGroups = buildGroups(allRows);
+        if(poLoaded){linkPOtoSO();}
         document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
         document.getElementById('upl').style.display = 'none';
         document.getElementById('app').style.display = 'block';
@@ -1432,6 +1436,9 @@ async function handleTopbarUpload(e, type) {
       } else {
         poRows = convertAIPORows(rows);
         poLoaded = true;
+        linkPOtoSO();
+        applyFilters();
+        renderBoss();
         document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
         document.getElementById('fbadge-po').style.display = 'inline';
         renderSupplierKPIs();
@@ -1557,6 +1564,7 @@ function launchDashboard(){
   if(wizPOFile){
     poRows=parsePORows(wizPOFile.raw);
     poLoaded=true;
+    linkPOtoSO();
     document.getElementById('fbadge-po').style.display='inline';
     document.getElementById('fbadge-po').textContent=wizPOFile.name+' · '+poRows.length+' שורות PO';
   }
@@ -1587,9 +1595,7 @@ function parseRows(raw){
     if(!so&&!mpn)return null;
     const customer=s(r['שם לקוח']);
     const custPO=s(r['הז. רכש (לקוח)']);
-    const poNum=s(r['מספר הזמנת רכש']);
-    const supplier=s(r['שם ספק ']||r['שם ספק']);
-    const statusRaw=s(r['סטטוס פריט ']||r['סטטוס פריט']);
+    const desc=s(r['תאור פריט']);
     const qtyR=parseFloat(r['יתרה לאספקה'])||0;
     const qtyO=parseFloat(r['כמות בהזמנה'])||0;
     let dd=null;
@@ -1597,33 +1603,12 @@ function parseRows(raw){
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
     else if(typeof rd==='number'&&rd>1){const d=new Date(Math.round((rd-25569)*86400000));dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
     else if(typeof rd==='string'&&rd){const d=new Date(rd);if(!isNaN(d))dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
-    let status='none';
-    const sl=statusRaw.trim();
-    if(sl==='הוזמן מהספק')status='ordered';
-    else if(sl==='טרם הוזמן')status='pending';
-    else if(sl.includes('בקרת איכות ספק')||sl.includes('מעבדה'))status='qc_supp';
-    else if(sl.includes('בקרת איכות'))status='qc';
-    else if(sl.includes('מחסן המוצא'))status='waiting_wh';
-    else if(sl.includes('נחת בארץ'))status='in_transit';
-    else if(sl.includes('הגשות למכס'))status='customs_sub';
-    else if(sl.includes('שוחרר ממכס'))status='customs_rel';
-    else if(sl.includes('שליחות')||sl.includes('BTS'))status='delivery_bts';
-    else if(sl.includes('סופק ללקוח'))status='supplied';
-    else if(sl.includes('סופק חלקי'))status='partial';
-    else if(sl.includes('ממתין לאספקה'))status='waiting_cust';
-    else if(sl.includes('איתור ספק'))status='sourcing';
-    else if(sl.includes('בוטל ע"י הלקוח')||sl.includes("בוטל ע'י הלקוח"))status='cancelled';
-    else if(sl.includes('בוטל ע"י BTS')||sl.includes("בוטל ע'י BTS"))status='cancelled_bts';
-    else if(sl.includes('בוטל'))status='cancelled';
-    else if(sl)status='other';
+    const status=qtyR===0?'supplied':'none';
     const isOvr=!!(dd&&dd<TODAY);
     let cov='grey';
-    const GREEN_ST=['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'];
-    if(!!poNum||GREEN_ST.includes(status))cov='green';
-    else if(status!=='none'&&status!=='cancelled'&&status!=='cancelled_bts')cov='orange';
-    else if(isOvr)cov='red';
+    if(qtyR>0)cov=isOvr?'red':'orange';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,desc,poNum:'',supplier:'',statusRaw:'',status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 
@@ -1646,6 +1631,18 @@ function calcG(g){
   if(g.ovr>0)g.tl='red';else if(g.unc>0)g.tl='orange';else g.tl='green';
   g.supps=[...new Set(l.map(x=>x.supplier).filter(Boolean))];
   return g;
+}
+function linkPOtoSO(){
+  if(!poLoaded||!allRows.length)return;
+  const mpnSet=new Set(poRows.filter(p=>p.qtyR>0).map(p=>p.mpn.trim().toUpperCase()));
+  const byMPN={};
+  poRows.filter(p=>p.qtyR>0).forEach(p=>{const k=p.mpn.trim().toUpperCase();if(!byMPN[k])byMPN[k]=p;});
+  allRows.forEach(r=>{
+    const k=r.mpn.trim().toUpperCase();
+    if((r.cov==='orange'||r.cov==='red')&&mpnSet.has(k))r.cov='green';
+    if(!r.supplier&&byMPN[k])r.supplier=byMPN[k].supplier;
+  });
+  soGroups=buildGroups(allRows);
 }
 function s(v){return(v==null?'':String(v)).trim();}
 function p2(n){return String(n).padStart(2,'0');}
@@ -1982,7 +1979,7 @@ function buildLR(r){
   const nv=esc(notes[r.nk]||'');
   return`<tr class="${(r.isOvr&&r.cov!=='green')?'lno':''}">
     <td style="text-align:center"><span class="lntl tl-${r.cov==='green'?'g':r.cov==='orange'?'o':r.cov==='red'?'r':'x'}"></span></td>
-    <td><div class="mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div></td>
+    <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
     <td>${sh}</td><td>${ph}</td><td>${sbh}</td>

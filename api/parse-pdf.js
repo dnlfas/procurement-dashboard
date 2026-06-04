@@ -4,13 +4,11 @@ const { isAuthed } = require('./_auth');
 
 const SO_PROMPT = `You extract sales order (SO) line items from a procurement document (Hebrew or English).
 Return ONLY a valid JSON array. Each element is one line item with these fields:
-- so: string (SO / sales order number, e.g. "HK-1234")
+- so: string (SO / sales order number, e.g. "SO26000117")
 - mpn: string (part number / MPN / item code)
 - customer: string (customer / buyer name, or "")
 - custPO: string (customer PO / reference number, or "")
-- poNum: string (purchase order number placed with supplier, or "")
-- supplier: string (supplier / vendor name, or "")
-- status: string (status text exactly as written in the document, or "")
+- description: string (item description / part name, or "")
 - qtyOrdered: number (total quantity ordered)
 - qtyRemaining: number (remaining / open quantity yet to be supplied)
 - deliveryDate: string (ISO date YYYY-MM-DD, or "")
