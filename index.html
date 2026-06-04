@@ -1264,11 +1264,17 @@ function launchDashboard(){
 
 // ── PARSE ──
 function parseRows(raw){
+  let _so='',_cust='',_custPO='';
   return raw.map(r=>{
-    const so=s(r['הזמנה']),mpn=s(r['מספר פריט']);
+    const rawSO=s(r['הזמנה']),mpn=s(r['מספר פריט']);
+    const rawCust=s(r['שם לקוח ']||r['שם לקוח']);
+    const rawCustPO=s(r['הז. רכש (לקוח)']);
+    // Forward-fill SO/customer/custPO for merged-cell SAP exports
+    if(rawSO){_so=rawSO;_cust=rawCust;_custPO=rawCustPO;}
+    const so=rawSO||_so;
     if(!so&&!mpn)return null;
-    const customer=s(r['שם לקוח ']||r['שם לקוח']);
-    const custPO=s(r['הז. רכש (לקוח)']);
+    const customer=rawCust||_cust;
+    const custPO=rawCustPO||_custPO;
     const poNum=s(r['מספר הזמנת רכש']);
     const supplier=s(r['שם ספק ']||r['שם ספק']);
     const statusRaw=s(r['סטטוס פריט ']||r['סטטוס פריט']);
