@@ -1267,7 +1267,7 @@ function parseRows(raw){
   return raw.map(r=>{
     const so=s(r['הזמנה']),mpn=s(r['מספר פריט']);
     if(!so&&!mpn)return null;
-    const customer=s(r['שם לקוח']);
+    const customer=s(r['שם לקוח ']||r['שם לקוח']);
     const custPO=s(r['הז. רכש (לקוח)']);
     const poNum=s(r['מספר הזמנת רכש']);
     const supplier=s(r['שם ספק ']||r['שם ספק']);
@@ -1311,6 +1311,10 @@ function parseRows(raw){
 function buildGroups(rows){
   const m={};
   rows.forEach(r=>{if(!m[r.so])m[r.so]={so:r.so,customer:r.customer,custPO:r.custPO,lines:[]};m[r.so].lines.push(r);});
+  Object.values(m).forEach(g=>{
+    const c=g.customer||g.lines.find(r=>r.customer)?.customer||'';
+    if(c){g.customer=c;g.lines.forEach(r=>{if(!r.customer)r.customer=c;});}
+  });
   return Object.values(m).map(calcG).sort((a,b)=>{
     const o={red:0,orange:1,green:2,grey:3};
     if(o[a.tl]!==o[b.tl])return o[a.tl]-o[b.tl];
