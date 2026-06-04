@@ -1083,7 +1083,7 @@ async function fetchNow() {
 
     document.getElementById('spin').style.display = 'none';
     const now = new Date();
-    const timeStr = pad2(now.getHours())+':'+pad2(now.getMinutes());
+    const timeStr = p2(now.getHours())+':'+p2(now.getMinutes());
     odSettings.lastFetch = now.toISOString();
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
     setSettingsStatus('✓ עודכן בהצלחה — ' + timeStr, 'ok');
