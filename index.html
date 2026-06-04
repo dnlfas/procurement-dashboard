@@ -1001,7 +1001,7 @@ async function fetchFileFromUrl(url, label) {
   if (!directUrl) return null;
   setSettingsStatus('שולף ' + label + '...', '');
   try {
-    const resp = await fetch(directUrl);
+    const resp = await fetch(directUrl, { cache: 'no-store' });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     // Google Drive may redirect to a virus scan page for large files
     const ct = resp.headers.get('content-type') || '';
