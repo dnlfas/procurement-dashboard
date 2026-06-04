@@ -352,16 +352,14 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <div style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
-    <a id="so-pdf-view" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="display:none" title="פתח SO PDF">📄 SO</a>
-    <a id="po-pdf-view" class="btn btn-ghost" href="#" target="_blank" rel="noopener" style="display:none" title="פתח PO PDF">📄 PO</a>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
   </div>
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
 <input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
-<input type="file" id="fi-so-upload" accept=".xlsx,.xls,.pdf" onchange="handleTopbarUpload(event,'so')" style="display:none">
-<input type="file" id="fi-po-upload" accept=".xlsx,.xls,.pdf" onchange="handleTopbarUpload(event,'po')" style="display:none">
+<input type="file" id="fi-so-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'so')" style="display:none">
+<input type="file" id="fi-po-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'po')" style="display:none">
 
 <!-- UPLOAD -->
 <div id="upl">
@@ -941,8 +939,6 @@ function sspShowAll(){sspAllOpen=true;renderSSP();}
 const SETTINGS_KEY = 'oo_gdrive_settings';
 let odSettings = {};
 try { odSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
-let pdfUrls = { so: '', po: '' };
-
 function openSettings(){
   document.getElementById('set-so-url').value = odSettings.soUrl || '';
   document.getElementById('set-po-url').value = odSettings.poUrl || '';
@@ -1108,9 +1104,6 @@ window.addEventListener('DOMContentLoaded', async function(){
         odSettings = { soUrl: urls.soUrl, poUrl: urls.poUrl || odSettings.poUrl || '/data/po.xlsx' };
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(odSettings));
       }
-      if (urls.soPdfUrl) pdfUrls.so = urls.soPdfUrl;
-      if (urls.poPdfUrl) pdfUrls.po = urls.poPdfUrl;
-      updatePdfButtons();
     }
   } catch(e) { /* no blob store yet or offline — use saved settings */ }
 
@@ -1120,71 +1113,11 @@ window.addEventListener('DOMContentLoaded', async function(){
   fetchNow();
 });
 
-function updatePdfButtons() {
-  const sb = document.getElementById('so-pdf-view');
-  const pb = document.getElementById('po-pdf-view');
-  if (sb) { sb.href = pdfUrls.so || '#'; sb.style.display = pdfUrls.so ? '' : 'none'; }
-  if (pb) { pb.href = pdfUrls.po || '#'; pb.style.display = pdfUrls.po ? '' : 'none'; }
-}
-
-function convertAISoRows(rows) {
-  return rows.map(r => {
-    const so = r.so || '', mpn = r.mpn || '';
-    if (!so && !mpn) return null;
-    const statusRaw = r.status || '';
-    const sl = statusRaw.trim();
-    let status = 'none';
-    if (sl === 'הוזמן מהספק') status = 'ordered';
-    else if (sl === 'טרם הוזמן') status = 'pending';
-    else if (sl.includes('בקרת איכות ספק') || sl.includes('מעבדה')) status = 'qc_supp';
-    else if (sl.includes('בקרת איכות')) status = 'qc';
-    else if (sl.includes('מחסן המוצא')) status = 'waiting_wh';
-    else if (sl.includes('נחת בארץ')) status = 'in_transit';
-    else if (sl.includes('הגשות למכס')) status = 'customs_sub';
-    else if (sl.includes('שוחרר ממכס')) status = 'customs_rel';
-    else if (sl.includes('שליחות') || sl.includes('BTS')) status = 'delivery_bts';
-    else if (sl.includes('סופק ללקוח')) status = 'supplied';
-    else if (sl.includes('סופק חלקי')) status = 'partial';
-    else if (sl.includes('ממתין לאספקה')) status = 'waiting_cust';
-    else if (sl.includes('איתור ספק')) status = 'sourcing';
-    else if (sl.includes('בוטל ע"י הלקוח') || sl.includes("בוטל ע'י הלקוח")) status = 'cancelled';
-    else if (sl.includes('בוטל ע"י BTS') || sl.includes("בוטל ע'י BTS")) status = 'cancelled_bts';
-    else if (sl.includes('בוטל')) status = 'cancelled';
-    else if (sl) status = 'other';
-    const qtyO = parseFloat(r.qtyOrdered) || 0;
-    const qtyR = parseFloat(r.qtyRemaining) || 0;
-    let dd = null;
-    if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    const isOvr = !!(dd && dd < TODAY);
-    const daysOvr = (isOvr && dd) ? Math.floor((TODAY - dd) / 86400000) : 0;
-    let cov = 'grey';
-    if (!!r.poNum || status === 'ordered') cov = 'green';
-    else if (status !== 'none' && status !== 'cancelled') cov = 'orange';
-    else if (isOvr) cov = 'red';
-    return { so, mpn, customer: r.customer || '', custPO: r.custPO || '', poNum: r.poNum || '', supplier: r.supplier || '', statusRaw, status, qtyO, qtyR, dd, cov, daysOvr, isOvr, nk: so + '__' + mpn };
-  }).filter(Boolean);
-}
-
-function convertAIPORows(rows) {
-  return rows.map(r => {
-    const poNum = r.poNum || '', mpn = r.mpn || '';
-    if (!poNum && !mpn) return null;
-    let dd = null;
-    if (r.deliveryDate) { const d = new Date(r.deliveryDate); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    const isOvr = !!(dd && dd < TODAY);
-    const qtyO = parseFloat(r.qtyOrdered) || 0;
-    const qtyS = parseFloat(r.qtySupplied) || 0;
-    const qtyR = parseFloat(r.qtyRemaining) || 0;
-    return { poNum, mpn, supplier: r.supplier || '', desc: r.description || '', qtyO, qtyS, qtyR, valILS: parseFloat(r.valueILS) || 0, valOrig: parseFloat(r.valueILS) || 0, currency: r.currency || 'ILS', dd, isOvr, isPartial: qtyS > 0 && qtyR > 0 };
-  }).filter(Boolean);
-}
-
 async function handleTopbarUpload(e, type) {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
 
-  const isPdf = file.name.toLowerCase().endsWith('.pdf');
   const statusEl = document.getElementById('upload-status');
   const showStatus = (msg, color) => {
     statusEl.style.display = 'inline';
@@ -1192,51 +1125,11 @@ async function handleTopbarUpload(e, type) {
     statusEl.textContent = msg;
   };
 
-  showStatus(isPdf ? 'מנתח PDF...' : 'מעלה...', 'var(--acc)');
+  showStatus('מעלה...', 'var(--acc)');
   document.getElementById('spin').style.display = 'inline';
 
   try {
-    if (isPdf) {
-      const res = await fetch(`/api/parse-pdf?type=${type}`, {
-        method: 'POST',
-        body: file,
-        headers: { 'Content-Type': 'application/octet-stream' }
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        showStatus('שגיאה: ' + (err.error || res.status), 'var(--red)');
-        document.getElementById('spin').style.display = 'none';
-        setTimeout(() => { statusEl.style.display = 'none'; }, 6000);
-        return;
-      }
-      const { rows, url } = await res.json();
-      if (type === 'so') {
-        allRows = convertAISoRows(rows);
-        soGroups = buildGroups(allRows);
-        document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
-        document.getElementById('upl').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        fillSelects();
-        applyFilters();
-        renderBoss();
-        renderToday();
-      } else {
-        poRows = convertAIPORows(rows);
-        poLoaded = true;
-        document.getElementById('fbadge-po').textContent = 'PO · ' + poRows.length + ' שורות';
-        document.getElementById('fbadge-po').style.display = 'inline';
-        renderSupplierKPIs();
-        renderSuppliers();
-        renderCoverage();
-        renderSSP();
-      }
-      pdfUrls[type] = url;
-      updatePdfButtons();
-      showStatus('✓ PDF עודכן — ' + rows.length + ' שורות', 'var(--grn)');
-      document.getElementById('spin').style.display = 'none';
-      setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
-    } else {
-      const res = await fetch(`/api/upload?type=${type}`, {
+    const res = await fetch(`/api/upload?type=${type}`, {
         method: 'POST',
         body: file,
         headers: {
@@ -1265,7 +1158,6 @@ async function handleTopbarUpload(e, type) {
       showStatus('✓ עודכן', 'var(--grn)');
       setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
       fetchNow();
-    }
   } catch (err) {
     showStatus('שגיאה: ' + err.message, 'var(--red)');
     document.getElementById('spin').style.display = 'none';
@@ -1435,6 +1327,36 @@ function calcG(g){
   if(g.ovr>0)g.tl='red';else if(g.unc>0)g.tl='orange';else g.tl='green';
   g.supps=[...new Set(l.map(x=>x.supplier).filter(Boolean))];
   return g;
+}
+function linkPOtoSO(){
+  if(!poLoaded||!allRows.length)return;
+  const mpnSet=new Set(poRows.filter(p=>p.qtyR>0).map(p=>p.mpn.trim().toUpperCase()));
+  const byMPN={};
+  poRows.filter(p=>p.qtyR>0).forEach(p=>{const k=p.mpn.trim().toUpperCase();if(!byMPN[k])byMPN[k]=p;});
+  const byMPNAll={};
+  poRows.forEach(p=>{const k=p.mpn.trim().toUpperCase();if(!byMPNAll[k])byMPNAll[k]=p;});
+  let statusChanged=false;
+  allRows.forEach(r=>{
+    const k=r.mpn.trim().toUpperCase();
+    if((r.cov==='orange'||r.cov==='red')&&mpnSet.has(k))r.cov='green';
+    if(!r.supplier&&byMPN[k])r.supplier=byMPN[k].supplier;
+    if(statusOvr[r.nk]===undefined){
+      const p=byMPNAll[k];
+      if(p){
+        let inferred=null;
+        if(p.qtyS>0&&p.qtyR>0)inferred='partial';
+        else if(p.qtyS>0&&p.qtyR===0)inferred='supplied';
+        else if(p.qtyR>0)inferred='ordered';
+        if(inferred){statusOvr[r.nk]=inferred;statusChanged=true;}
+      }
+    }
+  });
+  if(statusChanged){
+    localStorage.setItem('oo_status',JSON.stringify(statusOvr));
+    applyOverridesToRows(allRows);
+    syncOverrides();
+  }
+  soGroups=buildGroups(allRows);
 }
 function s(v){return(v==null?'':String(v)).trim();}
 function p2(n){return String(n).padStart(2,'0');}
@@ -1686,6 +1608,11 @@ function renderSOCard(g){
       <div onclick="event.stopPropagation();dlSOICS(soReg['${esc(g.so)}'])">
         <button class="bics" title="הורד קובץ ICS לייבוא ליומן (Google Calendar, Outlook, Apple Calendar). תזכורת תוצג 7 ימים לפני תאריך האספקה, עם רשימת הפריטים.">📅 ICS</button>
       </div>
+      <div class="so-actions" onclick="event.stopPropagation()">
+        <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','ordered')" title="סמן את כל הפריטים בהזמנה כ'הוזמן מהספק'">📦 הוזמן</button>
+        <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','supplied')" title="סמן את כל הפריטים בהזמנה כ'סופק ללקוח'">✅ סופק</button>
+        <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','cancelled')" title="סמן את כל הפריטים בהזמנה כ'בוטל ע&quot;י הלקוח'">❌ בוטל</button>
+      </div>
       <div onclick="event.stopPropagation()">
         <textarea class="sonote-ta ${sn?'hn':''}" rows="1"
           data-key="${esc(snk)}" placeholder="הערה להזמנה..."
@@ -1699,7 +1626,15 @@ function renderSOCard(g){
     </div>
   </div>`;
 }
-function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT')return;togSO(id);}
+function setSOStatus(soNum,status){
+  allRows.filter(r=>r.so===soNum&&r.status!=='cancelled'&&r.status!=='cancelled_bts').forEach(r=>{statusOvr[r.nk]=status;});
+  localStorage.setItem('oo_status',JSON.stringify(statusOvr));
+  applyOverridesToRows(allRows);
+  soGroups=buildGroups(allRows);
+  syncOverrides();
+  applyFilters();
+}
+function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;togSO(id);}
 function togSO(id){
   document.getElementById('det_'+id).classList.toggle('open');
   document.getElementById('chev_'+id).classList.toggle('open');
