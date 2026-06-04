@@ -1686,11 +1686,20 @@ function linkPOtoSO(){
   const byMPNAll={};
   poRows.forEach(p=>{const k=p.mpn.trim().toUpperCase();if(!byMPNAll[k])byMPNAll[k]=p;});
   let statusChanged=false;
+  let fieldChanged=false;
   allRows.forEach(r=>{
     const k=r.mpn.trim().toUpperCase();
     if((r.cov==='orange'||r.cov==='red')&&mpnSet.has(k))r.cov='green';
-    if(!r.supplier&&byMPN[k])r.supplier=byMPN[k].supplier;
-    if(!r.poNum&&byMPNAll[k])r.poNum=byMPNAll[k].poNum;
+    // Auto-fill supplier from PO (persist to fieldOvr if not already set)
+    if(!r.supplier&&byMPN[k]&&byMPN[k].supplier){
+      r.supplier=byMPN[k].supplier;
+      if(fieldOvr[r.nk+'__supp']===undefined){fieldOvr[r.nk+'__supp']=r.supplier;fieldChanged=true;}
+    }
+    // Auto-fill supplier PO number from PO file (persist to fieldOvr if not already set)
+    if(!r.poNum&&byMPNAll[k]&&byMPNAll[k].poNum){
+      r.poNum=byMPNAll[k].poNum;
+      if(fieldOvr[r.nk+'__po']===undefined){fieldOvr[r.nk+'__po']=r.poNum;fieldChanged=true;}
+    }
     if(statusOvr[r.nk]===undefined){
       const p=byMPNAll[k];
       if(p){
@@ -1705,8 +1714,8 @@ function linkPOtoSO(){
   if(statusChanged){
     localStorage.setItem('oo_status',JSON.stringify(statusOvr));
     applyOverridesToRows(allRows);
-    syncOverrides();
   }
+  if(statusChanged||fieldChanged){syncOverrides();}
   soGroups=buildGroups(allRows);
 }
 function s(v){return(v==null?'':String(v)).trim();}
