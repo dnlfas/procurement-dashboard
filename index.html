@@ -1148,6 +1148,7 @@ function togSODetail(id){
   });
   det.style.display=isOpen?'none':'block';
   if(chev)chev.classList.toggle('open',!isOpen);
+  if(!isOpen)expandNotes(det);
 }
 function sspShowAll(){sspAllOpen=true;renderSSP();}
 
@@ -1967,12 +1968,15 @@ function setSOStatus(soNum,status){
 }
 function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;togSO(id);}
 function togSO(id){
-  document.getElementById('det_'+id).classList.toggle('open');
+  const det=document.getElementById('det_'+id);
+  det.classList.toggle('open');
   document.getElementById('chev_'+id).classList.toggle('open');
+  if(det.classList.contains('open'))expandNotes(det);
 }
 function expandAll(v){
   document.querySelectorAll('.sodet').forEach(d=>d.classList[v?'add':'remove']('open'));
   document.querySelectorAll('.sochev').forEach(c=>c.classList[v?'add':'remove']('open'));
+  if(v)expandNotes();
   const b=document.getElementById('bex');
   if(v){b.textContent='סגור הכל ▲';b.onclick=()=>expandAll(false);}
   else{b.textContent='פתח הכל ▾';b.onclick=()=>expandAll(true);}
@@ -2278,6 +2282,13 @@ function exportNotes(){
   toast('✓ הערות יוצאו');
 }
 function autoH(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+// grow every note textarea inside a container to fit its full content (only
+// works once the container is visible, so call it right after opening a detail)
+function expandNotes(root){
+  (root||document).querySelectorAll('.note-ta,.sonote-ta').forEach(function(t){
+    if(t.value){t.style.height='auto';t.style.height=t.scrollHeight+'px';}
+  });
+}
 
 // ── NAV ──
 function setMainView(v){
