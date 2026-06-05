@@ -10,6 +10,7 @@ Each update object has these fields (strings unless noted, leave "" if unknown):
   poNum      – BTS purchase order number to the supplier. Only set this if the document explicitly shows a field labelled "PO", "Purchase Order", "הזמנת רכש" or similar AND the value looks like a PO reference (e.g. "PO26000203"). NEVER use the supplier's own invoice number, order number, web-order ID, or any number from the supplier's side — leave "" in those cases.
   supplier   – supplier company name
   tracking   – shipment tracking number
+  supplierRef – the supplier's own reference for this order: their invoice number, sales-order number, or web-order ID (e.g. Digi-Key order "6113238"). This is informational only and goes into the note. Leave "" if none.
   qty        – number of units shipped/invoiced for THIS line item (digits only, e.g. "101"), or ""
   status     – one of: ordered|in_transit|customs_sub|customs_rel|delivery_bts|qc|supplied|partial|waiting_cust|cancelled  (or "")
   notes      – ONE short phrase (max ~80 chars). Only exceptional info: invoice number, back-order, ETA, or a discrepancy. Do NOT restate mpn/qty/supplier/tracking — those have their own fields.

@@ -2862,6 +2862,7 @@ function openImportPreview(updates,sourceType){
         if(field==='notes'){
           const parts=[];
           if(c.allocNote)parts.push(c.allocNote);
+          if(upd.supplierRef)parts.push('הזמנת ספק #'+upd.supplierRef);
           if(upd.notes)parts.push(upd.notes);
           newVal=parts.join(' · ');
         }
