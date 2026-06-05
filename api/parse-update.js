@@ -3,21 +3,23 @@ const { isAuthed } = require('./_auth');
 
 const SYSTEM = `You extract procurement updates from any document (shipping notice, customer PO, invoice, email, Excel table).
 Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|invoice|other", "updates": [...] }
-Each update object has these fields (all strings, leave "" if unknown):
+Each update object has these fields (strings unless noted, leave "" if unknown):
   mpn        – part number / MPN / catalog code (exact as written)
   so         – BTS sales order number if mentioned (e.g. "SO26000122")
   custPO     – customer purchase order number sent to BTS (e.g. "P026S0008369")
   poNum      – BTS purchase order number sent to supplier (e.g. "PO26000203")
   supplier   – supplier company name
   tracking   – shipment tracking number
+  qty        – number of units shipped/invoiced for THIS line item (digits only, e.g. "101"), or ""
   status     – one of: ordered|in_transit|customs_sub|customs_rel|delivery_bts|qc|supplied|partial|waiting_cust|cancelled  (or "")
-  notes      – free-text note (ETA, partial delivery info, etc.)
+  notes      – ONE short phrase (max ~80 chars). Only exceptional info: invoice number, back-order, ETA, or a discrepancy. Do NOT restate mpn/qty/supplier/tracking — those have their own fields.
   deliveryDate – ISO date "YYYY-MM-DD" if found, else ""
 
 Rules:
 - Set status to "delivery_bts" when a tracking number is present and no clearer status is given.
 - One update object per unique line item / MPN. If the document has no line items but has header-level data (e.g. one tracking number for a whole PO), create one update object.
 - For Excel input the content is a JSON array of row objects; map column names to the above fields by meaning.
+- Keep notes terse. A full invoice line description is NOT a note — extract only the exceptional part.
 - Output only the JSON object. No explanation, no markdown, no code fences.`;
 
 module.exports = async function handler(req, res) {

@@ -2831,12 +2831,47 @@ function openImportPreview(updates,sourceType){
   const fieldOrder=['tracking','status','supplier','poNum','custPO','notes'];
   updates.forEach(upd=>{
     const matched=matchUpdateToRows(upd);
-    const candidates=matched.length?matched:[null];
-    candidates.forEach(row=>{
+    // FIFO waterfall: when one MPN spans several SO lines and the doc has a
+    // shipped quantity, fill the OLDEST order first, balance flows to the next.
+    const qty=parseFloat(upd.qty)||0;
+    let candidates; // [{row, allocNote, partial}]
+    if(matched.length>=1&&qty>0){
+      const sorted=[...matched].sort((a,b)=>{
+        const da=a.dd?a.dd.getTime():Infinity, db=b.dd?b.dd.getTime():Infinity;
+        if(da!==db)return da-db;
+        return (a.so||'').localeCompare(b.so||'');
+      });
+      let remaining=qty;
+      candidates=[];
+      sorted.forEach(row=>{
+        if(remaining<=0)return; // shipment exhausted — leave remaining orders untouched
+        const need=row.qtyR>0?row.qtyR:remaining;
+        const alloc=Math.min(remaining,need);
+        remaining-=alloc;
+        const partial=row.qtyR>0&&alloc<row.qtyR;
+        const allocNote='נשלח '+alloc+(row.qtyR>0?'/'+row.qtyR:'')+' יח׳'+(partial?' (חלקי)':' (הושלם)');
+        candidates.push({row,allocNote,partial});
+      });
+    } else {
+      candidates=(matched.length?matched:[null]).map(row=>({row,allocNote:'',partial:false}));
+    }
+    candidates.forEach(c=>{
+      const row=c.row;
       fieldOrder.forEach(field=>{
         let newVal=upd[field]||'';
+        if(field==='notes'){
+          const parts=[];
+          if(c.allocNote)parts.push(c.allocNote);
+          if(upd.notes)parts.push(upd.notes);
+          newVal=parts.join(' · ');
+        }
+        if(field==='status'){
+          // a partially-filled line is partially supplied, not fully
+          if(c.partial&&(newVal==='supplied'))newVal='partial';
+          if(!newVal)return;
+          if(!STATUS_HE[newVal])return;
+        }
         if(!newVal)return;
-        if(field==='status'){if(!STATUS_HE[newVal])return;}
         const oldVal=_currentVal(row,field);
         if(newVal===oldVal&&field!=='notes')return; // skip no-ops
         _importChanges.push({upd,row,field,oldVal,newVal,checked:true});
@@ -2866,8 +2901,10 @@ function _renderPreviewTable(){
     }
     const rowLabel=c.row?c.row.so:'—';
     const mpnLabel=c.row?c.row.mpn:(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—');
-    const newDisp=c.field==='status'?(STATUS_HE[c.newVal]||c.newVal):c.newVal;
-    const oldDisp=c.field==='status'?(STATUS_HE[c.oldVal]||c.oldVal||'—'):c.oldVal||'—';
+    const trunc=v=>v.length>70?v.slice(0,68)+'…':v;
+    const newRaw=c.field==='status'?(STATUS_HE[c.newVal]||c.newVal):c.newVal;
+    const newDisp=trunc(newRaw);
+    const oldDisp=c.field==='status'?(STATUS_HE[c.oldVal]||c.oldVal||'—'):trunc(c.oldVal||'—');
     const unmatch=!c.row?`<span class="import-unmatched">לא נמצאה הזמנה</span>`:'';
     return`<tr>
       <td><input type="checkbox" data-idx="${i}" ${c.checked?'checked':''} onchange="importChkChange(${i},this.checked)"></td>
@@ -2875,7 +2912,7 @@ function _renderPreviewTable(){
       <td style="font-size:11px;color:var(--txt2)">${esc(rowLabel)}${unmatch}</td>
       <td>${esc(FIELD_LABELS[c.field]||c.field)}</td>
       <td><span class="import-old">${esc(oldDisp)}</span></td>
-      <td class="import-new">${esc(newDisp)}</td>
+      <td class="import-new" title="${esc(newRaw)}">${esc(newDisp)}</td>
     </tr>`;
   }).join('');
 }
