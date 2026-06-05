@@ -2087,7 +2087,7 @@ function _trackingUrl(t){
   t=t.trim();
   // FedEx: 12-digit starting 8/7/6, or 15/20-digit, or starts with 96/97
   if(/^(96|97)\d{18}$/.test(t)||/^[0-9]{12}$/.test(t)||/^[0-9]{15}$/.test(t)||/^[0-9]{20}$/.test(t))
-    return'https://www.fedex.com/fedex/track/?action=track&tracknumbers='+t;
+    return'https://www.fedex.com/fedextrack/?trknbr='+t;
   // UPS: starts with 1Z
   if(/^1Z[A-Z0-9]{16}$/i.test(t))
     return'https://www.ups.com/track?tracknum='+t;
