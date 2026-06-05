@@ -4,13 +4,13 @@ const { isAuthed } = require('./_auth');
 const SYSTEM = `You extract procurement updates from any document (shipping notice, customer PO, invoice, email, Excel table).
 Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|invoice|other", "updates": [...] }
 Each update object has these fields (strings unless noted, leave "" if unknown):
-  mpn        – part number / MPN / catalog code (exact as written)
+  mpn        – the CUSTOMER's part number / MPN as it appears in the buyer's system (often labelled "customer PN", "buyer PN", "your PN", "מק"ט לקוח", or similar). This is the MPN used in BTS sales orders. If the document shows both a supplier part number AND a customer part number, always use the customer part number here. If only a supplier PN exists, use that.
   so         – BTS sales order number if mentioned (e.g. "SO26000122")
   custPO     – the END CUSTOMER's purchase order number sent TO BTS (e.g. "P026S0008369"). Only set this when the document is a purchase order FROM a customer to BTS (sourceType "customer_po"). On a supplier invoice, supplier shipping notice, or anything coming FROM a supplier, there is no customer PO — leave "". NEVER put a supplier's order number, invoice number, or web-order ID here.
   poNum      – BTS purchase order number to the supplier. Only set this if the document explicitly shows a field labelled "PO", "Purchase Order", "הזמנת רכש" or similar AND the value looks like a PO reference (e.g. "PO26000203"). NEVER use the supplier's own invoice number, order number, web-order ID, or any number from the supplier's side — leave "" in those cases.
   supplier   – supplier company name
   tracking   – shipment tracking number
-  supplierRef – the supplier's own reference for this order: their invoice number, sales-order number, or web-order ID (e.g. Digi-Key order "6113238"). This is informational only and goes into the note. Leave "" if none.
+  supplierRef – the supplier's own reference for this order OR their internal catalog/part number when it differs from the customer PN (e.g. supplier part "C870CF34800AA0J", Digi-Key order "6113238"). Informational only — goes into the note. Leave "" if none.
   qty        – number of units shipped/invoiced for THIS line item (digits only, e.g. "101"), or ""
   status     – one of: ordered|in_transit|customs_sub|customs_rel|delivery_bts|qc|supplied|partial|waiting_cust|cancelled  (or "")
   notes      – ONE short phrase (max ~80 chars). Only exceptional info: invoice number, back-order, ETA, or a discrepancy. Do NOT restate mpn/qty/supplier/tracking — those have their own fields.
