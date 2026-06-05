@@ -2882,9 +2882,28 @@ function matchUpdateToRows(upd){
   if(mpnBase){const rs=allRows.filter(x=>rowBase(x)===mpnBase||rowMpn(x)===mpnBase||rowBase(x)===mpnUp);if(rs.length)return rs;}
   // 4. Prefix match (one starts with the other, min 5 chars)
   if(mpnUp.length>=5){const rs=allRows.filter(x=>{const rm=rowMpn(x);return rm.length>=5&&(rm.startsWith(mpnUp)||mpnUp.startsWith(rm));});if(rs.length)return rs;}
-  // 5. supplier PO
+  // 5. Bounded containment — handles a manufacturer prefix/suffix in the SO
+  //    that the document omits, e.g. SO "HACH 410K/P1C00000" vs doc "410K/P1C00000".
+  //    The shorter MPN must sit at a whitespace/hyphen boundary inside the longer one.
+  if(mpnUp.length>=6){
+    const rs=allRows.filter(x=>{
+      const rm=rowMpn(x);
+      if(rm.length<6)return false;
+      const long=rm.length>=mpnUp.length?rm:mpnUp;
+      const short=rm.length>=mpnUp.length?mpnUp:rm;
+      const idx=long.indexOf(short);
+      if(idx<0)return false;
+      const before=idx===0?'':long[idx-1];
+      const after=idx+short.length>=long.length?'':long[idx+short.length];
+      const bOk=before===''||/[\s\-]/.test(before);
+      const aOk=after===''||/[\s\-]/.test(after);
+      return bOk&&aOk;
+    });
+    if(rs.length)return rs;
+  }
+  // 6. supplier PO
   if(upd.poNum){const rs=allRows.filter(x=>(x.poNum||fieldOvr[x.nk+'__po']||'')===(upd.poNum||''));if(rs.length)return rs;}
-  // 6. customer PO
+  // 7. customer PO
   if(upd.custPO){const rs=allRows.filter(x=>(x.custPO||fieldOvr[x.nk+'__custPO']||'')===(upd.custPO||''));if(rs.length)return rs;}
   return[];
 }
