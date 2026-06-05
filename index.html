@@ -1012,7 +1012,8 @@ function buildPOTable(rows,soMPNs,crossSO){
 
 
 // ── SO STATUS PANEL ──
-let sspOpen=true, sspAllOpen=false;
+const isTV=window.screen.width>=1920&&window.devicePixelRatio<=1;
+let sspOpen=!isTV, sspAllOpen=false;
 function toggleFullscreen(){
   if(!document.fullscreenElement){document.documentElement.requestFullscreen();document.getElementById('fsbtn').textContent='✕';}
   else{document.exitFullscreen();document.getElementById('fsbtn').textContent='⛶';}
