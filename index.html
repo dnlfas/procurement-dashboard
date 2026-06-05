@@ -720,6 +720,7 @@ async function loadOverridesFromBlob(){
     if(d.fieldOvr){Object.assign(fieldOvr,d.fieldOvr);localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}
     if(d.statusOvr){Object.assign(statusOvr,d.statusOvr);localStorage.setItem('oo_status',JSON.stringify(statusOvr));}
     if(d.notes){Object.assign(notes,d.notes);localStorage.setItem(NK,JSON.stringify(notes));}
+    cleanupNotes();
     if(allRows.length){applyOverridesToRows(allRows);soGroups=buildGroups(allRows);applyFilters();renderBoss();}
   }catch(e){}
 }
@@ -2261,6 +2262,27 @@ function saveStatus(sel){
     else row.cov='orange';
   }
   toast('✓ סטטוס עודכן');
+}
+
+function cleanupNotes(){
+  // Deduplicate note lines across all stored notes.
+  // Two lines are considered duplicates when they share the same shipment token
+  // (a tracking number, AWB reference, or supplier ref like #FPM8M00BCP7003).
+  // When duplicates exist, the LAST occurrence wins (most-recently imported wins).
+  // Lines with no recognized token are deduplicated by exact match.
+  const TOKEN_RE=/(?:(?:AWB|#)\s*)([A-Z0-9]{5,})|(\b\d{10,}\b)/i;
+  const tokenOf=l=>{const m=l.match(TOKEN_RE);return m?(m[1]||m[2]).toUpperCase():null;};
+  let changed=0;
+  Object.keys(notes).forEach(nk=>{
+    const lines=(notes[nk]||'').split('\n').filter(Boolean);
+    if(lines.length<=1)return;
+    const tokenLast={},exactLast={};
+    lines.forEach((l,i)=>{const t=tokenOf(l);if(t)tokenLast[t]=i;else exactLast[l]=i;});
+    const cleaned=lines.filter((l,i)=>{const t=tokenOf(l);return t?tokenLast[t]===i:exactLast[l]===i;});
+    if(cleaned.length!==lines.length){notes[nk]=cleaned.join('\n');changed++;}
+  });
+  if(changed){try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}syncOverrides();}
+  return changed;
 }
 
 function saveNote(el){
