@@ -1947,7 +1947,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}</div></div>
+        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -2066,7 +2066,7 @@ function buildLR(r){
   const nv=esc(notes[r.nk]||'');
   return`<tr class="${(r.isOvr&&r.cov!=='green')?'lno':''}">
     <td style="text-align:center"><span class="lntl tl-${r.cov==='green'?'g':r.cov==='orange'?'o':r.cov==='red'?'r':'x'}"></span></td>
-    <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div>${r.isPull?'<span class="pull-badge" style="margin-top:3px;display:inline-block">תיק משיכה</span>':''}</td>
+    <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
     <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
