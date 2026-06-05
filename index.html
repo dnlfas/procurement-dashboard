@@ -2009,7 +2009,7 @@ function buildLR(r){
   const trackVal=trackOvr||'';
   const trackUrl=_trackingUrl(trackVal);
   const th=`<div style="display:flex;align-items:center;gap:4px">
-    <input class="edit-inp${trackOvr?'has-ovr':''}" type="text"
+    <input class="edit-inp${trackOvr?' has-ovr':''}" type="text"
       data-field="tracking" data-key="${esc(r.nk)}"
       value="${esc(trackVal)}" placeholder="מעקב..."
       onchange="saveField(this)" title="מספר מעקב — יעביר סטטוס לבשליחות ל-BTS">
