@@ -2001,10 +2001,15 @@ function buildLR(r){
     value="${esc(poVal)}" placeholder="PO..."
     onchange="saveField(this)" title="לחץ לעריכת מספר הזמנת רכש">`;
   const trackOvr=fieldOvr[r.nk+'__tracking'];
-  const th=`<input class="edit-inp${trackOvr?'has-ovr':''}" type="text"
-    data-field="tracking" data-key="${esc(r.nk)}"
-    value="${esc(trackOvr||'')}" placeholder="מעקב..."
-    onchange="saveField(this)" title="מספר מעקב — יעביר סטטוס לבשליחות ל-BTS">`;
+  const trackVal=trackOvr||'';
+  const trackUrl=_trackingUrl(trackVal);
+  const th=`<div style="display:flex;align-items:center;gap:4px">
+    <input class="edit-inp${trackOvr?'has-ovr':''}" type="text"
+      data-field="tracking" data-key="${esc(r.nk)}"
+      value="${esc(trackVal)}" placeholder="מעקב..."
+      onchange="saveField(this)" title="מספר מעקב — יעביר סטטוס לבשליחות ל-BTS">
+    ${trackUrl?`<a href="${trackUrl}" target="_blank" rel="noopener" title="עקוב אחר המשלוח" style="color:var(--acc);font-size:14px;text-decoration:none;flex-shrink:0;line-height:1">🔗</a>`:''}
+  </div>`;
   // Determine effective status: manual override > PO cross-data > SO status
   let poAutoStatus=null;
   if(poLoaded){
@@ -2074,6 +2079,28 @@ function dlSOICS(g){
   a.download=`reminder_${g.so.replace(/[^a-zA-Z0-9]/g,'_')}.ics`;
   a.click();URL.revokeObjectURL(a.href);
   toast('📅 '+Object.keys(byR).length+' תזכורת/ות הורדו עבור '+g.so);
+}
+
+// ── TRACKING URL ──
+function _trackingUrl(t){
+  if(!t)return'';
+  t=t.trim();
+  // FedEx: 12-digit starting 8/7/6, or 15/20-digit, or starts with 96/97
+  if(/^(96|97)\d{18}$/.test(t)||/^[0-9]{12}$/.test(t)||/^[0-9]{15}$/.test(t)||/^[0-9]{20}$/.test(t))
+    return'https://www.fedex.com/fedex/track/?action=track&tracknumbers='+t;
+  // UPS: starts with 1Z
+  if(/^1Z[A-Z0-9]{16}$/i.test(t))
+    return'https://www.ups.com/track?tracknum='+t;
+  // DHL Express: 10 digits or starts with JD/GM
+  if(/^[0-9]{10}$/.test(t)||/^(JD|GM)[0-9]{18}$/i.test(t))
+    return'https://www.dhl.com/en/express/tracking.html?AWB='+t+'&brand=DHL';
+  // Israel Post: 13-char starting with letters (e.g. LY123456789IL)
+  if(/^[A-Z]{2}[0-9]{9}[A-Z]{2}$/i.test(t))
+    return'https://ipost.post.co.il/track?barcode='+t;
+  // Generic fallback for any long numeric/alphanumeric — use 17track
+  if(t.length>=10)
+    return'https://t.17track.net/en#nums='+t;
+  return'';
 }
 
 // ── NOTES ──
