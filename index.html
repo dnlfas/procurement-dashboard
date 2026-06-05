@@ -422,6 +422,19 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .panel{min-height:200px}
   #boss-view{position:static;height:auto;overflow:visible;padding-bottom:20px}
 }
+/* ── Import/Merge data ── */
+.import-tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.import-tbl th{color:var(--txt2);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:right;white-space:nowrap}
+.import-tbl td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.import-tbl tr:last-child td{border-bottom:none}
+.import-tbl tr:hover td{background:var(--sur2)}
+.import-old{color:var(--txt2);text-decoration:line-through;font-size:11px;display:block}
+.import-new{color:var(--acc);font-weight:600}
+.import-unmatched{color:var(--ora);font-size:10px;font-family:var(--mono)}
+.import-tab{background:transparent;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--txt2);font-family:var(--sans)}
+.import-tab.on{border-bottom-color:var(--acc);color:var(--txtb)}
+.import-dropzone{border:2px dashed var(--bdr);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--txt2);font-size:13px;transition:border-color .15s}
+.import-dropzone:hover{border-color:var(--acc);color:var(--txtb)}
 </style>
 </head>
 <body>
@@ -467,6 +480,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
+    <button class="btn btn-ghost" onclick="openImportModal()" title="ייבוא נתונים מאימייל / קובץ">📥 ייבוא</button><span id="import-pending-badge" style="display:none;background:var(--ora);color:#000;border-radius:8px;font-size:10px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-right:2px"></span>
     <button class="btn btn-ghost" onclick="showQR()" title="QR קוד לפתיחה במכשיר אחר">📱 QR</button>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
     <button class="btn btn-ghost" onclick="doLogout()" title="יציאה" style="color:var(--txt2)">⎋</button>
@@ -476,6 +490,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 <input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
 <input type="file" id="fi-so-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'so')" style="display:none">
 <input type="file" id="fi-po-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'po')" style="display:none">
+<input type="file" id="fi-import" accept=".xlsx,.xls,.pdf,image/*" onchange="handleImportFile(event)" style="display:none">
 
 <!-- UPLOAD -->
 <div id="upl">
@@ -714,6 +729,7 @@ function applyOverridesToRows(rows){
     const suppOvr=fieldOvr[row.nk+'__supp'];
     const poOvr=fieldOvr[row.nk+'__po'];
     const trackOvr=fieldOvr[row.nk+'__tracking'];
+    const custPOOvr=fieldOvr[row.nk+'__custPO'];
     const stOvr=statusOvr[row.nk];
     if(suppOvr!==undefined)row.supplier=suppOvr;
     if(poOvr!==undefined){
@@ -722,6 +738,7 @@ function applyOverridesToRows(rows){
       else if(!poOvr)row.cov=row.qtyR===0?'grey':row.isOvr?'red':'orange';
     }
     if(trackOvr)row.tracking=trackOvr;
+    if(custPOOvr!==undefined)row.custPO=custPOOvr;
     if(stOvr!==undefined){
       row.status=stOvr;
       if(['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'].includes(stOvr))row.cov='green';
@@ -756,6 +773,7 @@ function startParse(file){
         allRows=parseRows(raw);
         applyOverridesToRows(allRows);
         soGroups=buildGroups(allRows);
+        applyPendingCustPOs();
         onLoaded(file.name);
       }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
     };
@@ -1242,6 +1260,7 @@ async function fetchNow() {
       allRows = parseRows(raw);
       applyOverridesToRows(allRows);
       soGroups = buildGroups(allRows);
+      applyPendingCustPOs();
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upl').style.display = 'none';
       document.getElementById('app').style.display = 'block';
@@ -1314,6 +1333,7 @@ async function initApp(){
     odSettings = { soUrl: '/data/so.xlsx', poUrl: '/data/po.xlsx' };
   }
   loadOverridesFromBlob();
+  updateImportBadge();
   fetchNow();
 }
 
@@ -1454,6 +1474,7 @@ async function handleTopbarUpload(e, type) {
           applyOverridesToRows(allRows);
           soGroups = buildGroups(allRows);
           if (poLoaded) linkPOtoSO();
+          applyPendingCustPOs();
           document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
           document.getElementById('upl').style.display = 'none';
           document.getElementById('app').style.display = 'block';
@@ -1564,6 +1585,7 @@ function launchDashboard(){
   allRows=parseRows(wizSOFile.raw);
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
+  applyPendingCustPOs();
   document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
   // Process PO if loaded
   if(wizPOFile){
@@ -2372,6 +2394,11 @@ function closeQR(){document.getElementById('qr-modal').style.display='none';}
 </div>
 
 <script>
+// ── IMPORT STATE ──
+let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text';
+let pendingCustPOs={};
+try{pendingCustPOs=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');}catch(e){}
+
 // ── RFQ DATA ──
 const RFQ_KEY='oo_rfq';
 let rfqData=[];
@@ -2676,6 +2703,307 @@ function submitRFQModal(){
   addRFQ(rec);
   toast('✓ בקשת הצעת מחיר נשמרה');
 }
+
+// ── IMPORT / MERGE ──
+function openImportModal(){
+  _importFile=null; _importExcelRows=null;
+  document.getElementById('import-ta').value='';
+  document.getElementById('import-file-label').textContent='לחץ לבחירת קובץ (Excel, PDF, תמונה)';
+  document.getElementById('fi-import').value='';
+  document.getElementById('import-err').style.display='none';
+  importSelectTab('text');
+  document.getElementById('import-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('import-ta').focus(),80);
+}
+function closeImportModal(){document.getElementById('import-modal').style.display='none';}
+
+function importSelectTab(t){
+  _importTab=t;
+  document.getElementById('import-section-text').style.display=t==='text'?'block':'none';
+  document.getElementById('import-section-file').style.display=t==='file'?'block':'none';
+  document.getElementById('import-tab-text').classList.toggle('on',t==='text');
+  document.getElementById('import-tab-file').classList.toggle('on',t==='file');
+}
+
+function handleImportFile(e){
+  const file=e.target.files[0]; if(!file)return;
+  _importFile=file; _importExcelRows=null;
+  document.getElementById('import-file-label').textContent='📎 '+file.name;
+  const isXlsx=/\.(xlsx|xls)$/i.test(file.name);
+  if(isXlsx){
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      withXLSX(()=>{
+        try{
+          const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
+          _importExcelRows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+          document.getElementById('import-file-label').textContent='📊 '+file.name+' — '+_importExcelRows.length+' שורות';
+        }catch(err){document.getElementById('import-file-label').textContent='⚠ שגיאה: '+err.message;}
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function toBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function submitImportParse(){
+  const btn=document.getElementById('import-submit');
+  btn.disabled=true; btn.textContent='מנתח...';
+  document.getElementById('import-err').style.display='none';
+  try{
+    let body;
+    if(_importTab==='text'){
+      const txt=document.getElementById('import-ta').value.trim();
+      if(!txt){document.getElementById('import-err').textContent='אנא הדבק טקסט';document.getElementById('import-err').style.display='block';return;}
+      body={type:'text',content:txt};
+    } else {
+      if(!_importFile){document.getElementById('import-err').textContent='אנא בחר קובץ';document.getElementById('import-err').style.display='block';return;}
+      const isXlsx=/\.(xlsx|xls)$/i.test(_importFile.name);
+      if(isXlsx&&_importExcelRows){
+        body={type:'excel',content:JSON.stringify(_importExcelRows)};
+      } else {
+        const isPdf=_importFile.type==='application/pdf'||/\.pdf$/i.test(_importFile.name);
+        const b64=await toBase64(_importFile);
+        body={type:isPdf?'pdf':'image',content:b64,mimeType:_importFile.type||'image/jpeg'};
+      }
+    }
+    const res=await fetch('/api/parse-update',{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
+    const json=await res.json();
+    if(!res.ok||!json.ok) throw new Error(json.error||'שגיאה לא ידועה');
+    closeImportModal();
+    openImportPreview(json.updates||[],json.sourceType||'other');
+  }catch(e){
+    document.getElementById('import-err').textContent='שגיאה: '+e.message;
+    document.getElementById('import-err').style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='✨ נתח עם AI';
+  }
+}
+
+function matchUpdateToRows(upd){
+  const mpnUp=(upd.mpn||'').trim().toUpperCase();
+  const so=(upd.so||'').trim();
+  // 1. SO + MPN
+  if(so&&mpnUp){const r=allRows.find(x=>x.so===so&&x.mpn.trim().toUpperCase()===mpnUp);if(r)return[r];}
+  // 2. MPN only
+  if(mpnUp){const rs=allRows.filter(x=>x.mpn.trim().toUpperCase()===mpnUp);if(rs.length)return rs;}
+  // 3. supplier PO
+  if(upd.poNum){const rs=allRows.filter(x=>(x.poNum||fieldOvr[x.nk+'__po']||'')===(upd.poNum||''));if(rs.length)return rs;}
+  // 4. customer PO
+  if(upd.custPO){const rs=allRows.filter(x=>(x.custPO||fieldOvr[x.nk+'__custPO']||'')===(upd.custPO||''));if(rs.length)return rs;}
+  return[];
+}
+
+const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה'};
+const STATUS_HE={'ordered':'הוזמן מהספק','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
+
+function _currentVal(row,field){
+  if(!row)return'';
+  if(field==='tracking')return fieldOvr[row.nk+'__tracking']||row.tracking||'';
+  if(field==='supplier')return fieldOvr[row.nk+'__supp']||row.supplier||'';
+  if(field==='poNum')return fieldOvr[row.nk+'__po']||row.poNum||'';
+  if(field==='custPO')return fieldOvr[row.nk+'__custPO']||row.custPO||'';
+  if(field==='status')return statusOvr[row.nk]||row.status||'none';
+  if(field==='notes')return notes[row.nk]||'';
+  return'';
+}
+
+function openImportPreview(updates,sourceType){
+  if(!updates.length){toast('ה-AI לא מצא נתונים לעדכון');return;}
+  _importChanges=[];
+  const fieldOrder=['tracking','status','supplier','poNum','custPO','notes'];
+  updates.forEach(upd=>{
+    const matched=matchUpdateToRows(upd);
+    const candidates=matched.length?matched:[null];
+    candidates.forEach(row=>{
+      fieldOrder.forEach(field=>{
+        let newVal=upd[field]||'';
+        if(!newVal)return;
+        if(field==='status'){if(!STATUS_HE[newVal])return;}
+        const oldVal=_currentVal(row,field);
+        if(newVal===oldVal&&field!=='notes')return; // skip no-ops
+        _importChanges.push({upd,row,field,oldVal,newVal,checked:true});
+      });
+    });
+    // if no field changes found but update exists, still add a row to show it was parsed
+    if(!_importChanges.find(c=>c.upd===upd)){
+      _importChanges.push({upd,row:matched[0]||null,field:'',oldVal:'',newVal:'',checked:false,empty:true});
+    }
+  });
+
+  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','other':'מסמך'}[sourceType]||'מסמך';
+  document.getElementById('import-preview-title').textContent='📋 שינויים מוצעים מ'+srcLabel;
+  const realChanges=_importChanges.filter(c=>!c.empty);
+  document.getElementById('import-preview-sub').textContent=realChanges.length+' שינויים ב-'+updates.length+' פריטים';
+  _renderPreviewTable();
+  _updateApplyCount();
+  document.getElementById('import-preview-modal').style.display='flex';
+}
+function closeImportPreview(){document.getElementById('import-preview-modal').style.display='none';}
+
+function _renderPreviewTable(){
+  const tbody=document.getElementById('import-preview-body');
+  tbody.innerHTML=_importChanges.map((c,i)=>{
+    if(c.empty){
+      return`<tr><td></td><td class="import-new">${esc(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—')}</td><td colspan="4" style="color:var(--txt2);font-size:11px">אין שינויים לעדכון</td></tr>`;
+    }
+    const rowLabel=c.row?c.row.so:'—';
+    const mpnLabel=c.row?c.row.mpn:(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—');
+    const newDisp=c.field==='status'?(STATUS_HE[c.newVal]||c.newVal):c.newVal;
+    const oldDisp=c.field==='status'?(STATUS_HE[c.oldVal]||c.oldVal||'—'):c.oldVal||'—';
+    const unmatch=!c.row?`<span class="import-unmatched">לא נמצאה הזמנה</span>`:'';
+    return`<tr>
+      <td><input type="checkbox" data-idx="${i}" ${c.checked?'checked':''} onchange="importChkChange(${i},this.checked)"></td>
+      <td class="import-new">${esc(mpnLabel)}</td>
+      <td style="font-size:11px;color:var(--txt2)">${esc(rowLabel)}${unmatch}</td>
+      <td>${esc(FIELD_LABELS[c.field]||c.field)}</td>
+      <td><span class="import-old">${esc(oldDisp)}</span></td>
+      <td class="import-new">${esc(newDisp)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function importChkChange(idx,val){_importChanges[idx].checked=val;_updateApplyCount();}
+function importToggleAll(val){_importChanges.forEach(c=>c.checked=val);_renderPreviewTable();_updateApplyCount();}
+function _updateApplyCount(){
+  const n=_importChanges.filter(c=>c.checked&&!c.empty&&c.row).length;
+  const nu=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row).length;
+  document.getElementById('import-apply-count').textContent=n+' שינויים לביצוע'+(nu?' + '+nu+' ממתינים':'');
+}
+
+function applyImportChanges(){
+  const toApply=_importChanges.filter(c=>c.checked&&!c.empty);
+  let count=0;
+  toApply.forEach(c=>{
+    const {row,field,newVal}=c;
+    if(row){
+      const nk=row.nk;
+      if(field==='tracking'){
+        fieldOvr[nk+'__tracking']=newVal;
+        if(!statusOvr[nk]||statusOvr[nk]==='ordered'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
+        row.tracking=newVal; row.cov='green';
+      } else if(field==='supplier'){
+        fieldOvr[nk+'__supp']=newVal; row.supplier=newVal;
+      } else if(field==='poNum'){
+        fieldOvr[nk+'__po']=newVal; row.poNum=newVal; if(row.cov!=='green')row.cov='green';
+      } else if(field==='custPO'){
+        fieldOvr[nk+'__custPO']=newVal; row.custPO=newVal;
+      } else if(field==='status'){
+        statusOvr[nk]=newVal; row.status=newVal;
+        const greenSt=['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'];
+        if(greenSt.includes(newVal))row.cov='green';
+        else if(newVal==='none'||newVal==='cancelled'||newVal==='cancelled_bts')row.cov=row.isOvr?'red':'grey';
+        else row.cov='orange';
+      } else if(field==='notes'){
+        const existing=notes[nk];
+        notes[nk]=existing?existing+'\n'+newVal:newVal;
+      }
+      count++;
+    } else if(c.upd.custPO){
+      // store as pending — will auto-apply when matching SO line appears
+      pendingCustPOs[c.upd.custPO]=c.upd;
+      count++;
+    }
+  });
+  try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+  try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
+  try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
+  try{localStorage.setItem('oo_pending_cpo',JSON.stringify(pendingCustPOs));}catch(e){}
+  applyOverridesToRows(allRows);
+  soGroups=buildGroups(allRows);
+  applyFilters();
+  renderBoss();
+  syncOverrides();
+  updateImportBadge();
+  closeImportPreview();
+  toast('✓ '+count+' שינויים הוחלו');
+}
+
+function applyPendingCustPOs(){
+  const pending=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');
+  if(!Object.keys(pending).length)return;
+  let changed=false;
+  allRows.forEach(r=>{
+    const p=pending[r.custPO];
+    if(!p)return;
+    if(p.supplier&&fieldOvr[r.nk+'__supp']===undefined){fieldOvr[r.nk+'__supp']=p.supplier;r.supplier=p.supplier;changed=true;}
+    if(p.poNum&&fieldOvr[r.nk+'__po']===undefined){fieldOvr[r.nk+'__po']=p.poNum;r.poNum=p.poNum;changed=true;}
+    if(p.tracking&&fieldOvr[r.nk+'__tracking']===undefined){fieldOvr[r.nk+'__tracking']=p.tracking;r.tracking=p.tracking;if(!statusOvr[r.nk])statusOvr[r.nk]='delivery_bts';changed=true;}
+    if(p.notes&&!notes[r.nk]){notes[r.nk]=p.notes;changed=true;}
+    delete pending[r.custPO];
+    delete pendingCustPOs[r.custPO];
+  });
+  if(changed){
+    try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+    try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
+    try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
+    localStorage.setItem('oo_pending_cpo',JSON.stringify(pending));
+    syncOverrides();
+  }
+  updateImportBadge();
+}
+
+function updateImportBadge(){
+  const n=Object.keys(pendingCustPOs).length;
+  const el=document.getElementById('import-pending-badge');
+  if(!el)return;
+  if(n>0){el.textContent=n;el.style.display='inline';}else{el.style.display='none';}
+}
 </script>
+
+<!-- IMPORT INPUT MODAL -->
+<div id="import-modal" onclick="if(event.target===this)closeImportModal()" style="display:none;position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(560px,95vw);display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📥 ייבוא נתונים</div>
+    <div style="font-size:13px;color:var(--txt2)">ייבא עדכונים מאימייל, הודעת משלוח, חשבונית, PO לקוח או קובץ — ה-AI יחלץ את השינויים לאישור.</div>
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr)">
+      <button class="import-tab on" id="import-tab-text" onclick="importSelectTab('text')">📝 הדבק טקסט</button>
+      <button class="import-tab" id="import-tab-file" onclick="importSelectTab('file')">📎 העלה קובץ</button>
+    </div>
+    <div id="import-section-text">
+      <textarea id="import-ta" rows="10" placeholder="הדבק כאן את תוכן המייל, הודעת המשלוח, החשבונית..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
+    </div>
+    <div id="import-section-file" style="display:none">
+      <div class="import-dropzone" onclick="document.getElementById('fi-import').click()">
+        <div id="import-file-label">לחץ לבחירת קובץ (Excel, PDF, תמונה)</div>
+      </div>
+    </div>
+    <div id="import-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeImportModal()">ביטול</button>
+      <button class="btn btn-blue" id="import-submit" onclick="submitImportParse()">✨ נתח עם AI</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT PREVIEW MODAL -->
+<div id="import-preview-modal" onclick="if(event.target===this)closeImportPreview()" style="display:none;position:fixed;inset:0;z-index:965;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(820px,96vw);display:flex;flex-direction:column;gap:14px;max-height:90vh">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)" id="import-preview-title">📋 שינויים מוצעים</div>
+    <div style="font-size:12px;color:var(--txt2)" id="import-preview-sub"></div>
+    <div style="overflow:auto;flex:1">
+      <table class="import-tbl">
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" id="import-chk-all" onchange="importToggleAll(this.checked)" title="בחר הכל"></th>
+          <th>MPN</th><th>הזמנה</th><th>שדה</th><th>ערך נוכחי</th><th>ערך חדש</th>
+        </tr></thead>
+        <tbody id="import-preview-body"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+      <span id="import-apply-count" style="font-size:12px;color:var(--txt2);font-family:var(--mono)"></span>
+      <button class="btn btn-ghost" onclick="closeImportPreview()">ביטול</button>
+      <button class="btn btn-blue" id="import-apply" onclick="applyImportChanges()">החל שינויים</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
