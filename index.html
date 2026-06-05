@@ -3003,8 +3003,13 @@ function applyImportChanges(){
         else if(newVal==='none'||newVal==='cancelled'||newVal==='cancelled_bts')row.cov=row.isOvr?'red':'grey';
         else row.cov='orange';
       } else if(field==='notes'){
-        const existing=notes[nk];
-        notes[nk]=existing?existing+'\n'+newVal:newVal;
+        let lines=(notes[nk]||'').split('\n').filter(Boolean);
+        // drop any earlier import note for the same shipment (matched by its
+        // tracking number or supplier reference) so re-imports replace, not stack
+        const token=c.upd.tracking||c.upd.supplierRef||'';
+        if(token)lines=lines.filter(l=>!l.includes(token));
+        if(!lines.includes(newVal))lines.push(newVal);
+        notes[nk]=lines.join('\n');
       }
       count++;
     } else if(c.upd.custPO){
