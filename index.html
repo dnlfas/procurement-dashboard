@@ -2791,13 +2791,22 @@ async function submitImportParse(){
 function matchUpdateToRows(upd){
   const mpnUp=(upd.mpn||'').trim().toUpperCase();
   const so=(upd.so||'').trim();
-  // 1. SO + MPN
-  if(so&&mpnUp){const r=allRows.find(x=>x.so===so&&x.mpn.trim().toUpperCase()===mpnUp);if(r)return[r];}
-  // 2. MPN only
-  if(mpnUp){const rs=allRows.filter(x=>x.mpn.trim().toUpperCase()===mpnUp);if(rs.length)return rs;}
-  // 3. supplier PO
+  // strip common distributor suffixes (-ND, -CT, -DKR, -TR, -1, -T/R etc.)
+  const stripSfx=s=>s.replace(/[-_](ND|CT|DKR|TR|T\/R|1|2|3|4|5|6|CT-ND|DKR-ND)$/,'');
+  const mpnBase=stripSfx(mpnUp);
+  const rowMpn=r=>r.mpn.trim().toUpperCase();
+  const rowBase=r=>stripSfx(rowMpn(r));
+  // 1. SO + MPN exact
+  if(so&&mpnUp){const r=allRows.find(x=>x.so===so&&rowMpn(x)===mpnUp);if(r)return[r];}
+  // 2. MPN exact
+  if(mpnUp){const rs=allRows.filter(x=>rowMpn(x)===mpnUp);if(rs.length)return rs;}
+  // 3. MPN after stripping suffixes from both sides
+  if(mpnBase){const rs=allRows.filter(x=>rowBase(x)===mpnBase||rowMpn(x)===mpnBase||rowBase(x)===mpnUp);if(rs.length)return rs;}
+  // 4. Prefix match (one starts with the other, min 5 chars)
+  if(mpnUp.length>=5){const rs=allRows.filter(x=>{const rm=rowMpn(x);return rm.length>=5&&(rm.startsWith(mpnUp)||mpnUp.startsWith(rm));});if(rs.length)return rs;}
+  // 5. supplier PO
   if(upd.poNum){const rs=allRows.filter(x=>(x.poNum||fieldOvr[x.nk+'__po']||'')===(upd.poNum||''));if(rs.length)return rs;}
-  // 4. customer PO
+  // 6. customer PO
   if(upd.custPO){const rs=allRows.filter(x=>(x.custPO||fieldOvr[x.nk+'__custPO']||'')===(upd.custPO||''));if(rs.length)return rs;}
   return[];
 }
