@@ -435,6 +435,9 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .import-tab.on{border-bottom-color:var(--acc);color:var(--txtb)}
 .import-dropzone{border:2px dashed var(--bdr);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--txt2);font-size:13px;transition:border-color .15s}
 .import-dropzone:hover{border-color:var(--acc);color:var(--txtb)}
+.pull-badge{background:rgba(255,165,0,.15);color:var(--ora);border:1px solid rgba(255,165,0,.35);border-radius:4px;font-size:10px;padding:2px 6px;font-family:var(--mono);font-weight:600;white-space:nowrap;cursor:pointer}
+.pull-badge-add{background:transparent;color:var(--txt2);border:1px dashed var(--bdr);border-radius:4px;font-size:10px;padding:1px 5px;font-family:var(--mono);cursor:pointer;line-height:1.4;vertical-align:middle}
+.pull-badge-add:hover{color:var(--ora);border-color:var(--ora)}
 </style>
 </head>
 <body>
@@ -639,6 +642,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
         <select id="fs" onchange="applyFilters()"><option value="">הכל</option></select>
         <label class="chk"><input type="checkbox" id="fu" onchange="applyFilters()"> לא מכוסים<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים ללא PO וללא סטטוס "הוזמן מספק".</span></span></label>
         <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> באיחור<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים שתאריך האספקה המבוקש עבר.</span></span></label>
+        <span class="ctl">תיק משיכה:</span>
+        <select id="fpull" onchange="applyFilters()"><option value="">הכל</option><option value="pull">תיקי משיכה בלבד</option><option value="nopull">ללא תיקי משיכה</option></select>
         <div class="cspc"></div>
         <button class="bexp" id="bex" onclick="expandAll(true)">פתח הכל ▾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">🔴 = יש פריט באיחור ללא כיסוי | 🟠 = יש פריט ללא PO | 🟢 = כל הפריטים מכוסים. המספרים בבאדג׳ים: כמות פריטים לפי קטגוריה.</span></span>
       </div>
@@ -702,13 +707,17 @@ let notes={},soReg={},statusOvr={},fieldOvr={},poData=[];
 try{statusOvr=JSON.parse(localStorage.getItem('oo_status')||'{}');}catch(e){}
 try{fieldOvr=JSON.parse(localStorage.getItem('oo_fields')||'{}');}catch(e){}
 try{notes=JSON.parse(localStorage.getItem(NK)||'{}');}catch(e){}
+let pullOrders={};
+try{pullOrders=JSON.parse(localStorage.getItem('oo_pull')||'{}');}catch(e){}
+['4441445613','4441489719','4441512541','4441439631'].forEach(p=>{if(!pullOrders[p])pullOrders[p]=true;});
+localStorage.setItem('oo_pull',JSON.stringify(pullOrders));
 
 // ── BLOB OVERRIDE SYNC ──
 let _syncTimer=null;
 function syncOverrides(){
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
-    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes});
+    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes,pullOrders:pullOrders});
     fetch('/api/overrides',{method:'POST',body:payload,headers:{'Content-Type':'application/json'}}).catch(function(){});
   },1200);
 }
@@ -720,6 +729,7 @@ async function loadOverridesFromBlob(){
     if(d.fieldOvr){Object.assign(fieldOvr,d.fieldOvr);localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}
     if(d.statusOvr){Object.assign(statusOvr,d.statusOvr);localStorage.setItem('oo_status',JSON.stringify(statusOvr));}
     if(d.notes){Object.assign(notes,d.notes);localStorage.setItem(NK,JSON.stringify(notes));}
+    if(d.pullOrders){Object.assign(pullOrders,d.pullOrders);localStorage.setItem('oo_pull',JSON.stringify(pullOrders));}
     cleanupNotes();
     if(allRows.length){applyOverridesToRows(allRows);soGroups=buildGroups(allRows);applyFilters();renderBoss();}
   }catch(e){}
@@ -740,6 +750,7 @@ function applyOverridesToRows(rows){
     }
     if(trackOvr)row.tracking=trackOvr;
     if(custPOOvr!==undefined)row.custPO=custPOOvr;
+    row.isPull=!!(row.custPO&&pullOrders[row.custPO]);
     if(stOvr!==undefined){
       row.status=stOvr;
       if(['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'].includes(stOvr))row.cov='green';
@@ -1649,6 +1660,7 @@ function calcG(g){
   g.cov=l.filter(x=>x.cov==='green').length;
   if(g.ovr>0)g.tl='red';else if(g.unc>0)g.tl='orange';else g.tl='green';
   g.supps=[...new Set(l.map(x=>x.supplier).filter(Boolean))];
+  g.isPull=l.some(x=>x.isPull);
   return g;
 }
 function linkPOtoSO(){
@@ -1896,6 +1908,7 @@ function applyFilters(){
   const fs=document.getElementById('fs').value;
   const fu=document.getElementById('fu').checked;
   const fo=document.getElementById('fo').checked;
+  const fpull=document.getElementById('fpull')?document.getElementById('fpull').value:'';
   filteredGroups=soGroups.map(g=>{
     let l=g.lines;
     if(fc)l=l.filter(x=>x.customer===fc);
@@ -1903,7 +1916,10 @@ function applyFilters(){
     if(fu)l=l.filter(x=>x.cov!=='green');
     if(fo)l=l.filter(x=>x.isOvr);
     if(!l.length)return null;
-    return calcG({...g,lines:l});
+    const grp=calcG({...g,lines:l});
+    if(fpull==='pull'&&!grp.isPull)return null;
+    if(fpull==='nopull'&&grp.isPull)return null;
+    return grp;
   }).filter(Boolean);
   soReg={};
   filteredGroups.forEach(g=>{soReg[g.so]=g;});
@@ -1933,7 +1949,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}</div></div>
+        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?` <span class="pull-badge" onclick="event.stopPropagation();togglePullOrder('${esc(g.custPO)}')" title="לחץ להסרת סימון תיק משיכה">תיק משיכה ✕</span>`:g.custPO?` <button class="pull-badge-add" onclick="event.stopPropagation();togglePullOrder('${esc(g.custPO)}')">＋ תיק משיכה</button>`:''}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -1966,6 +1982,17 @@ function setSOStatus(soNum,status){
   soGroups=buildGroups(allRows);
   syncOverrides();
   applyFilters();
+}
+function togglePullOrder(custPO){
+  if(!custPO)return;
+  if(pullOrders[custPO])delete pullOrders[custPO];
+  else pullOrders[custPO]=true;
+  localStorage.setItem('oo_pull',JSON.stringify(pullOrders));
+  applyOverridesToRows(allRows);
+  soGroups=buildGroups(allRows);
+  applyFilters();
+  renderBoss();
+  syncOverrides();
 }
 function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;togSO(id);}
 function togSO(id){
@@ -2052,7 +2079,7 @@ function buildLR(r){
   const nv=esc(notes[r.nk]||'');
   return`<tr class="${(r.isOvr&&r.cov!=='green')?'lno':''}">
     <td style="text-align:center"><span class="lntl tl-${r.cov==='green'?'g':r.cov==='orange'?'o':r.cov==='red'?'r':'x'}"></span></td>
-    <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
+    <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div>${r.isPull?'<span class="pull-badge" style="margin-top:3px;display:inline-block">תיק משיכה</span>':''}</td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
     <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
