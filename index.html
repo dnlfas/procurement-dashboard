@@ -1012,7 +1012,7 @@ function buildPOTable(rows,soMPNs,crossSO){
 
 
 // ── SO STATUS PANEL ──
-let sspOpen=window.innerWidth<=768, sspAllOpen=false;
+let sspOpen=true, sspAllOpen=false;
 function toggleFullscreen(){
   if(!document.fullscreenElement){document.documentElement.requestFullscreen();document.getElementById('fsbtn').textContent='✕';}
   else{document.exitFullscreen();document.getElementById('fsbtn').textContent='⛶';}
