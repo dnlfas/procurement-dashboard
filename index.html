@@ -1083,7 +1083,7 @@ function renderSSP(){
       soHtml+='<div class="so-row" onclick="togSODetail(\''+gid+'\')">'
         +'<span></span>'
         +'<span class="so-row-dot tl-'+gtl+'"></span>'
-        +'<div><span class="so-row-num">'+esc(g.so)+'</span><span class="so-row-cpo">'+esc(g.custPO)+'</span></div>'
+        +'<div><span class="so-row-num" onclick="event.stopPropagation();openSOInEmp(\''+soKey+'\')" style="cursor:pointer" title="פתח ב מבט עובד">'+esc(g.so)+'</span><span class="so-row-cpo">'+esc(g.custPO)+'</span></div>'
         +'<span class="ddate '+dc+'" style="font-size:11px;white-space:nowrap">'+ds+'</span>'
         +'<div style="display:flex;gap:4px">'+gbs+'</div>'
         +'<div class="so-chev" id="chev_'+gid+'">▼</div>'
@@ -1096,7 +1096,7 @@ function renderSSP(){
             +'<div class="so-stat"><div class="so-stat-lbl">התאמות PO</div><div class="so-stat-val" style="color:'+(matchedPO>0?'var(--acc)':'var(--txt2)')+'">'+matchedPO+'</div></div>'
           +'</div>'
           +'<div class="so-actions">'
-            +'<button class="so-action-link" onclick="event.stopPropagation();setMainView(\'emp\');setEmpTab(\'so\')">📋 פתח במבט עובד</button>'
+            +'<button class="so-action-link" onclick="event.stopPropagation();openSOInEmp(\''+soKey+'\')">📋 פתח במבט עובד</button>'
           +'</div>'
         +'</div>';
     });
@@ -2330,6 +2330,24 @@ function setEmpTab(t){
   document.getElementById('tab-so').style.display=t==='so'?'block':'none';
   document.getElementById('et1').classList.toggle('on',t==='today');
   document.getElementById('et2').classList.toggle('on',t==='so');
+}
+
+function openSOInEmp(so){
+  setMainView('emp');
+  setEmpTab('so');
+  // wait one tick for renderSOList to finish if it hasn't yet
+  requestAnimationFrame(()=>{
+    const id='so_'+so.replace(/\W/g,'_');
+    const card=document.getElementById('card_'+id);
+    if(!card)return;
+    const det=document.getElementById('det_'+id);
+    if(det&&!det.classList.contains('open')){
+      det.classList.add('open');
+      document.getElementById('chev_'+id)?.classList.add('open');
+      expandNotes(det);
+    }
+    card.scrollIntoView({behavior:'smooth',block:'start'});
+  });
 }
 
 let _tt;
