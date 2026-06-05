@@ -2861,6 +2861,12 @@ function openImportPreview(updates,sourceType){
     // FIFO waterfall: when one MPN spans several SO lines and the doc has a
     // shipped quantity, fill the OLDEST order first, balance flows to the next.
     const qty=parseFloat(upd.qty)||0;
+    // pick a verb that matches what actually happened to the goods, so an
+    // order confirmation with a future delivery date is not labelled "shipped".
+    const st=upd.status||'';
+    const verb=(st==='supplied'||st==='partial')?'סופק'
+      :(['in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st)||upd.tracking)?'נשלח'
+      :(st==='ordered')?'הוזמן':'כמות';
     let candidates; // [{row, allocNote, partial}]
     if(matched.length>=1&&qty>0){
       const sorted=[...matched].sort((a,b)=>{
@@ -2871,12 +2877,13 @@ function openImportPreview(updates,sourceType){
       let remaining=qty;
       candidates=[];
       sorted.forEach(row=>{
-        if(remaining<=0)return; // shipment exhausted — leave remaining orders untouched
+        if(remaining<=0)return; // quantity exhausted — leave remaining orders untouched
         const need=row.qtyR>0?row.qtyR:remaining;
         const alloc=Math.min(remaining,need);
         remaining-=alloc;
         const partial=row.qtyR>0&&alloc<row.qtyR;
-        const allocNote='נשלח '+alloc+(row.qtyR>0?'/'+row.qtyR:'')+' יח׳'+(partial?' (חלקי)':' (הושלם)');
+        // "(מלא)"/"(חלקי)" describe quantity coverage, not delivery completion
+        const allocNote=verb+' '+alloc+(row.qtyR>0?'/'+row.qtyR:'')+' יח׳'+(partial?' (חלקי)':' (מלא)');
         candidates.push({row,allocNote,partial});
       });
     } else {
