@@ -6,7 +6,7 @@ Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|in
 Each update object has these fields (strings unless noted, leave "" if unknown):
   mpn        – part number / MPN / catalog code (exact as written)
   so         – BTS sales order number if mentioned (e.g. "SO26000122")
-  custPO     – customer purchase order number sent to BTS (e.g. "P026S0008369")
+  custPO     – the END CUSTOMER's purchase order number sent TO BTS (e.g. "P026S0008369"). Only set this when the document is a purchase order FROM a customer to BTS (sourceType "customer_po"). On a supplier invoice, supplier shipping notice, or anything coming FROM a supplier, there is no customer PO — leave "". NEVER put a supplier's order number, invoice number, or web-order ID here.
   poNum      – BTS purchase order number to the supplier. Only set this if the document explicitly shows a field labelled "PO", "Purchase Order", "הזמנת רכש" or similar AND the value looks like a PO reference (e.g. "PO26000203"). NEVER use the supplier's own invoice number, order number, web-order ID, or any number from the supplier's side — leave "" in those cases.
   supplier   – supplier company name
   tracking   – shipment tracking number

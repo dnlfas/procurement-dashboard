@@ -2874,6 +2874,12 @@ function openImportPreview(updates,sourceType){
         if(!newVal)return;
         // guard: only accept a poNum that looks like a BTS PO (starts with PO/פו, or is purely numeric ≥8 digits matching SAP style)
         if(field==='poNum'&&!/^(PO|פו)/i.test(newVal)&&!/^\d{8,}$/.test(newVal))return;
+        // guard: custPO is the end-customer's PO (master data). Only a customer-PO
+        // document may set it, and never overwrite an existing customer PO.
+        if(field==='custPO'){
+          if(sourceType!=='customer_po')return;
+          if(_currentVal(row,'custPO'))return;
+        }
         const oldVal=_currentVal(row,field);
         if(newVal===oldVal&&field!=='notes')return; // skip no-ops
         _importChanges.push({upd,row,field,oldVal,newVal,checked:true});
