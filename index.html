@@ -422,6 +422,20 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .panel{min-height:200px}
   #boss-view{position:static;height:auto;overflow:visible;padding-bottom:20px}
 }
+/* ── Import/Merge data ── */
+.import-tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.import-tbl th{color:var(--txt2);font-weight:600;padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:right;white-space:nowrap}
+.import-tbl td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.import-tbl tr:last-child td{border-bottom:none}
+.import-tbl tr:hover td{background:var(--sur2)}
+.import-old{color:var(--txt2);text-decoration:line-through;font-size:11px;display:block}
+.import-new{color:var(--acc);font-weight:600}
+.import-unmatched{color:var(--ora);font-size:10px;font-family:var(--mono)}
+.import-tab{background:transparent;border:none;border-bottom:2px solid transparent;padding:6px 14px;font-size:13px;cursor:pointer;color:var(--txt2);font-family:var(--sans)}
+.import-tab.on{border-bottom-color:var(--acc);color:var(--txtb)}
+.import-dropzone{border:2px dashed var(--bdr);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--txt2);font-size:13px;transition:border-color .15s}
+.import-dropzone:hover{border-color:var(--acc);color:var(--txtb)}
+.pull-badge{background:rgba(255,165,0,.15);color:var(--ora);border:1px solid rgba(255,165,0,.35);border-radius:4px;font-size:10px;padding:2px 6px;font-family:var(--mono);font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -467,6 +481,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
     <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
+    <button class="btn btn-ghost" onclick="openImportModal()" title="ייבוא נתונים מאימייל / קובץ">📥 ייבוא</button><span id="import-pending-badge" style="display:none;background:var(--ora);color:#000;border-radius:8px;font-size:10px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-right:2px"></span>
     <button class="btn btn-ghost" onclick="showQR()" title="QR קוד לפתיחה במכשיר אחר">📱 QR</button>
     <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
     <button class="btn btn-ghost" onclick="doLogout()" title="יציאה" style="color:var(--txt2)">⎋</button>
@@ -476,6 +491,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 <input type="file" id="fi-po" accept=".xlsx,.xls" onchange="handleFilePO(event)" style="display:none">
 <input type="file" id="fi-so-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'so')" style="display:none">
 <input type="file" id="fi-po-upload" accept=".xlsx,.xls" onchange="handleTopbarUpload(event,'po')" style="display:none">
+<input type="file" id="fi-import" accept=".xlsx,.xls,.pdf,image/*" onchange="handleImportFile(event)" style="display:none">
 
 <!-- UPLOAD -->
 <div id="upl">
@@ -624,6 +640,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
         <select id="fs" onchange="applyFilters()"><option value="">הכל</option></select>
         <label class="chk"><input type="checkbox" id="fu" onchange="applyFilters()"> לא מכוסים<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים ללא PO וללא סטטוס "הוזמן מספק".</span></span></label>
         <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> באיחור<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים שתאריך האספקה המבוקש עבר.</span></span></label>
+        <span class="ctl">תיק משיכה:</span>
+        <select id="fpull" onchange="applyFilters()"><option value="">הכל</option><option value="pull">תיקי משיכה בלבד</option><option value="nopull">ללא תיקי משיכה</option></select>
         <div class="cspc"></div>
         <button class="bexp" id="bex" onclick="expandAll(true)">פתח הכל ▾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">🔴 = יש פריט באיחור ללא כיסוי | 🟠 = יש פריט ללא PO | 🟢 = כל הפריטים מכוסים. המספרים בבאדג׳ים: כמות פריטים לפי קטגוריה.</span></span>
       </div>
@@ -687,13 +705,17 @@ let notes={},soReg={},statusOvr={},fieldOvr={},poData=[];
 try{statusOvr=JSON.parse(localStorage.getItem('oo_status')||'{}');}catch(e){}
 try{fieldOvr=JSON.parse(localStorage.getItem('oo_fields')||'{}');}catch(e){}
 try{notes=JSON.parse(localStorage.getItem(NK)||'{}');}catch(e){}
+let pullOrders={};
+try{pullOrders=JSON.parse(localStorage.getItem('oo_pull')||'{}');}catch(e){}
+['4441445613','4441489719','4441512541','4441439631'].forEach(p=>{if(!pullOrders[p])pullOrders[p]=true;});
+localStorage.setItem('oo_pull',JSON.stringify(pullOrders));
 
 // ── BLOB OVERRIDE SYNC ──
 let _syncTimer=null;
 function syncOverrides(){
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
-    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes});
+    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes,pullOrders:pullOrders});
     fetch('/api/overrides',{method:'POST',body:payload,headers:{'Content-Type':'application/json'}}).catch(function(){});
   },1200);
 }
@@ -705,6 +727,8 @@ async function loadOverridesFromBlob(){
     if(d.fieldOvr){Object.assign(fieldOvr,d.fieldOvr);localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}
     if(d.statusOvr){Object.assign(statusOvr,d.statusOvr);localStorage.setItem('oo_status',JSON.stringify(statusOvr));}
     if(d.notes){Object.assign(notes,d.notes);localStorage.setItem(NK,JSON.stringify(notes));}
+    if(d.pullOrders){Object.assign(pullOrders,d.pullOrders);localStorage.setItem('oo_pull',JSON.stringify(pullOrders));}
+    cleanupNotes();
     if(allRows.length){applyOverridesToRows(allRows);soGroups=buildGroups(allRows);applyFilters();renderBoss();}
   }catch(e){}
 }
@@ -713,6 +737,8 @@ function applyOverridesToRows(rows){
   rows.forEach(function(row){
     const suppOvr=fieldOvr[row.nk+'__supp'];
     const poOvr=fieldOvr[row.nk+'__po'];
+    const trackOvr=fieldOvr[row.nk+'__tracking'];
+    const custPOOvr=fieldOvr[row.nk+'__custPO'];
     const stOvr=statusOvr[row.nk];
     if(suppOvr!==undefined)row.supplier=suppOvr;
     if(poOvr!==undefined){
@@ -720,6 +746,9 @@ function applyOverridesToRows(rows){
       if(poOvr&&row.cov!=='green')row.cov='green';
       else if(!poOvr)row.cov=row.qtyR===0?'grey':row.isOvr?'red':'orange';
     }
+    if(trackOvr)row.tracking=trackOvr;
+    if(custPOOvr!==undefined)row.custPO=custPOOvr;
+    row.isPull=!!(row.custPO&&pullOrders[row.custPO]);
     if(stOvr!==undefined){
       row.status=stOvr;
       if(['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'].includes(stOvr))row.cov='green';
@@ -754,6 +783,7 @@ function startParse(file){
         allRows=parseRows(raw);
         applyOverridesToRows(allRows);
         soGroups=buildGroups(allRows);
+        applyPendingCustPOs();
         onLoaded(file.name);
       }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
     };
@@ -814,22 +844,37 @@ function startParsePO(file){
 }
 
 function parsePORows(raw){
-  // find MPN column name dynamically (handles מק'ט apostrophe)
-  const mpnKey = raw.length>0 ? Object.keys(raw[0]).find(k=>k.includes('מק')||k.includes('מקט')||k==='מספר פריט') : null;
+  if(!raw.length)return[];
+  const keys=Object.keys(raw[0]);
+  console.log('[PO columns]',keys);
+  const PK={
+    poNum: _findKey(keys,['הזמנה']),
+    mpn:   keys.find(k=>k.includes('מק')||k.includes('מקט')||k==='מספר פריט')||'מספר פריט',
+    supp:  _findKey(keys,['שם ספק']),
+    desc:  _findKey(keys,['תאור פריט','תיאור פריט','תאור','תיאור']),
+    qtyO:  _findKey(keys,['כמות בהזמנה']),
+    qtyS:  _findKey(keys,['כמות שסופקה','סופק']),
+    qtyR:  _findKey(keys,['יתרה לאספקה','יתרה']),
+    valILS:_findKey(keys,['שווי היתרה בשקלים','שווי שקל']),
+    valOrig:_findKey(keys,['שווי היתרה','שווי']),
+    curr:  _findKey(keys,['מטבע']),
+    date:  _findKey(keys,['ת. אספקה','תאריך אספקה']),
+  };
+  console.log('[PO keys used]',PK);
   return raw.map(r=>{
-    const poNum=s(r['הזמנה']);
-    const mpn=s(mpnKey?r[mpnKey]:'');
+    const poNum=s(r[PK.poNum]);
+    const mpn=s(r[PK.mpn]);
     if(!poNum&&!mpn)return null;
-    const supplier=s(r['שם ספק']);
-    const desc=s(r['תאור פריט']);
-    const qtyO=parseFloat(r['כמות בהזמנה'])||0;
-    const qtyS=parseFloat(r['כמות שסופקה'])||0;
-    const qtyR=parseFloat(r['יתרה לאספקה'])||0;
-    const valILS=parseFloat(r['שווי היתרה בשקלים'])||0;
-    const valOrig=parseFloat(r['שווי היתרה'])||0;
-    const currency=s(r['מטבע'])||'ILS';
+    const supplier=s(r[PK.supp]);
+    const desc=s(r[PK.desc]);
+    const qtyO=parseFloat(r[PK.qtyO])||0;
+    const qtyS=parseFloat(r[PK.qtyS])||0;
+    const qtyR=parseFloat(r[PK.qtyR])||0;
+    const valILS=parseFloat(r[PK.valILS])||0;
+    const valOrig=parseFloat(r[PK.valOrig])||0;
+    const currency=s(r[PK.curr])||'ILS';
     let dd=null;
-    const rd=r['ת. אספקה'];
+    const rd=r[PK.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
     else if(typeof rd==='number'&&rd>1){const d=new Date(Math.round((rd-25569)*86400000));dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
     else if(typeof rd==='string'&&rd){const d=new Date(rd);if(!isNaN(d))dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -967,7 +1012,8 @@ function buildPOTable(rows,soMPNs,crossSO){
 
 
 // ── SO STATUS PANEL ──
-let sspOpen=window.innerWidth<=768, sspAllOpen=false;
+const isTV=window.screen.width>=1920&&window.devicePixelRatio<=1;
+let sspOpen=!isTV, sspAllOpen=false;
 function toggleFullscreen(){
   if(!document.fullscreenElement){document.documentElement.requestFullscreen();document.getElementById('fsbtn').textContent='✕';}
   else{document.exitFullscreen();document.getElementById('fsbtn').textContent='⛶';}
@@ -1047,7 +1093,7 @@ function renderSSP(){
       soHtml+='<div class="so-row" onclick="togSODetail(\''+gid+'\')">'
         +'<span></span>'
         +'<span class="so-row-dot tl-'+gtl+'"></span>'
-        +'<div><span class="so-row-num">'+esc(g.so)+'</span><span class="so-row-cpo">'+esc(g.custPO)+'</span></div>'
+        +'<div><span class="so-row-num" onclick="event.stopPropagation();openSOInEmp(\''+soKey+'\')" style="cursor:pointer" title="פתח ב מבט עובד">'+esc(g.so)+'</span><span class="so-row-cpo">'+esc(g.custPO)+'</span></div>'
         +'<span class="ddate '+dc+'" style="font-size:11px;white-space:nowrap">'+ds+'</span>'
         +'<div style="display:flex;gap:4px">'+gbs+'</div>'
         +'<div class="so-chev" id="chev_'+gid+'">▼</div>'
@@ -1060,7 +1106,7 @@ function renderSSP(){
             +'<div class="so-stat"><div class="so-stat-lbl">התאמות PO</div><div class="so-stat-val" style="color:'+(matchedPO>0?'var(--acc)':'var(--txt2)')+'">'+matchedPO+'</div></div>'
           +'</div>'
           +'<div class="so-actions">'
-            +'<button class="so-action-link" onclick="event.stopPropagation();setMainView(\'emp\');setEmpTab(\'so\')">📋 פתח במבט עובד</button>'
+            +'<button class="so-action-link" onclick="event.stopPropagation();openSOInEmp(\''+soKey+'\')">📋 פתח במבט עובד</button>'
           +'</div>'
         +'</div>';
     });
@@ -1113,6 +1159,7 @@ function togSODetail(id){
   });
   det.style.display=isOpen?'none':'block';
   if(chev)chev.classList.toggle('open',!isOpen);
+  if(!isOpen)expandNotes(det);
 }
 function sspShowAll(){sspAllOpen=true;renderSSP();}
 
@@ -1225,6 +1272,7 @@ async function fetchNow() {
       allRows = parseRows(raw);
       applyOverridesToRows(allRows);
       soGroups = buildGroups(allRows);
+      applyPendingCustPOs();
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upl').style.display = 'none';
       document.getElementById('app').style.display = 'block';
@@ -1297,6 +1345,7 @@ async function initApp(){
     odSettings = { soUrl: '/data/so.xlsx', poUrl: '/data/po.xlsx' };
   }
   loadOverridesFromBlob();
+  updateImportBadge();
   fetchNow();
 }
 
@@ -1437,6 +1486,7 @@ async function handleTopbarUpload(e, type) {
           applyOverridesToRows(allRows);
           soGroups = buildGroups(allRows);
           if (poLoaded) linkPOtoSO();
+          applyPendingCustPOs();
           document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
           document.getElementById('upl').style.display = 'none';
           document.getElementById('app').style.display = 'block';
@@ -1547,6 +1597,7 @@ function launchDashboard(){
   allRows=parseRows(wizSOFile.raw);
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
+  applyPendingCustPOs();
   document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
   // Process PO if loaded
   if(wizPOFile){
@@ -1676,6 +1727,7 @@ function calcG(g){
   g.cov=l.filter(x=>x.cov==='green').length;
   if(g.ovr>0)g.tl='red';else if(g.unc>0)g.tl='orange';else g.tl='green';
   g.supps=[...new Set(l.map(x=>x.supplier).filter(Boolean))];
+  g.isPull=l.some(x=>x.isPull);
   return g;
 }
 function linkPOtoSO(){
@@ -1913,6 +1965,7 @@ function applyFilters(){
   const fs=document.getElementById('fs').value;
   const fu=document.getElementById('fu').checked;
   const fo=document.getElementById('fo').checked;
+  const fpull=document.getElementById('fpull')?document.getElementById('fpull').value:'';
   filteredGroups=soGroups.map(g=>{
     let l=g.lines;
     if(fc)l=l.filter(x=>x.customer===fc);
@@ -1920,7 +1973,10 @@ function applyFilters(){
     if(fu)l=l.filter(x=>x.cov!=='green');
     if(fo)l=l.filter(x=>x.isOvr);
     if(!l.length)return null;
-    return calcG({...g,lines:l});
+    const grp=calcG({...g,lines:l});
+    if(fpull==='pull'&&!grp.isPull)return null;
+    if(fpull==='nopull'&&grp.isPull)return null;
+    return grp;
   }).filter(Boolean);
   soReg={};
   filteredGroups.forEach(g=>{soReg[g.so]=g;});
@@ -1950,7 +2006,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}</div></div>
+        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -1986,12 +2042,15 @@ function setSOStatus(soNum,status){
 }
 function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;togSO(id);}
 function togSO(id){
-  document.getElementById('det_'+id).classList.toggle('open');
+  const det=document.getElementById('det_'+id);
+  det.classList.toggle('open');
   document.getElementById('chev_'+id).classList.toggle('open');
+  if(det.classList.contains('open'))expandNotes(det);
 }
 function expandAll(v){
   document.querySelectorAll('.sodet').forEach(d=>d.classList[v?'add':'remove']('open'));
   document.querySelectorAll('.sochev').forEach(c=>c.classList[v?'add':'remove']('open'));
+  if(v)expandNotes();
   const b=document.getElementById('bex');
   if(v){b.textContent='סגור הכל ▲';b.onclick=()=>expandAll(false);}
   else{b.textContent='פתח הכל ▾';b.onclick=()=>expandAll(true);}
@@ -2000,7 +2059,7 @@ function buildLT(lines){
   lines.forEach(r=>{});
   return`<table class="lt"><thead><tr>
     <th style="width:12px"></th><th>פריט (MPN)</th><th>ת. אספקה</th>
-    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th>
+    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">מספר מעקב משלוח. עדכון יעביר את הסטטוס אוטומטית ל"בשליחות ל-BTS".</span></span>מעקב</th>
     <th style="width:170px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
   </tr></thead><tbody>${lines.map(buildLR).join('')}</tbody></table>`;
 }
@@ -2019,6 +2078,16 @@ function buildLR(r){
     data-field="po" data-key="${esc(r.nk)}"
     value="${esc(poVal)}" placeholder="PO..."
     onchange="saveField(this)" title="לחץ לעריכת מספר הזמנת רכש">`;
+  const trackOvr=fieldOvr[r.nk+'__tracking'];
+  const trackVal=trackOvr||'';
+  const trackUrl=_trackingUrl(trackVal);
+  const th=`<div style="display:flex;align-items:center;gap:4px">
+    <input class="edit-inp${trackOvr?' has-ovr':''}" type="text"
+      data-field="tracking" data-key="${esc(r.nk)}"
+      value="${esc(trackVal)}" placeholder="מעקב..."
+      onchange="saveField(this)" title="מספר מעקב — יעביר סטטוס לבשליחות ל-BTS">
+    ${trackUrl?`<a href="${trackUrl}" target="_blank" rel="noopener" title="עקוב אחר המשלוח" style="color:var(--acc);font-size:14px;text-decoration:none;flex-shrink:0;line-height:1">🔗</a>`:''}
+  </div>`;
   // Determine effective status: manual override > PO cross-data > SO status
   let poAutoStatus=null;
   if(poLoaded){
@@ -2059,7 +2128,7 @@ function buildLR(r){
     <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
-    <td>${sh}</td><td>${ph}</td><td>${sbh}</td>
+    <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
     <td><textarea class="note-ta ${nv?'hn':''}" rows="1" data-key="${esc(r.nk)}"
       placeholder="הוסף הערה..." onchange="saveNote(this)" oninput="autoH(this)">${nv}</textarea></td>
   </tr>`;
@@ -2088,6 +2157,28 @@ function dlSOICS(g){
   a.download=`reminder_${g.so.replace(/[^a-zA-Z0-9]/g,'_')}.ics`;
   a.click();URL.revokeObjectURL(a.href);
   toast('📅 '+Object.keys(byR).length+' תזכורת/ות הורדו עבור '+g.so);
+}
+
+// ── TRACKING URL ──
+function _trackingUrl(t){
+  if(!t)return'';
+  t=t.trim();
+  // FedEx: 12-digit starting 8/7/6, or 15/20-digit, or starts with 96/97
+  if(/^(96|97)\d{18}$/.test(t)||/^[0-9]{12}$/.test(t)||/^[0-9]{15}$/.test(t)||/^[0-9]{20}$/.test(t))
+    return'https://www.fedex.com/fedextrack/?trknbr='+t;
+  // UPS: starts with 1Z
+  if(/^1Z[A-Z0-9]{16}$/i.test(t))
+    return'https://www.ups.com/track?tracknum='+t;
+  // DHL Express: 10 digits or starts with JD/GM
+  if(/^[0-9]{10}$/.test(t)||/^(JD|GM)[0-9]{18}$/i.test(t))
+    return'https://www.dhl.com/en/express/tracking.html?AWB='+t+'&brand=DHL';
+  // Israel Post: 13-char starting with letters (e.g. LY123456789IL)
+  if(/^[A-Z]{2}[0-9]{9}[A-Z]{2}$/i.test(t))
+    return'https://ipost.post.co.il/track?barcode='+t;
+  // Generic fallback for any long numeric/alphanumeric — use 17track
+  if(t.length>=10)
+    return'https://t.17track.net/en#nums='+t;
+  return'';
 }
 
 // ── NOTES ──
@@ -2201,19 +2292,29 @@ function saveField(inp){
   const val=inp.value.trim();
   if(val)fieldOvr[key]=val;else delete fieldOvr[key];
   inp.classList.toggle('has-ovr',!!fieldOvr[inp.dataset.key+'__'+inp.dataset.field]);
-  // update in-memory row
   const row=allRows.find(r=>r.nk===inp.dataset.key);
   if(row){
     if(inp.dataset.field==='supp')row.supplier=val||row.supplier;
     if(inp.dataset.field==='po'){
       row.poNum=val;
-      if(val&&row.cov!=='green'){row.cov='green';}
-      else if(!val&&row.status==='none'){row.cov=row.isOvr?'red':'grey';}
+      if(val&&row.cov!=='green')row.cov='green';
+      else if(!val&&row.status==='none')row.cov=row.isOvr?'red':'grey';
+    }
+    if(inp.dataset.field==='tracking'&&val){
+      // auto-advance status to delivery_bts
+      statusOvr[row.nk]='delivery_bts';
+      row.status='delivery_bts';
+      row.cov='green';
+      localStorage.setItem('oo_status',JSON.stringify(statusOvr));
+      // update the status dropdown in the same row if visible
+      const sel=inp.closest('tr')?.querySelector('.stat-sel');
+      if(sel){sel.value='delivery_bts';sel.className='stat-sel s-ord';}
     }
   }
   try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
   syncOverrides();
-  toast('✓ '+(inp.dataset.field==='supp'?'ספק':'PO')+' עודכן');
+  const labels={'supp':'ספק','po':'PO','tracking':'מעקב'};
+  toast('✓ '+(labels[inp.dataset.field]||inp.dataset.field)+' עודכן'+(inp.dataset.field==='tracking'&&val?' — סטטוס עודכן לבשליחות ל-BTS':''));
 }
 
 function saveStatus(sel){
@@ -2236,6 +2337,27 @@ function saveStatus(sel){
   toast('✓ סטטוס עודכן');
 }
 
+function cleanupNotes(){
+  // Deduplicate note lines across all stored notes.
+  // Two lines are considered duplicates when they share the same shipment token
+  // (a tracking number, AWB reference, or supplier ref like #FPM8M00BCP7003).
+  // When duplicates exist, the LAST occurrence wins (most-recently imported wins).
+  // Lines with no recognized token are deduplicated by exact match.
+  const TOKEN_RE=/(?:(?:AWB|#)\s*)([A-Z0-9]{5,})|(\b\d{10,}\b)/i;
+  const tokenOf=l=>{const m=l.match(TOKEN_RE);return m?(m[1]||m[2]).toUpperCase():null;};
+  let changed=0;
+  Object.keys(notes).forEach(nk=>{
+    const lines=(notes[nk]||'').split('\n').filter(Boolean);
+    if(lines.length<=1)return;
+    const tokenLast={},exactLast={};
+    lines.forEach((l,i)=>{const t=tokenOf(l);if(t)tokenLast[t]=i;else exactLast[l]=i;});
+    const cleaned=lines.filter((l,i)=>{const t=tokenOf(l);return t?tokenLast[t]===i:exactLast[l]===i;});
+    if(cleaned.length!==lines.length){notes[nk]=cleaned.join('\n');changed++;}
+  });
+  if(changed){try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}syncOverrides();}
+  return changed;
+}
+
 function saveNote(el){
   const key=el.dataset.key,val=el.value.trim();
   if(val)notes[key]=val;else delete notes[key];
@@ -2255,6 +2377,13 @@ function exportNotes(){
   toast('✓ הערות יוצאו');
 }
 function autoH(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+// grow every note textarea inside a container to fit its full content (only
+// works once the container is visible, so call it right after opening a detail)
+function expandNotes(root){
+  (root||document).querySelectorAll('.note-ta,.sonote-ta').forEach(function(t){
+    if(t.value){t.style.height='auto';t.style.height=t.scrollHeight+'px';}
+  });
+}
 
 // ── NAV ──
 function setMainView(v){
@@ -2274,6 +2403,24 @@ function setEmpTab(t){
   document.getElementById('tab-so').style.display=t==='so'?'block':'none';
   document.getElementById('et1').classList.toggle('on',t==='today');
   document.getElementById('et2').classList.toggle('on',t==='so');
+}
+
+function openSOInEmp(so){
+  setMainView('emp');
+  setEmpTab('so');
+  // wait one tick for renderSOList to finish if it hasn't yet
+  requestAnimationFrame(()=>{
+    const id='so_'+so.replace(/\W/g,'_');
+    const card=document.getElementById('card_'+id);
+    if(!card)return;
+    const det=document.getElementById('det_'+id);
+    if(det&&!det.classList.contains('open')){
+      det.classList.add('open');
+      document.getElementById('chev_'+id)?.classList.add('open');
+      expandNotes(det);
+    }
+    card.scrollIntoView({behavior:'smooth',block:'start'});
+  });
 }
 
 let _tt;
@@ -2398,6 +2545,11 @@ function closeQR(){document.getElementById('qr-modal').style.display='none';}
 </div>
 
 <script>
+// ── IMPORT STATE ──
+let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text';
+let pendingCustPOs={};
+try{pendingCustPOs=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');}catch(e){}
+
 // ── RFQ DATA ──
 const RFQ_KEY='oo_rfq';
 let rfqData=[];
@@ -2702,6 +2854,393 @@ function submitRFQModal(){
   addRFQ(rec);
   toast('✓ בקשת הצעת מחיר נשמרה');
 }
+
+// ── IMPORT / MERGE ──
+function openImportModal(){
+  _importFile=null; _importExcelRows=null;
+  document.getElementById('import-ta').value='';
+  document.getElementById('import-file-label').textContent='לחץ לבחירת קובץ (Excel, PDF, תמונה)';
+  document.getElementById('fi-import').value='';
+  document.getElementById('import-err').style.display='none';
+  importSelectTab('text');
+  document.getElementById('import-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('import-ta').focus(),80);
+}
+function closeImportModal(){document.getElementById('import-modal').style.display='none';}
+
+function importSelectTab(t){
+  _importTab=t;
+  document.getElementById('import-section-text').style.display=t==='text'?'block':'none';
+  document.getElementById('import-section-file').style.display=t==='file'?'block':'none';
+  document.getElementById('import-tab-text').classList.toggle('on',t==='text');
+  document.getElementById('import-tab-file').classList.toggle('on',t==='file');
+}
+
+function handleImportFile(e){
+  const file=e.target.files[0]; if(!file)return;
+  _importFile=file; _importExcelRows=null;
+  document.getElementById('import-file-label').textContent='📎 '+file.name;
+  const isXlsx=/\.(xlsx|xls)$/i.test(file.name);
+  if(isXlsx){
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      withXLSX(()=>{
+        try{
+          const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true,dense:true});
+          _importExcelRows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+          document.getElementById('import-file-label').textContent='📊 '+file.name+' — '+_importExcelRows.length+' שורות';
+        }catch(err){document.getElementById('import-file-label').textContent='⚠ שגיאה: '+err.message;}
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function toBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result.split(',')[1]);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function submitImportParse(){
+  const btn=document.getElementById('import-submit');
+  btn.disabled=true; btn.textContent='מנתח...';
+  document.getElementById('import-err').style.display='none';
+  try{
+    let body;
+    if(_importTab==='text'){
+      const txt=document.getElementById('import-ta').value.trim();
+      if(!txt){document.getElementById('import-err').textContent='אנא הדבק טקסט';document.getElementById('import-err').style.display='block';return;}
+      body={type:'text',content:txt};
+    } else {
+      if(!_importFile){document.getElementById('import-err').textContent='אנא בחר קובץ';document.getElementById('import-err').style.display='block';return;}
+      const isXlsx=/\.(xlsx|xls)$/i.test(_importFile.name);
+      if(isXlsx&&_importExcelRows){
+        body={type:'excel',content:JSON.stringify(_importExcelRows)};
+      } else {
+        const isPdf=_importFile.type==='application/pdf'||/\.pdf$/i.test(_importFile.name);
+        const b64=await toBase64(_importFile);
+        body={type:isPdf?'pdf':'image',content:b64,mimeType:_importFile.type||'image/jpeg'};
+      }
+    }
+    const res=await fetch('/api/parse-update',{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
+    const json=await res.json();
+    if(!res.ok||!json.ok) throw new Error(json.error||'שגיאה לא ידועה');
+    closeImportModal();
+    openImportPreview(json.updates||[],json.sourceType||'other');
+  }catch(e){
+    document.getElementById('import-err').textContent='שגיאה: '+e.message;
+    document.getElementById('import-err').style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='✨ נתח עם AI';
+  }
+}
+
+function matchUpdateToRows(upd){
+  const mpnUp=(upd.mpn||'').trim().toUpperCase();
+  const so=(upd.so||'').trim();
+  // strip common distributor suffixes (-ND, -CT, -DKR, -TR, -1, -T/R etc.)
+  const stripSfx=s=>s.replace(/[-_](ND|CT|DKR|TR|T\/R|1|2|3|4|5|6|CT-ND|DKR-ND)$/,'');
+  const mpnBase=stripSfx(mpnUp);
+  const rowMpn=r=>r.mpn.trim().toUpperCase();
+  const rowBase=r=>stripSfx(rowMpn(r));
+  // 1. SO + MPN exact
+  if(so&&mpnUp){const r=allRows.find(x=>x.so===so&&rowMpn(x)===mpnUp);if(r)return[r];}
+  // 2. MPN exact
+  if(mpnUp){const rs=allRows.filter(x=>rowMpn(x)===mpnUp);if(rs.length)return rs;}
+  // 3. MPN after stripping suffixes from both sides
+  if(mpnBase){const rs=allRows.filter(x=>rowBase(x)===mpnBase||rowMpn(x)===mpnBase||rowBase(x)===mpnUp);if(rs.length)return rs;}
+  // 4. Prefix match (one starts with the other, min 5 chars)
+  if(mpnUp.length>=5){const rs=allRows.filter(x=>{const rm=rowMpn(x);return rm.length>=5&&(rm.startsWith(mpnUp)||mpnUp.startsWith(rm));});if(rs.length)return rs;}
+  // 5. Bounded containment — handles a manufacturer prefix/suffix in the SO
+  //    that the document omits, e.g. SO "HACH 410K/P1C00000" vs doc "410K/P1C00000".
+  //    The shorter MPN must sit at a whitespace/hyphen boundary inside the longer one.
+  if(mpnUp.length>=6){
+    const rs=allRows.filter(x=>{
+      const rm=rowMpn(x);
+      if(rm.length<6)return false;
+      const long=rm.length>=mpnUp.length?rm:mpnUp;
+      const short=rm.length>=mpnUp.length?mpnUp:rm;
+      const idx=long.indexOf(short);
+      if(idx<0)return false;
+      const before=idx===0?'':long[idx-1];
+      const after=idx+short.length>=long.length?'':long[idx+short.length];
+      const bOk=before===''||/[\s\-]/.test(before);
+      const aOk=after===''||/[\s\-]/.test(after);
+      return bOk&&aOk;
+    });
+    if(rs.length)return rs;
+  }
+  // 6. supplier PO
+  if(upd.poNum){const rs=allRows.filter(x=>(x.poNum||fieldOvr[x.nk+'__po']||'')===(upd.poNum||''));if(rs.length)return rs;}
+  // 7. customer PO
+  if(upd.custPO){const rs=allRows.filter(x=>(x.custPO||fieldOvr[x.nk+'__custPO']||'')===(upd.custPO||''));if(rs.length)return rs;}
+  return[];
+}
+
+const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה'};
+const STATUS_HE={'ordered':'הוזמן מהספק','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
+
+function _currentVal(row,field){
+  if(!row)return'';
+  if(field==='tracking')return fieldOvr[row.nk+'__tracking']||row.tracking||'';
+  if(field==='supplier')return fieldOvr[row.nk+'__supp']||row.supplier||'';
+  if(field==='poNum')return fieldOvr[row.nk+'__po']||row.poNum||'';
+  if(field==='custPO')return fieldOvr[row.nk+'__custPO']||row.custPO||'';
+  if(field==='status')return statusOvr[row.nk]||row.status||'none';
+  if(field==='notes')return notes[row.nk]||'';
+  return'';
+}
+
+function openImportPreview(updates,sourceType){
+  if(!updates.length){toast('ה-AI לא מצא נתונים לעדכון');return;}
+  _importChanges=[];
+  const fieldOrder=['tracking','status','supplier','poNum','custPO','notes'];
+  updates.forEach(upd=>{
+    const matched=matchUpdateToRows(upd);
+    // FIFO waterfall: when one MPN spans several SO lines and the doc has a
+    // shipped quantity, fill the OLDEST order first, balance flows to the next.
+    const qty=parseFloat(upd.qty)||0;
+    // pick a verb that matches what actually happened to the goods, so an
+    // order confirmation with a future delivery date is not labelled "shipped".
+    const st=upd.status||'';
+    const verb=(st==='supplied'||st==='partial')?'סופק'
+      :(['in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st)||upd.tracking)?'נשלח'
+      :(st==='ordered')?'הוזמן':'כמות';
+    let candidates; // [{row, allocNote, partial}]
+    if(matched.length>=1&&qty>0){
+      const sorted=[...matched].sort((a,b)=>{
+        const da=a.dd?a.dd.getTime():Infinity, db=b.dd?b.dd.getTime():Infinity;
+        if(da!==db)return da-db;
+        return (a.so||'').localeCompare(b.so||'');
+      });
+      let remaining=qty;
+      candidates=[];
+      sorted.forEach(row=>{
+        if(remaining<=0)return; // quantity exhausted — leave remaining orders untouched
+        const need=row.qtyR>0?row.qtyR:remaining;
+        const alloc=Math.min(remaining,need);
+        remaining-=alloc;
+        const partial=row.qtyR>0&&alloc<row.qtyR;
+        // "(מלא)"/"(חלקי)" describe quantity coverage, not delivery completion
+        const allocNote=verb+' '+alloc+(row.qtyR>0?'/'+row.qtyR:'')+' יח׳'+(partial?' (חלקי)':' (מלא)');
+        candidates.push({row,allocNote,partial});
+      });
+    } else {
+      candidates=(matched.length?matched:[null]).map(row=>({row,allocNote:'',partial:false}));
+    }
+    candidates.forEach(c=>{
+      const row=c.row;
+      fieldOrder.forEach(field=>{
+        let newVal=upd[field]||'';
+        if(field==='notes'){
+          const parts=[];
+          if(c.allocNote)parts.push(c.allocNote);
+          if(upd.supplierRef)parts.push('הזמנת ספק #'+upd.supplierRef);
+          if(upd.notes)parts.push(upd.notes);
+          newVal=parts.join(' · ');
+        }
+        if(field==='status'){
+          // a partially-filled line is partially supplied, not fully
+          if(c.partial&&(newVal==='supplied'))newVal='partial';
+          if(!newVal)return;
+          if(!STATUS_HE[newVal])return;
+        }
+        if(!newVal)return;
+        // guard: only accept a poNum that looks like a BTS PO (starts with PO/פו, or is purely numeric ≥8 digits matching SAP style)
+        if(field==='poNum'&&!/^(PO|פו)/i.test(newVal)&&!/^\d{8,}$/.test(newVal))return;
+        // guard: custPO is the end-customer's PO (master data). Only a customer-PO
+        // document may set it, and never overwrite an existing customer PO.
+        if(field==='custPO'){
+          if(sourceType!=='customer_po')return;
+          if(_currentVal(row,'custPO'))return;
+        }
+        const oldVal=_currentVal(row,field);
+        if(newVal===oldVal&&field!=='notes')return; // skip no-ops
+        _importChanges.push({upd,row,field,oldVal,newVal,checked:true});
+      });
+    });
+    // if no field changes found but update exists, still add a row to show it was parsed
+    if(!_importChanges.find(c=>c.upd===upd)){
+      _importChanges.push({upd,row:matched[0]||null,field:'',oldVal:'',newVal:'',checked:false,empty:true});
+    }
+  });
+
+  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','other':'מסמך'}[sourceType]||'מסמך';
+  document.getElementById('import-preview-title').textContent='📋 שינויים מוצעים מ'+srcLabel;
+  const realChanges=_importChanges.filter(c=>!c.empty);
+  document.getElementById('import-preview-sub').textContent=realChanges.length+' שינויים ב-'+updates.length+' פריטים';
+  _renderPreviewTable();
+  _updateApplyCount();
+  document.getElementById('import-preview-modal').style.display='flex';
+}
+function closeImportPreview(){document.getElementById('import-preview-modal').style.display='none';}
+
+function _renderPreviewTable(){
+  const tbody=document.getElementById('import-preview-body');
+  tbody.innerHTML=_importChanges.map((c,i)=>{
+    if(c.empty){
+      return`<tr><td></td><td class="import-new">${esc(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—')}</td><td colspan="4" style="color:var(--txt2);font-size:11px">אין שינויים לעדכון</td></tr>`;
+    }
+    const rowLabel=c.row?c.row.so:'—';
+    const mpnLabel=c.row?c.row.mpn:(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—');
+    const trunc=v=>v.length>70?v.slice(0,68)+'…':v;
+    const newRaw=c.field==='status'?(STATUS_HE[c.newVal]||c.newVal):c.newVal;
+    const newDisp=trunc(newRaw);
+    const oldDisp=c.field==='status'?(STATUS_HE[c.oldVal]||c.oldVal||'—'):trunc(c.oldVal||'—');
+    const unmatch=!c.row?`<span class="import-unmatched">לא נמצאה הזמנה</span>`:'';
+    return`<tr>
+      <td><input type="checkbox" data-idx="${i}" ${c.checked?'checked':''} onchange="importChkChange(${i},this.checked)"></td>
+      <td class="import-new">${esc(mpnLabel)}</td>
+      <td style="font-size:11px;color:var(--txt2)">${esc(rowLabel)}${unmatch}</td>
+      <td>${esc(FIELD_LABELS[c.field]||c.field)}</td>
+      <td><span class="import-old">${esc(oldDisp)}</span></td>
+      <td class="import-new" title="${esc(newRaw)}">${esc(newDisp)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function importChkChange(idx,val){_importChanges[idx].checked=val;_updateApplyCount();}
+function importToggleAll(val){_importChanges.forEach(c=>c.checked=val);_renderPreviewTable();_updateApplyCount();}
+function _updateApplyCount(){
+  const n=_importChanges.filter(c=>c.checked&&!c.empty&&c.row).length;
+  const nu=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row).length;
+  document.getElementById('import-apply-count').textContent=n+' שינויים לביצוע'+(nu?' + '+nu+' ממתינים':'');
+}
+
+function applyImportChanges(){
+  const toApply=_importChanges.filter(c=>c.checked&&!c.empty);
+  let count=0;
+  toApply.forEach(c=>{
+    const {row,field,newVal}=c;
+    if(row){
+      const nk=row.nk;
+      if(field==='tracking'){
+        fieldOvr[nk+'__tracking']=newVal;
+        if(!statusOvr[nk]||statusOvr[nk]==='ordered'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
+        row.tracking=newVal; row.cov='green';
+      } else if(field==='supplier'){
+        fieldOvr[nk+'__supp']=newVal; row.supplier=newVal;
+      } else if(field==='poNum'){
+        fieldOvr[nk+'__po']=newVal; row.poNum=newVal; if(row.cov!=='green')row.cov='green';
+      } else if(field==='custPO'){
+        fieldOvr[nk+'__custPO']=newVal; row.custPO=newVal;
+      } else if(field==='status'){
+        statusOvr[nk]=newVal; row.status=newVal;
+        const greenSt=['ordered','in_transit','waiting_wh','customs_rel','delivery_bts','qc','supplied','waiting_cust'];
+        if(greenSt.includes(newVal))row.cov='green';
+        else if(newVal==='none'||newVal==='cancelled'||newVal==='cancelled_bts')row.cov=row.isOvr?'red':'grey';
+        else row.cov='orange';
+      } else if(field==='notes'){
+        let lines=(notes[nk]||'').split('\n').filter(Boolean);
+        // drop any earlier import note for the same shipment (matched by its
+        // tracking number or supplier reference) so re-imports replace, not stack
+        const token=c.upd.tracking||c.upd.supplierRef||'';
+        if(token)lines=lines.filter(l=>!l.includes(token));
+        if(!lines.includes(newVal))lines.push(newVal);
+        notes[nk]=lines.join('\n');
+      }
+      count++;
+    } else if(c.upd.custPO){
+      // store as pending — will auto-apply when matching SO line appears
+      pendingCustPOs[c.upd.custPO]=c.upd;
+      count++;
+    }
+  });
+  try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+  try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
+  try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
+  try{localStorage.setItem('oo_pending_cpo',JSON.stringify(pendingCustPOs));}catch(e){}
+  applyOverridesToRows(allRows);
+  soGroups=buildGroups(allRows);
+  applyFilters();
+  renderBoss();
+  syncOverrides();
+  updateImportBadge();
+  closeImportPreview();
+  toast('✓ '+count+' שינויים הוחלו');
+}
+
+function applyPendingCustPOs(){
+  const pending=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');
+  if(!Object.keys(pending).length)return;
+  let changed=false;
+  allRows.forEach(r=>{
+    const p=pending[r.custPO];
+    if(!p)return;
+    if(p.supplier&&fieldOvr[r.nk+'__supp']===undefined){fieldOvr[r.nk+'__supp']=p.supplier;r.supplier=p.supplier;changed=true;}
+    if(p.poNum&&fieldOvr[r.nk+'__po']===undefined){fieldOvr[r.nk+'__po']=p.poNum;r.poNum=p.poNum;changed=true;}
+    if(p.tracking&&fieldOvr[r.nk+'__tracking']===undefined){fieldOvr[r.nk+'__tracking']=p.tracking;r.tracking=p.tracking;if(!statusOvr[r.nk])statusOvr[r.nk]='delivery_bts';changed=true;}
+    if(p.notes&&!notes[r.nk]){notes[r.nk]=p.notes;changed=true;}
+    delete pending[r.custPO];
+    delete pendingCustPOs[r.custPO];
+  });
+  if(changed){
+    try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
+    try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
+    try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
+    localStorage.setItem('oo_pending_cpo',JSON.stringify(pending));
+    syncOverrides();
+  }
+  updateImportBadge();
+}
+
+function updateImportBadge(){
+  const n=Object.keys(pendingCustPOs).length;
+  const el=document.getElementById('import-pending-badge');
+  if(!el)return;
+  if(n>0){el.textContent=n;el.style.display='inline';}else{el.style.display='none';}
+}
 </script>
+
+<!-- IMPORT INPUT MODAL -->
+<div id="import-modal" onclick="if(event.target===this)closeImportModal()" style="display:none;position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(560px,95vw);display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📥 ייבוא נתונים</div>
+    <div style="font-size:13px;color:var(--txt2)">ייבא עדכונים מאימייל, הודעת משלוח, חשבונית, PO לקוח או קובץ — ה-AI יחלץ את השינויים לאישור.</div>
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr)">
+      <button class="import-tab on" id="import-tab-text" onclick="importSelectTab('text')">📝 הדבק טקסט</button>
+      <button class="import-tab" id="import-tab-file" onclick="importSelectTab('file')">📎 העלה קובץ</button>
+    </div>
+    <div id="import-section-text">
+      <textarea id="import-ta" rows="10" placeholder="הדבק כאן את תוכן המייל, הודעת המשלוח, החשבונית..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
+    </div>
+    <div id="import-section-file" style="display:none">
+      <div class="import-dropzone" onclick="document.getElementById('fi-import').click()">
+        <div id="import-file-label">לחץ לבחירת קובץ (Excel, PDF, תמונה)</div>
+      </div>
+    </div>
+    <div id="import-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeImportModal()">ביטול</button>
+      <button class="btn btn-blue" id="import-submit" onclick="submitImportParse()">✨ נתח עם AI</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT PREVIEW MODAL -->
+<div id="import-preview-modal" onclick="if(event.target===this)closeImportPreview()" style="display:none;position:fixed;inset:0;z-index:965;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(820px,96vw);display:flex;flex-direction:column;gap:14px;max-height:90vh">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)" id="import-preview-title">📋 שינויים מוצעים</div>
+    <div style="font-size:12px;color:var(--txt2)" id="import-preview-sub"></div>
+    <div style="overflow:auto;flex:1">
+      <table class="import-tbl">
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" id="import-chk-all" onchange="importToggleAll(this.checked)" title="בחר הכל"></th>
+          <th>MPN</th><th>הזמנה</th><th>שדה</th><th>ערך נוכחי</th><th>ערך חדש</th>
+        </tr></thead>
+        <tbody id="import-preview-body"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
+      <span id="import-apply-count" style="font-size:12px;color:var(--txt2);font-family:var(--mono)"></span>
+      <button class="btn btn-ghost" onclick="closeImportPreview()">ביטול</button>
+      <button class="btn btn-blue" id="import-apply" onclick="applyImportChanges()">החל שינויים</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
