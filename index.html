@@ -2872,6 +2872,8 @@ function openImportPreview(updates,sourceType){
           if(!STATUS_HE[newVal])return;
         }
         if(!newVal)return;
+        // guard: only accept a poNum that looks like a BTS PO (starts with PO/פו, or is purely numeric ≥8 digits matching SAP style)
+        if(field==='poNum'&&!/^(PO|פו)/i.test(newVal)&&!/^\d{8,}$/.test(newVal))return;
         const oldVal=_currentVal(row,field);
         if(newVal===oldVal&&field!=='notes')return; // skip no-ops
         _importChanges.push({upd,row,field,oldVal,newVal,checked:true});

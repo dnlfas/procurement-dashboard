@@ -7,7 +7,7 @@ Each update object has these fields (strings unless noted, leave "" if unknown):
   mpn        – part number / MPN / catalog code (exact as written)
   so         – BTS sales order number if mentioned (e.g. "SO26000122")
   custPO     – customer purchase order number sent to BTS (e.g. "P026S0008369")
-  poNum      – BTS purchase order number sent to supplier (e.g. "PO26000203")
+  poNum      – BTS purchase order number to the supplier. Only set this if the document explicitly shows a field labelled "PO", "Purchase Order", "הזמנת רכש" or similar AND the value looks like a PO reference (e.g. "PO26000203"). NEVER use the supplier's own invoice number, order number, web-order ID, or any number from the supplier's side — leave "" in those cases.
   supplier   – supplier company name
   tracking   – shipment tracking number
   qty        – number of units shipped/invoiced for THIS line item (digits only, e.g. "101"), or ""
