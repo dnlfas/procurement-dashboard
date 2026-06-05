@@ -435,9 +435,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .import-tab.on{border-bottom-color:var(--acc);color:var(--txtb)}
 .import-dropzone{border:2px dashed var(--bdr);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--txt2);font-size:13px;transition:border-color .15s}
 .import-dropzone:hover{border-color:var(--acc);color:var(--txtb)}
-.pull-badge{background:rgba(255,165,0,.15);color:var(--ora);border:1px solid rgba(255,165,0,.35);border-radius:4px;font-size:10px;padding:2px 6px;font-family:var(--mono);font-weight:600;white-space:nowrap;cursor:pointer}
-.pull-badge-add{background:transparent;color:var(--txt2);border:1px dashed var(--bdr);border-radius:4px;font-size:10px;padding:1px 5px;font-family:var(--mono);cursor:pointer;line-height:1.4;vertical-align:middle}
-.pull-badge-add:hover{color:var(--ora);border-color:var(--ora)}
+.pull-badge{background:rgba(255,165,0,.15);color:var(--ora);border:1px solid rgba(255,165,0,.35);border-radius:4px;font-size:10px;padding:2px 6px;font-family:var(--mono);font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1949,7 +1947,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?` <span class="pull-badge" onclick="event.stopPropagation();togglePullOrder('${esc(g.custPO)}')" title="לחץ להסרת סימון תיק משיכה">תיק משיכה ✕</span>`:g.custPO?` <button class="pull-badge-add" onclick="event.stopPropagation();togglePullOrder('${esc(g.custPO)}')">＋ תיק משיכה</button>`:''}</div></div>
+        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -1982,17 +1980,6 @@ function setSOStatus(soNum,status){
   soGroups=buildGroups(allRows);
   syncOverrides();
   applyFilters();
-}
-function togglePullOrder(custPO){
-  if(!custPO)return;
-  if(pullOrders[custPO])delete pullOrders[custPO];
-  else pullOrders[custPO]=true;
-  localStorage.setItem('oo_pull',JSON.stringify(pullOrders));
-  applyOverridesToRows(allRows);
-  soGroups=buildGroups(allRows);
-  applyFilters();
-  renderBoss();
-  syncOverrides();
 }
 function hdrClk(e,id){if(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;togSO(id);}
 function togSO(id){
