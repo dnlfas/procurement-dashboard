@@ -23,6 +23,7 @@ Rules:
 - Set status to "delivery_bts" when a tracking number is present and no clearer status is given (and it is not a BTS shipping notice).
 - "waiting_cust" is ONLY for BTS-issued shipping notices (SH…). Never use it for supplier invoices, supplier shipping notices, or customer POs.
 - A "Certificate of Compliance" (COC) is a quality document — set sourceType to "coc" and status to "qc" for all its line items. Even though a COC contains a "CUSTOMER P.O." reference, it is NOT a customer PO document — never set sourceType to "customer_po" for a COC.
+- In a COC, "BTS Reg.No." or "BTS Reg. No." followed by a number is the BTS sales order number — set so to "SO" + that number (e.g. "BTS Reg.No. 26000102" → so = "SO26000102"). Apply this SO to every line item in the COC.
 - One update object per unique line item / MPN. If the document has no line items but has header-level data (e.g. one tracking number for a whole PO), create one update object.
 - For Excel input the content is a JSON array of row objects; map column names to the above fields by meaning.
 - Keep notes terse. A full invoice line description is NOT a note — extract only the exceptional part.
