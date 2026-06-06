@@ -17,9 +17,10 @@ Each update object has these fields (strings unless noted, leave "" if unknown):
   deliveryDate – ISO date "YYYY-MM-DD" if found, else ""
 
 Rules:
-- For sourceType "shipping_notice": set status to "delivery_bts" when a tracking number is present; otherwise set status to "in_transit". NEVER use "waiting_cust" for a shipping notice.
-- Set status to "delivery_bts" when a tracking number is present and no clearer status is given.
-- "waiting_cust" means goods are ready at BTS waiting for the customer to collect — use it ONLY when the document explicitly says so. Never infer it from a supplier shipping notice or invoice.
+- A BTS shipping notice is identified by a document number starting with "SH" (e.g. SH26000098). For BTS shipping notices set status to "waiting_cust" — goods have left BTS and are waiting for the customer to receive them.
+- For supplier shipping notices (document number does NOT start with "SH"): set status to "delivery_bts" when a tracking number is present; otherwise set status to "in_transit".
+- Set status to "delivery_bts" when a tracking number is present and no clearer status is given (and it is not a BTS shipping notice).
+- "waiting_cust" is ONLY for BTS-issued shipping notices (SH…). Never use it for supplier invoices, supplier shipping notices, or customer POs.
 - One update object per unique line item / MPN. If the document has no line items but has header-level data (e.g. one tracking number for a whole PO), create one update object.
 - For Excel input the content is a JSON array of row objects; map column names to the above fields by meaning.
 - Keep notes terse. A full invoice line description is NOT a note — extract only the exceptional part.
