@@ -54,14 +54,24 @@ module.exports = async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      max_tokens: 4096,
       system: SYSTEM,
       messages: [{ role: 'user', content: userContent }],
     });
 
-    const raw = message.content[0].text.trim()
+    let raw = message.content[0].text.trim()
       .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-    const parsed = JSON.parse(raw);
+    // Extract outermost {...} in case the model added surrounding text
+    const objMatch = raw.match(/\{[\s\S]*\}/);
+    if (objMatch) raw = objMatch[0];
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_) {
+      // Repair unquoted property names (e.g. {key: val} → {"key": val})
+      const repaired = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
+      parsed = JSON.parse(repaired);
+    }
     res.json({ ok: true, sourceType: parsed.sourceType || 'other', updates: parsed.updates || [] });
   } catch (e) {
     res.status(500).json({ error: e.message });
