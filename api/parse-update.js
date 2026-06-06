@@ -9,15 +9,15 @@ Each update object has these fields (strings unless noted, leave "" if unknown):
   custPO     – the END CUSTOMER's purchase order number sent TO BTS (e.g. "P026S0008369"). Only set this when the document is a purchase order FROM a customer to BTS (sourceType "customer_po"). On a supplier invoice, supplier shipping notice, or anything coming FROM a supplier, there is no customer PO — leave "". NEVER put a supplier's order number, invoice number, or web-order ID here.
   poNum      – BTS purchase order number to the supplier. Only set this if the document explicitly shows a field labelled "PO", "Purchase Order", "הזמנת רכש" or similar AND the value looks like a PO reference (e.g. "PO26000203"). NEVER use the supplier's own invoice number, order number, web-order ID, or any number from the supplier's side — leave "" in those cases.
   supplier   – supplier company name
-  tracking   – shipment tracking number
+  tracking   – shipment tracking number for the FINAL leg to Israel (DHL, FedEx, UPS, etc.). Do NOT put SF Express tracking numbers here — SF Express is a Chinese domestic/consolidation courier and its tracking number belongs in notes.
   supplierRef – the supplier's own reference for this order OR their internal catalog/part number when it differs from the customer PN (e.g. supplier part "C870CF34800AA0J", Digi-Key order "6113238"). Informational only — goes into the note. Leave "" if none.
   qty        – number of units shipped/invoiced for THIS line item (digits only, e.g. "101"), or ""
   status     – one of: ordered|in_transit|waiting_wh|customs_sub|customs_rel|delivery_bts|qc|supplied|partial|waiting_cust|cancelled  (or "")
-  notes      – ONE short phrase (max ~80 chars). Only exceptional info: invoice number, back-order, ETA, or a discrepancy. Do NOT restate mpn/qty/supplier/tracking — those have their own fields.
+  notes      – ONE short phrase (max ~80 chars). Only exceptional info: invoice number, back-order, ETA, SF Express tracking number, or a discrepancy. Do NOT restate mpn/qty/supplier — those have their own fields.
   deliveryDate – ISO date "YYYY-MM-DD" if found, else ""
 
 Rules:
-- When an email states that parts have been shipped to Winshare, to "our partner", or to a consolidation/forwarding warehouse, OR when an SF Express tracking number is provided (SF Express tracking numbers typically start with SF or are numeric strings around 15 digits), set status to "waiting_wh".
+- When an email states that parts have been shipped to Winshare, to "our partner", or to a consolidation/forwarding warehouse, OR when an SF Express tracking number is provided (SF Express tracking numbers typically start with SF followed by digits, e.g. SF1234567890123), set status to "waiting_wh" and put the SF tracking number in notes (e.g. "SF Express: SF1234567890123"), NOT in the tracking field.
 - A BTS shipping notice is identified by a document number starting with "SH" (e.g. SH26000098). For BTS shipping notices set status to "waiting_cust" — goods have left BTS and are waiting for the customer to receive them.
 - For supplier shipping notices (document number does NOT start with "SH"): set status to "delivery_bts" when a tracking number is present; otherwise set status to "in_transit".
 - Set status to "delivery_bts" when a tracking number is present and no clearer status is given (and it is not a BTS shipping notice).
