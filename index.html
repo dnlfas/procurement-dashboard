@@ -3073,7 +3073,7 @@ function openImportPreview(updates,sourceType){
     }
   });
 
-  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','other':'מסמך'}[sourceType]||'מסמך';
+  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','coc':'תעודת התאמה','other':'מסמך'}[sourceType]||'מסמך';
   document.getElementById('import-preview-title').textContent='📋 שינויים מוצעים מ'+srcLabel;
   const realChanges=_importChanges.filter(c=>!c.empty);
   document.getElementById('import-preview-sub').textContent=realChanges.length+' שינויים ב-'+updates.length+' פריטים';

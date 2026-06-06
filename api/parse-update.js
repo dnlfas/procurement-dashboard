@@ -2,7 +2,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { isAuthed } = require('./_auth');
 
 const SYSTEM = `You extract procurement updates from any document (shipping notice, customer PO, invoice, email, Excel table).
-Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|invoice|other", "updates": [...] }
+Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|invoice|coc|other", "updates": [...] }
 Each update object has these fields (strings unless noted, leave "" if unknown):
   mpn        – the CUSTOMER's part number / MPN as it appears in the buyer's system (often labelled "customer PN", "buyer PN", "your PN", "מק"ט לקוח", or similar). This is the MPN used in BTS sales orders. If the document shows both a supplier part number AND a customer part number, always use the customer part number here. If only a supplier PN exists, use that.
   so         – BTS sales order number if mentioned (e.g. "SO26000122")
@@ -22,6 +22,7 @@ Rules:
 - For supplier shipping notices (document number does NOT start with "SH"): set status to "delivery_bts" when a tracking number is present; otherwise set status to "in_transit".
 - Set status to "delivery_bts" when a tracking number is present and no clearer status is given (and it is not a BTS shipping notice).
 - "waiting_cust" is ONLY for BTS-issued shipping notices (SH…). Never use it for supplier invoices, supplier shipping notices, or customer POs.
+- A "Certificate of Compliance" (COC) is a quality document — set sourceType to "coc" and status to "qc" for all its line items. Even though a COC contains a "CUSTOMER P.O." reference, it is NOT a customer PO document — never set sourceType to "customer_po" for a COC.
 - One update object per unique line item / MPN. If the document has no line items but has header-level data (e.g. one tracking number for a whole PO), create one update object.
 - For Excel input the content is a JSON array of row objects; map column names to the above fields by meaning.
 - Keep notes terse. A full invoice line description is NOT a note — extract only the exceptional part.
