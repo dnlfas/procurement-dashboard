@@ -35,25 +35,26 @@ module.exports = async function handler(req, res) {
   try {
     let body = '';
     for await (const chunk of req) body += chunk;
-    const { type, content, mimeType } = JSON.parse(body);
+    const { type, content, mimeType, context } = JSON.parse(body);
     if (!content || !content.trim()) return res.status(400).json({ error: 'empty' });
 
     const client = new Anthropic();
 
+    const contextNote = context ? `\n\nAdditional context provided by the user:\n${context}` : '';
     let userContent;
     if (type === 'image') {
       userContent = [
         { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: content } },
-        { type: 'text', text: 'Extract procurement updates from this image.' },
+        { type: 'text', text: 'Extract procurement updates from this image.' + contextNote },
       ];
     } else if (type === 'pdf') {
       userContent = [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: content } },
-        { type: 'text', text: 'Extract procurement updates from this document.' },
+        { type: 'text', text: 'Extract procurement updates from this document.' + contextNote },
       ];
     } else {
       // text or excel — content is a plain string
-      userContent = content;
+      userContent = context ? content + contextNote : content;
     }
 
     const message = await client.messages.create({
