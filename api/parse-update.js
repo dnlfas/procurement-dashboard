@@ -12,11 +12,12 @@ Each update object has these fields (strings unless noted, leave "" if unknown):
   tracking   – shipment tracking number
   supplierRef – the supplier's own reference for this order OR their internal catalog/part number when it differs from the customer PN (e.g. supplier part "C870CF34800AA0J", Digi-Key order "6113238"). Informational only — goes into the note. Leave "" if none.
   qty        – number of units shipped/invoiced for THIS line item (digits only, e.g. "101"), or ""
-  status     – one of: ordered|in_transit|customs_sub|customs_rel|delivery_bts|qc|supplied|partial|waiting_cust|cancelled  (or "")
+  status     – one of: ordered|in_transit|waiting_wh|customs_sub|customs_rel|delivery_bts|qc|supplied|partial|waiting_cust|cancelled  (or "")
   notes      – ONE short phrase (max ~80 chars). Only exceptional info: invoice number, back-order, ETA, or a discrepancy. Do NOT restate mpn/qty/supplier/tracking — those have their own fields.
   deliveryDate – ISO date "YYYY-MM-DD" if found, else ""
 
 Rules:
+- When an email states that parts have been shipped to Winshare, to "our partner", or to a consolidation/forwarding warehouse, OR when an SF Express tracking number is provided (SF Express tracking numbers typically start with SF or are numeric strings around 15 digits), set status to "waiting_wh".
 - A BTS shipping notice is identified by a document number starting with "SH" (e.g. SH26000098). For BTS shipping notices set status to "waiting_cust" — goods have left BTS and are waiting for the customer to receive them.
 - For supplier shipping notices (document number does NOT start with "SH"): set status to "delivery_bts" when a tracking number is present; otherwise set status to "in_transit".
 - Set status to "delivery_bts" when a tracking number is present and no clearer status is given (and it is not a BTS shipping notice).
