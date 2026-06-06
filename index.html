@@ -2982,7 +2982,7 @@ function matchUpdateToRows(upd){
 }
 
 const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה'};
-const STATUS_HE={'ordered':'הוזמן מהספק','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
+const STATUS_HE={'ordered':'הוזמן מהספק','waiting_wh':'ממתין במחסן המוצא','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
 
 function _currentVal(row,field){
   if(!row)return'';
@@ -3008,7 +3008,7 @@ function openImportPreview(updates,sourceType){
     // order confirmation with a future delivery date is not labelled "shipped".
     const st=upd.status||'';
     const verb=(st==='supplied'||st==='partial')?'סופק'
-      :(['in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st)||upd.tracking)?'נשלח'
+      :(['waiting_wh','in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st)||upd.tracking)?'נשלח'
       :(st==='ordered')?'הוזמן':'כמות';
     let candidates; // [{row, allocNote, partial}]
     if(matched.length>=1&&qty>0){
