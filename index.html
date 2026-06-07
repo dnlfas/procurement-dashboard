@@ -3116,8 +3116,13 @@ function importChkChange(idx,val){_importChanges[idx].checked=val;_updateApplyCo
 function importToggleAll(val){_importChanges.forEach(c=>c.checked=val);_renderPreviewTable();_updateApplyCount();}
 function _updateApplyCount(){
   const n=_importChanges.filter(c=>c.checked&&!c.empty&&c.row).length;
-  const nu=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row).length;
-  document.getElementById('import-apply-count').textContent=n+' שינויים לביצוע'+(nu?' + '+nu+' ממתינים':'');
+  const unmatched=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row);
+  const nuCustPO=new Set(unmatched.filter(c=>c.upd.custPO).map(c=>c.upd.custPO)).size;
+  const nuOther=unmatched.filter(c=>!c.upd.custPO).length;
+  let txt=n+' שינויים לביצוע';
+  if(nuCustPO)txt+=' + '+nuCustPO+' הזמנה'+(nuCustPO>1?'ות':'')+' זמניות ייווצרו';
+  if(nuOther)txt+=' + '+nuOther+' ממתינים';
+  document.getElementById('import-apply-count').textContent=txt;
 }
 
 function applyImportChanges(){
