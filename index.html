@@ -3120,7 +3120,10 @@ function _updateApplyCount(){
   const nuCustPO=new Set(unmatched.filter(c=>c.upd.custPO).map(c=>c.upd.custPO)).size;
   const nuOther=unmatched.filter(c=>!c.upd.custPO).length;
   let txt=n+' שינויים לביצוע';
-  if(nuCustPO)txt+=' + '+nuCustPO+' הזמנה'+(nuCustPO>1?'ות':'')+' זמניות ייווצרו';
+  if(nuCustPO){
+    const custNames=[...new Set(unmatched.filter(c=>c.upd.custPO&&c.upd.customer).map(c=>c.upd.customer))];
+    txt+=' + '+nuCustPO+' הזמנה'+(nuCustPO>1?'ות':'')+' זמניות ייווצרו'+(custNames.length?' ('+custNames.join(', ')+')'  :'');
+  }
   if(nuOther)txt+=' + '+nuOther+' ממתינים';
   document.getElementById('import-apply-count').textContent=txt;
 }
@@ -3173,7 +3176,7 @@ function applyImportChanges(){
     Object.entries(tempOrders).forEach(([tso,e])=>{custPOtoTSO[e.custPO]=tso;});
     unmatchedByCustPO.forEach((updSet,custPO)=>{
       const tso=custPOtoTSO[custPO]||_genTempSO();
-      if(!tempOrders[tso])tempOrders[tso]={custPO,lines:[]};
+      if(!tempOrders[tso])tempOrders[tso]={custPO,customer:([...updSet][0].customer||''),lines:[]};
       updSet.forEach(upd=>{
         if(!tempOrders[tso].lines.find(l=>l.mpn===upd.mpn))
           tempOrders[tso].lines.push({mpn:upd.mpn||'',qty:upd.qty||'',poNum:upd.poNum||'',supplier:upd.supplier||'',notes:upd.notes||'',deliveryDate:upd.deliveryDate||''});
@@ -3248,7 +3251,7 @@ function injectTempOrders(){
       const dd=line.deliveryDate?new Date(line.deliveryDate):null;
       const isOvr=!!(dd&&dd<now);
       allRows.push({
-        so:tso,mpn:line.mpn||'',customer:'',custPO:entry.custPO||'',
+        so:tso,mpn:line.mpn||'',customer:entry.customer||'',custPO:entry.custPO||'',
         poNum:line.poNum||'',supplier:line.supplier||'',
         statusRaw:'ממתין לטיפול',status:'pending',
         qtyO:parseFloat(line.qty)||0,qtyR:parseFloat(line.qty)||0,
