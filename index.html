@@ -2141,27 +2141,82 @@ function buildLR(r){
 
 // ── ICS ──
 function icsD(d){return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate());}
+
 function dlSOICS(g){
   if(!g){toast('שגיאה');return;}
   const lwd=g.lines.filter(l=>l.dd);
   if(!lwd.length){toast('אין תאריכי אספקה בהזמנה זו');return;}
+  _icsGroup=g;
+  const firstDd=[...lwd].sort((a,b)=>a.dd-b.dd)[0].dd;
+  document.getElementById('ics-summary').value=`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${lwd.length} פריטים | ${fd(firstDd)}`;
+  document.getElementById('ics-event-date').value='0';
+  document.getElementById('ics-alert').value='7d_abs';
+  document.getElementById('ics-custom-date').style.display='none';
+  document.getElementById('ics-custom-alarm').style.display='none';
+  document.getElementById('ics-modal').style.display='flex';
+}
+function closeICSModal(){document.getElementById('ics-modal').style.display='none';}
+function icsUpdateCustomFields(){
+  document.getElementById('ics-custom-date').style.display=
+    document.getElementById('ics-event-date').value==='custom'?'block':'none';
+  document.getElementById('ics-custom-alarm').style.display=
+    document.getElementById('ics-alert').value==='custom'?'block':'none';
+}
+function _icsPresetOnDay(){
+  if(!_icsGroup)return;
+  _buildAndDownloadICS(_icsGroup,{eventOffset:0,alertType:'7d_abs',summary:document.getElementById('ics-summary').value.trim()});
+  closeICSModal();
+}
+function _icsPreset7Before(){
+  if(!_icsGroup)return;
+  _buildAndDownloadICS(_icsGroup,{eventOffset:7,alertType:'at_start',summary:document.getElementById('ics-summary').value.trim()});
+  closeICSModal();
+}
+function submitICSDownload(){
+  if(!_icsGroup)return;
+  const eventSel=document.getElementById('ics-event-date').value;
+  _buildAndDownloadICS(_icsGroup,{
+    eventOffset:eventSel==='custom'?'custom':parseInt(eventSel)||0,
+    customDate:document.getElementById('ics-custom-date').value,
+    alertType:document.getElementById('ics-alert').value,
+    customAlarm:document.getElementById('ics-custom-alarm').value,
+    summary:document.getElementById('ics-summary').value.trim()
+  });
+  closeICSModal();
+}
+function _buildAndDownloadICS(g,opts){
+  const lwd=g.lines.filter(l=>l.dd);
   const now=new Date();
   const dts=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T'+p2(now.getHours())+p2(now.getMinutes())+p2(now.getSeconds())+'Z';
-  const byR={};
-  lwd.forEach(r=>{const rem=new Date(r.dd.getTime()-7*86400000);const k=icsD(rem);if(!byR[k])byR[k]={rem,dd:r.dd,lines:[]};byR[k].lines.push(r);});
-  const evts=Object.values(byR).map(gr=>{
-    const rs=icsD(gr.rem),re=icsD(new Date(gr.rem.getTime()+86400000));
-    const uid=`so-${g.so}-${rs}-${Date.now()}@oo`.replace(/[^a-zA-Z0-9@\-]/g,'_');
-    const sum=`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${gr.lines.length} פריטים | ${fd(gr.dd)}`;
-    const desc=`הזמנה: ${g.so}\\nלקוח: ${g.customer||''}\\nת. אספקה: ${fd(gr.dd)}\\n\\nפריטים:\\n`+gr.lines.map(r=>`• ${r.mpn} — כמות: ${r.qtyR||r.qtyO} — ספק: ${r.supplier||'—'}`).join('\\n')+'\\n\\nתזכורת 7 ימים לפני.';
-    return['BEGIN:VEVENT',`UID:${uid}`,`DTSTAMP:${dts}`,`DTSTART;VALUE=DATE:${rs}`,`DTEND;VALUE=DATE:${re}`,`SUMMARY:${sum}`,`DESCRIPTION:${desc}`,'STATUS:CONFIRMED','TRANSP:TRANSPARENT','BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY',`DESCRIPTION:${sum}`,'END:VALARM','END:VEVENT'].join('\r\n');
+  const byD={};
+  lwd.forEach(r=>{const k=icsD(r.dd);if(!byD[k])byD[k]={dd:r.dd,lines:[]};byD[k].lines.push(r);});
+  const evts=Object.values(byD).map(gr=>{
+    let evtDate;
+    if(opts.eventOffset==='custom'&&opts.customDate){evtDate=new Date(opts.customDate);}
+    else{const off=typeof opts.eventOffset==='number'?opts.eventOffset:0;evtDate=new Date(gr.dd.getTime()-off*86400000);}
+    const es=icsD(evtDate),ee=icsD(new Date(evtDate.getTime()+86400000));
+    let trigger;
+    if(opts.alertType==='at_start')trigger='TRIGGER:-PT0M';
+    else if(opts.alertType==='1d')trigger='TRIGGER:-P1D';
+    else if(opts.alertType==='1w')trigger='TRIGGER:-P1W';
+    else if(opts.alertType==='7d_abs'){
+      const al=new Date(gr.dd.getTime()-7*86400000);
+      trigger='TRIGGER;VALUE=DATE-TIME:'+al.getFullYear()+p2(al.getMonth()+1)+p2(al.getDate())+'T070000Z';
+    } else if(opts.alertType==='custom'&&opts.customAlarm){
+      const dt=new Date(opts.customAlarm);
+      trigger='TRIGGER;VALUE=DATE-TIME:'+dt.getUTCFullYear()+p2(dt.getUTCMonth()+1)+p2(dt.getUTCDate())+'T'+p2(dt.getUTCHours())+p2(dt.getUTCMinutes())+'00Z';
+    } else trigger='TRIGGER:-PT0M';
+    const uid=`so-${g.so}-${es}-${Date.now()}@oo`.replace(/[^a-zA-Z0-9@\-]/g,'_');
+    const sum=opts.summary||`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${gr.lines.length} פריטים | ${fd(gr.dd)}`;
+    const desc=`הזמנה: ${g.so}\\nלקוח: ${g.customer||''}\\nת. אספקה: ${fd(gr.dd)}\\n\\nפריטים:\\n`+gr.lines.map(r=>`• ${r.mpn} — כמות: ${r.qtyR||r.qtyO} — ספק: ${r.supplier||'—'}`).join('\\n');
+    return['BEGIN:VEVENT',`UID:${uid}`,`DTSTAMP:${dts}`,`DTSTART;VALUE=DATE:${es}`,`DTEND;VALUE=DATE:${ee}`,`SUMMARY:${sum}`,`DESCRIPTION:${desc}`,'STATUS:CONFIRMED','TRANSP:TRANSPARENT','BEGIN:VALARM',trigger,'ACTION:DISPLAY',`DESCRIPTION:${sum}`,'END:VALARM','END:VEVENT'].join('\r\n');
   });
   const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Open Orders Tracker//IL','CALSCALE:GREGORIAN','METHOD:PUBLISH',...evts,'END:VCALENDAR'].join('\r\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'}));
   a.download=`reminder_${g.so.replace(/[^a-zA-Z0-9]/g,'_')}.ics`;
   a.click();URL.revokeObjectURL(a.href);
-  toast('📅 '+Object.keys(byR).length+' תזכורת/ות הורדו עבור '+g.so);
+  toast('📅 '+Object.keys(byD).length+' אירוע/ים הורדו עבור '+g.so);
 }
 
 // ── TRACKING URL ──
@@ -2552,6 +2607,7 @@ function closeQR(){document.getElementById('qr-modal').style.display='none';}
 <script>
 // ── IMPORT STATE ──
 let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text';
+let _icsGroup=null;
 let pendingCustPOs={};
 try{pendingCustPOs=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');}catch(e){}
 
@@ -3315,6 +3371,53 @@ function updateImportBadge(){
       <span id="import-apply-count" style="font-size:12px;color:var(--txt2);font-family:var(--mono)"></span>
       <button class="btn btn-ghost" onclick="closeImportPreview()">ביטול</button>
       <button class="btn btn-blue" id="import-apply" onclick="applyImportChanges()">החל שינויים</button>
+    </div>
+  </div>
+</div>
+<!-- ICS MODAL -->
+<div id="ics-modal" onclick="if(event.target===this)closeICSModal()" style="display:none;position:fixed;inset:0;z-index:970;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📅 הגדרות אירוע לוח שנה</div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">כותרת</label>
+      <input id="ics-summary" type="text" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;width:100%;box-sizing:border-box;direction:rtl">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">תאריך האירוע</label>
+      <select id="ics-event-date" onchange="icsUpdateCustomFields()" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;direction:rtl;width:100%">
+        <option value="0">תאריך האספקה</option>
+        <option value="7">7 ימים לפני האספקה</option>
+        <option value="14">14 ימים לפני האספקה</option>
+        <option value="custom">תאריך מותאם</option>
+      </select>
+      <input id="ics-custom-date" type="date" style="display:none;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">התראה</label>
+      <select id="ics-alert" onchange="icsUpdateCustomFields()" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;direction:rtl;width:100%">
+        <option value="7d_abs">7 ימים לפני האספקה (Custom)</option>
+        <option value="at_start">בזמן האירוע</option>
+        <option value="1d">יום לפני האירוע</option>
+        <option value="1w">שבוע לפני האירוע</option>
+        <option value="custom">תאריך ושעה מותאמים</option>
+      </select>
+      <input id="ics-custom-alarm" type="datetime-local" style="display:none;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
+    </div>
+
+    <div style="border-top:1px solid var(--bdr);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:11px;color:var(--txt2)">קיצורים מהירים:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="_icsPresetOnDay()">📅 ביום האספקה + התראה 7 ימים לפני</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--ora)" onclick="_icsPreset7Before()">⚡ 7 ימים לפני + התראה בזמן האירוע</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeICSModal()">ביטול</button>
+      <button class="btn btn-blue" onclick="submitICSDownload()">📅 הורד ICS</button>
     </div>
   </div>
 </div>
