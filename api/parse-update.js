@@ -79,8 +79,33 @@ module.exports = async function handler(req, res) {
       parsed = JSON.parse(raw);
     } catch (_) {
       // Repair unquoted property names (e.g. {key: val} → {"key": val})
-      const repaired = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
-      parsed = JSON.parse(repaired);
+      let repaired = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
+      try {
+        parsed = JSON.parse(repaired);
+      } catch (__) {
+        // Repair unescaped double-quotes inside string values (e.g. בע"מ in Hebrew company names).
+        // Walk char-by-char: when inside a string, a '"' not followed by :,}] is unescaped.
+        let fixed = '', inStr = false, esc = false;
+        for (let i = 0; i < repaired.length; i++) {
+          const c = repaired[i];
+          if (esc) { fixed += c; esc = false; continue; }
+          if (c === '\\') { fixed += c; esc = true; continue; }
+          if (c === '"') {
+            if (!inStr) { inStr = true; fixed += c; continue; }
+            let j = i + 1;
+            while (j < repaired.length && (repaired[j] === ' ' || repaired[j] === '\t')) j++;
+            const nx = repaired[j] || '';
+            if (nx === ':' || nx === ',' || nx === '}' || nx === ']' || nx === '') {
+              inStr = false; fixed += c;
+            } else {
+              fixed += '\\"';
+            }
+            continue;
+          }
+          fixed += c;
+        }
+        parsed = JSON.parse(fixed);
+      }
     }
     res.json({ ok: true, sourceType: parsed.sourceType || 'other', updates: parsed.updates || [] });
   } catch (e) {
