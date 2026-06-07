@@ -385,6 +385,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .tb-mid::-webkit-scrollbar{display:none}
   .view-tab{flex:0 0 auto;text-align:center}
   .tb-right{display:none}
+  .import-mobile-btn{display:flex!important}
   /* content offset for taller topbar */
   #app{padding-top:96px}
   #upl{top:96px}
@@ -470,6 +471,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">📋 מבט עובד</button>
     <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">🏭 ספקים</button>
     <button class="view-tab" id="tab-rfq" onclick="setMainView('rfq')">💬 RFQ</button>
+    <button class="view-tab import-mobile-btn" onclick="openImportModal()" style="display:none">📥 ייבוא</button>
   </div>
   <div class="tb-right">
     <div id="spin">טוען...</div>
