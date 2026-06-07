@@ -71,9 +71,9 @@ module.exports = async function handler(req, res) {
 
     let raw = message.content[0].text.trim()
       .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-    // Strip raw control characters that are illegal in JSON strings
-    // (keep \t \n \r which are structural whitespace)
-    raw = raw.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' ');
+    // Strip ALL raw control characters illegal inside JSON strings (0x00-0x1F, 0x7F)
+    // Structural whitespace between tokens becomes spaces — JSON.parse handles that fine.
+    raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ');
     // Extract outermost {...} in case the model added surrounding text
     const objMatch = raw.match(/\{[\s\S]*\}/);
     if (objMatch) raw = objMatch[0];
