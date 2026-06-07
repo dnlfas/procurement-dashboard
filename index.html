@@ -163,6 +163,7 @@ select:focus{border-color:var(--acc)}
 .stl{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .tl-r{background:var(--red);box-shadow:0 0 6px rgba(255,77,77,.45)}.tl-o{background:var(--ora)}.tl-g{background:var(--grn)}.tl-x{background:#3a4460}
 .sonum{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--acc);white-space:nowrap}
+.sonum-temp{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ora);white-space:nowrap;opacity:.85}
 .socpo{font-family:var(--mono);font-size:10px;color:var(--txt2);margin-top:1px}
 .socust{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .sodate{font-family:var(--mono);font-size:13px;white-space:nowrap;flex-shrink:0}
@@ -784,6 +785,7 @@ function startParse(file){
         applyOverridesToRows(allRows);
         soGroups=buildGroups(allRows);
         applyPendingCustPOs();
+        injectTempOrders();
         onLoaded(file.name);
       }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
     };
@@ -1273,6 +1275,7 @@ async function fetchNow() {
       applyOverridesToRows(allRows);
       soGroups = buildGroups(allRows);
       applyPendingCustPOs();
+      injectTempOrders();
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upl').style.display = 'none';
       document.getElementById('app').style.display = 'block';
@@ -1487,6 +1490,7 @@ async function handleTopbarUpload(e, type) {
           soGroups = buildGroups(allRows);
           if (poLoaded) linkPOtoSO();
           applyPendingCustPOs();
+          injectTempOrders();
           document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
           document.getElementById('upl').style.display = 'none';
           document.getElementById('app').style.display = 'block';
@@ -1598,6 +1602,7 @@ function launchDashboard(){
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
   applyPendingCustPOs();
+  injectTempOrders();
   document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
   // Process PO if loaded
   if(wizPOFile){
@@ -2006,7 +2011,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}</div></div>
+        <div><div class="${g.lines.some(r=>r.isTemp)?'sonum-temp':'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}${g.lines.some(r=>r.isTemp)?' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>':''}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -3154,6 +3159,24 @@ function applyImportChanges(){
       count++;
     }
   });
+  // Create temp SO entries for unmatched customer-PO lines
+  const unmatchedByCustPO=new Map();
+  toApply.forEach(c=>{if(!c.row&&c.upd.custPO)unmatchedByCustPO.set(c.upd.custPO,(unmatchedByCustPO.get(c.upd.custPO)||new Set()).add(c.upd));});
+  if(unmatchedByCustPO.size){
+    const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
+    const custPOtoTSO={};
+    Object.entries(tempOrders).forEach(([tso,e])=>{custPOtoTSO[e.custPO]=tso;});
+    unmatchedByCustPO.forEach((updSet,custPO)=>{
+      const tso=custPOtoTSO[custPO]||_genTempSO();
+      if(!tempOrders[tso])tempOrders[tso]={custPO,lines:[]};
+      updSet.forEach(upd=>{
+        if(!tempOrders[tso].lines.find(l=>l.mpn===upd.mpn))
+          tempOrders[tso].lines.push({mpn:upd.mpn||'',qty:upd.qty||'',poNum:upd.poNum||'',supplier:upd.supplier||'',notes:upd.notes||'',deliveryDate:upd.deliveryDate||''});
+      });
+    });
+    try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+    injectTempOrders();
+  }
   try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
   try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
   try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
@@ -3172,6 +3195,7 @@ function applyPendingCustPOs(){
   const pending=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');
   if(!Object.keys(pending).length)return;
   let changed=false;
+  const matchedCustPOs=new Set();
   allRows.forEach(r=>{
     const p=pending[r.custPO];
     if(!p)return;
@@ -3179,9 +3203,17 @@ function applyPendingCustPOs(){
     if(p.poNum&&fieldOvr[r.nk+'__po']===undefined){fieldOvr[r.nk+'__po']=p.poNum;r.poNum=p.poNum;changed=true;}
     if(p.tracking&&fieldOvr[r.nk+'__tracking']===undefined){fieldOvr[r.nk+'__tracking']=p.tracking;r.tracking=p.tracking;if(!statusOvr[r.nk])statusOvr[r.nk]='delivery_bts';changed=true;}
     if(p.notes&&!notes[r.nk]){notes[r.nk]=p.notes;changed=true;}
+    matchedCustPOs.add(r.custPO);
     delete pending[r.custPO];
     delete pendingCustPOs[r.custPO];
   });
+  // Remove temp orders for any custPO now matched to a real SO
+  if(matchedCustPOs.size){
+    const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
+    let tempChanged=false;
+    Object.keys(tempOrders).forEach(tso=>{if(matchedCustPOs.has(tempOrders[tso].custPO)){delete tempOrders[tso];tempChanged=true;}});
+    if(tempChanged)try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+  }
   if(changed){
     try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
     try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
@@ -3190,6 +3222,37 @@ function applyPendingCustPOs(){
     syncOverrides();
   }
   updateImportBadge();
+}
+
+function _genTempSO(){
+  const t=new Date();
+  const d=t.getFullYear().toString()+String(t.getMonth()+1).padStart(2,'0')+String(t.getDate()).padStart(2,'0');
+  let ctr=JSON.parse(localStorage.getItem('oo_temp_ctr')||'{}');
+  if(ctr.date!==d)ctr={date:d,n:0};
+  ctr.n++;
+  try{localStorage.setItem('oo_temp_ctr',JSON.stringify(ctr));}catch(e){}
+  return'TMP-'+d+'-'+ctr.n;
+}
+
+function injectTempOrders(){
+  const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
+  if(!Object.keys(tempOrders).length)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  Object.entries(tempOrders).forEach(([tso,entry])=>{
+    (entry.lines||[]).forEach(line=>{
+      const dd=line.deliveryDate?new Date(line.deliveryDate):null;
+      const isOvr=!!(dd&&dd<now);
+      allRows.push({
+        so:tso,mpn:line.mpn||'',customer:'',custPO:entry.custPO||'',
+        poNum:line.poNum||'',supplier:line.supplier||'',
+        statusRaw:'ממתין לטיפול',status:'pending',
+        qtyO:parseFloat(line.qty)||0,qtyR:parseFloat(line.qty)||0,
+        dd,cov:'orange',daysOvr:isOvr?Math.ceil((now-dd)/86400000):0,
+        isOvr,nk:tso+'__'+(line.mpn||''),isTemp:true
+      });
+    });
+  });
+  soGroups=buildGroups(allRows);
 }
 
 function updateImportBadge(){
