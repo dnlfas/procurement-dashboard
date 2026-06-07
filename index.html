@@ -40,6 +40,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tb-mid{display:flex;gap:0;border:1px solid var(--bdr);border-radius:6px;overflow:hidden;flex-shrink:0;max-width:none}
 .view-tab{padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;border:none;color:var(--txt2);transition:all .15s;white-space:nowrap;font-family:var(--sans)}
 .view-tab.on{background:var(--acc);color:#fff}
+.import-mobile-btn{display:none}
 .tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .fbadge{font-size:13px;font-family:var(--mono);color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .btn{padding:6px 14px;border-radius:5px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s;white-space:nowrap}
@@ -467,11 +468,11 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <div class="tb-title">מרכז שליטה — הזמנות פתוחות</div>
   </div>
   <div class="tb-mid">
+    <button class="view-tab import-mobile-btn" onclick="openImportModal()">📥 ייבוא</button>
     <button class="view-tab on" id="tab-boss" onclick="setMainView('boss')">📊 מבט ניהולי</button>
     <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">📋 מבט עובד</button>
     <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">🏭 ספקים</button>
     <button class="view-tab" id="tab-rfq" onclick="setMainView('rfq')">💬 RFQ</button>
-    <button class="view-tab import-mobile-btn" onclick="openImportModal()" style="display:none">📥 ייבוא</button>
   </div>
   <div class="tb-right">
     <div id="spin">טוען...</div>
