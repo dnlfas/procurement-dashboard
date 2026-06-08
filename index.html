@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מרכז שליטה — הזמנות פתוחות</title>
+<title>מרכז שליטה - BTS</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon.png">
@@ -465,7 +465,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 <div class="topbar">
   <div class="tb-left">
     <div class="ldot"></div>
-    <div class="tb-title">מרכז שליטה — הזמנות פתוחות</div>
+    <div class="tb-title">מרכז שליטה - BTS</div>
   </div>
   <div class="tb-mid">
     <button class="view-tab import-mobile-btn" onclick="openImportModal()">📥 ייבוא</button>
@@ -504,7 +504,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <!-- Wizard header -->
     <div style="text-align:center;margin-bottom:28px">
       <div style="font-size:32px;margin-bottom:10px">📊</div>
-      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">מרכז שליטה — הזמנות פתוחות</div>
+      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">מרכז שליטה - BTS</div>
       <div style="font-size:13px;color:var(--txt2)">טען קובץ אחד או שניים להתחלה</div>
     </div>
 
@@ -2175,6 +2175,39 @@ function _icsPreset7Before(){
   _buildAndDownloadICS(_icsGroup,{eventOffset:7,alertType:'at_start',summary:document.getElementById('ics-summary').value.trim()});
   closeICSModal();
 }
+function _icsTaskToday(){
+  if(!_icsGroup)return;
+  const g=_icsGroup;
+  const summary=document.getElementById('ics-summary').value.trim()||g.so;
+  const now=new Date();
+  const stamp=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T'+p2(now.getHours())+p2(now.getMinutes())+p2(now.getSeconds())+'Z';
+  // Due today 09:00 Israel time; Israel is UTC+3 in summer, UTC+2 in winter.
+  // Use a fixed 07:00Z which is 09:00 at UTC+2 (safe for both offsets).
+  const dueDt=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T070000Z';
+  const uid=stamp+'-todo-'+g.so+'@bts';
+  const lines=[
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//BTS//ProcurementDashboard//HE',
+    'BEGIN:VTODO',
+    'UID:'+uid,
+    'DTSTAMP:'+stamp,
+    'DTSTART:'+dueDt,
+    'DUE:'+dueDt,
+    'SUMMARY:'+summary,
+    'STATUS:NEEDS-ACTION',
+    'PRIORITY:1',
+    'END:VTODO',
+    'END:VCALENDAR'
+  ];
+  const blob=new Blob([lines.join('\r\n')],{type:'text/calendar'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='todo_'+g.so+'.ics';
+  a.click();
+  closeICSModal();
+  toast('משימה "לטיפול היום" יוצאה');
+}
 function submitICSDownload(){
   if(!_icsGroup)return;
   const eventSel=document.getElementById('ics-event-date').value;
@@ -3415,6 +3448,7 @@ function updateImportBadge(){
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost" style="font-size:12px" onclick="_icsPresetOnDay()">📅 ביום האספקה + התראה 7 ימים לפני</button>
         <button class="btn btn-ghost" style="font-size:12px;color:var(--ora)" onclick="_icsPreset7Before()">⚡ 7 ימים לפני + התראה בזמן האירוע</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--grn)" onclick="_icsTaskToday()">✅ לטיפול היום</button>
       </div>
     </div>
 
