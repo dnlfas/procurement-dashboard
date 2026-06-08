@@ -2181,32 +2181,35 @@ function _icsTaskToday(){
   const summary=document.getElementById('ics-summary').value.trim()||g.so;
   const now=new Date();
   const stamp=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T'+p2(now.getHours())+p2(now.getMinutes())+p2(now.getSeconds())+'Z';
-  // Due today 09:00 Israel time; Israel is UTC+3 in summer, UTC+2 in winter.
-  // Use a fixed 07:00Z which is 09:00 at UTC+2 (safe for both offsets).
-  const dueDt=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T070000Z';
-  const uid=stamp+'-todo-'+g.so+'@bts';
+  // Floating local-time event at 09:00 today — no Z suffix so every calendar app
+  // interprets it in the device's own timezone (avoids UTC conversion surprises).
+  const dateStr=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate());
+  const uid=stamp+'-today-'+g.so+'@bts';
   const lines=[
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//BTS//ProcurementDashboard//HE',
-    'BEGIN:VTODO',
+    'BEGIN:VEVENT',
     'UID:'+uid,
     'DTSTAMP:'+stamp,
-    'DTSTART:'+dueDt,
-    'DUE:'+dueDt,
+    'DTSTART:'+dateStr+'T090000',
+    'DTEND:'+dateStr+'T100000',
     'SUMMARY:'+summary,
-    'STATUS:NEEDS-ACTION',
-    'PRIORITY:1',
-    'END:VTODO',
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:'+summary,
+    'TRIGGER:-PT0M',
+    'END:VALARM',
+    'END:VEVENT',
     'END:VCALENDAR'
   ];
   const blob=new Blob([lines.join('\r\n')],{type:'text/calendar'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='todo_'+g.so+'.ics';
+  a.download='today_'+g.so+'.ics';
   a.click();
   closeICSModal();
-  toast('משימה "לטיפול היום" יוצאה');
+  toast('אירוע "לטיפול היום" יוצא');
 }
 function submitICSDownload(){
   if(!_icsGroup)return;
