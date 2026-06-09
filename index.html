@@ -3173,6 +3173,29 @@ function openImportPreview(updates,sourceType){
     }
   });
 
+  // Bulk waiting_wh expansion: if a DHL tracking came in for a row that was
+  // waiting_wh, offer the same tracking to ALL other waiting_wh rows.
+  const wwhTrackings=[];
+  for(const c of _importChanges){
+    if(c.field==='tracking'&&c.row){
+      const curSt=statusOvr[c.row.nk]??c.row.status;
+      if(curSt==='waiting_wh'&&c.newVal&&!wwhTrackings.includes(c.newVal))
+        wwhTrackings.push(c.newVal);
+    }
+  }
+  if(wwhTrackings.length){
+    const bulkTracking=wwhTrackings[0];
+    const coveredNks=new Set(_importChanges.filter(c=>c.row).map(c=>c.row.nk));
+    for(const row of allRows){
+      const curSt=statusOvr[row.nk]??row.status;
+      if(curSt!=='waiting_wh')continue;
+      if(coveredNks.has(row.nk))continue;
+      const oldVal=_currentVal(row,'tracking');
+      if(oldVal===bulkTracking)continue;
+      _importChanges.push({upd:{tracking:bulkTracking},row,field:'tracking',oldVal,newVal:bulkTracking,checked:true,empty:false,wwhBulk:true});
+    }
+  }
+
   const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','coc':'תעודת התאמה','other':'מסמך'}[sourceType]||'מסמך';
   document.getElementById('import-preview-title').textContent='📋 שינויים מוצעים מ'+srcLabel;
   const realChanges=_importChanges.filter(c=>!c.empty);
@@ -3189,6 +3212,8 @@ function _renderPreviewTable(){
     if(c.empty){
       return`<tr><td></td><td class="import-new">${esc(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—')}</td><td colspan="4" style="color:var(--txt2);font-size:11px">אין שינויים לעדכון</td></tr>`;
     }
+    const sectionHdr=(c.wwhBulk&&(i===0||!_importChanges[i-1].wwhBulk))
+      ?`<tr><td colspan="6" style="padding:5px 8px;font-size:11px;color:var(--txt2);background:var(--sur2);border-top:1px solid var(--bdr)">📦 הזמנות נוספות ממתינות במחסן המוצא — עדכון מספר מעקב DHL</td></tr>`:'';
     const rowLabel=c.row?c.row.so:'—';
     const mpnLabel=c.row?c.row.mpn:(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—');
     const trunc=v=>v.length>70?v.slice(0,68)+'…':v;
@@ -3196,7 +3221,7 @@ function _renderPreviewTable(){
     const newDisp=trunc(newRaw);
     const oldDisp=c.field==='status'?(STATUS_HE[c.oldVal]||c.oldVal||'—'):trunc(c.oldVal||'—');
     const unmatch=!c.row?`<span class="import-unmatched">לא נמצאה הזמנה</span>`:'';
-    return`<tr>
+    return sectionHdr+`<tr>
       <td><input type="checkbox" data-idx="${i}" ${c.checked?'checked':''} onchange="importChkChange(${i},this.checked)"></td>
       <td class="import-new">${esc(mpnLabel)}</td>
       <td style="font-size:11px;color:var(--txt2)">${esc(rowLabel)}${unmatch}</td>
@@ -3232,7 +3257,7 @@ function applyImportChanges(){
       const nk=row.nk;
       if(field==='tracking'){
         fieldOvr[nk+'__tracking']=newVal;
-        if(!statusOvr[nk]||statusOvr[nk]==='ordered'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
+        if(!statusOvr[nk]||statusOvr[nk]==='ordered'||statusOvr[nk]==='waiting_wh'||row.status==='waiting_wh'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
         row.tracking=newVal; row.cov='green';
       } else if(field==='supplier'){
         fieldOvr[nk+'__supp']=newVal; row.supplier=newVal;
