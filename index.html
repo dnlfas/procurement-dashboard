@@ -3177,9 +3177,10 @@ function openImportPreview(updates,sourceType){
   // waiting_wh, offer the same tracking to ALL other waiting_wh rows.
   const wwhTrackings=[];
   for(const c of _importChanges){
-    if(c.field==='tracking'&&c.row){
-      const curSt=statusOvr[c.row.nk]??c.row.status;
-      if(curSt==='waiting_wh'&&c.newVal&&!wwhTrackings.includes(c.newVal))
+    if(c.field==='tracking'&&c.newVal){
+      // Trigger if the matched row was waiting_wh, OR if unmatched (general DHL shipment notice)
+      const curSt=c.row?(statusOvr[c.row.nk]??c.row.status):null;
+      if((!c.row||curSt==='waiting_wh')&&!wwhTrackings.includes(c.newVal))
         wwhTrackings.push(c.newVal);
     }
   }
