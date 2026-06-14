@@ -1,8 +1,8 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { isAuthed } = require('./_auth');
 
-const SYSTEM = `You extract procurement updates from any document (shipping notice, customer PO, invoice, email, Excel table).
-Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|invoice|coc|other", "updates": [...] }
+const SYSTEM = `You extract procurement updates from any document (shipping notice, customer PO, invoice, email, Excel table, or BTS Sales Order).
+Return ONLY a valid JSON object: { "sourceType": "shipping_notice|customer_po|invoice|coc|so_file|other", "updates": [...] }
 Each update object has these fields (strings unless noted, leave "" if unknown):
   mpn        – the CUSTOMER's part number / MPN as it appears in the buyer's system (often labelled "customer PN", "buyer PN", "your PN", "מק"ט לקוח", or similar). This is the MPN used in BTS sales orders. If the document shows both a supplier part number AND a customer part number, always use the customer part number here. If only a supplier PN exists, use that.
   so         – BTS sales order number if mentioned (e.g. "SO26000122")
@@ -27,6 +27,7 @@ Rules:
 - In a COC, "BTS Reg.No." or "BTS Reg. No." followed by a number is the BTS sales order number — set so to "SO" + that number (e.g. "BTS Reg.No. 26000102" → so = "SO26000102"). Apply this SO to every line item in the COC.
 - For Digi-Key invoices: the "PART" line contains the Digi-Key catalog number (e.g. "2013-1000-ND") — do NOT use this as mpn. The real manufacturer PN is on the "MFG" line, after the slash (e.g. "MFG : Peak Electronic Design Limited / DCA75" → mpn = "DCA75"). The text before the slash is the component manufacturer name — put it in notes as "Manufacturer: <name>" (e.g. notes = "Manufacturer: Peak Electronic Design Limited"). The supplier field should be "Digi-Key" (the company BTS ordered from).
 - Hebrew business letter format: when a document has the sender's company at the top followed by "לכבוד:" (or "לכבוד :" / "לכבוד") and BTS (בי.טי.אס / BTS / ב.ט.ס) is listed as the addressee, this is a customer PO sent TO BTS. Set sourceType to "customer_po". The company named at the top of the letter is the customer — set the customer field to that company name.
+- BTS Sales Order (so_file): when the input is a JSON array whose rows contain Hebrew columns like "הזמנה" (SO number), "מספר פריט"/"מק"ט"/"מקט" (MPN), "ת. אספקה"/"תאריך אספקה" (delivery date), "סטטוס פריט" (status), "יתרה לאספקה"/"כמות בהזמנה" (quantity) — this is a BTS internal Sales Order export. Set sourceType to "so_file". For each row: so = row["הזמנה"], mpn = row["מספר פריט"] or row["מק"ט"] or row["מקט"], deliveryDate from row["ת. אספקה"] or row["תאריך אספקה"] (ISO YYYY-MM-DD), qty from row["יתרה לאספקה"], supplier from row["שם ספק"], poNum from row["מספר הזמנת רכש"]. Map "סטטוס פריט" to status codes: "הוזמן מהספק"→"ordered", "טרם הוזמן"→"pending", "בקרת איכות"→"qc", "מחסן המוצא"→"waiting_wh", "נחת בארץ"→"in_transit", "הגשות למכס"→"customs_sub", "שוחרר ממכס"→"customs_rel", "שליחות"/"BTS"→"delivery_bts", "סופק ללקוח"→"supplied", "סופק חלקי"→"partial", "ממתין לאספקה"→"waiting_cust", "בוטל"→"cancelled". Leave custPO and customer empty. Leave tracking and notes empty unless exceptional.
 - One update object per unique line item / MPN. If the document has no line items but has header-level data (e.g. one tracking number for a whole PO), create one update object.
 - For Excel input the content is a JSON array of row objects; map column names to the above fields by meaning.
 - Keep notes terse. A full invoice line description is NOT a note — extract only the exceptional part.

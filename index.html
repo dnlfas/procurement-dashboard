@@ -743,6 +743,7 @@ function applyOverridesToRows(rows){
     const poOvr=fieldOvr[row.nk+'__po'];
     const trackOvr=fieldOvr[row.nk+'__tracking'];
     const custPOOvr=fieldOvr[row.nk+'__custPO'];
+    const ddOvr=fieldOvr[row.nk+'__dd'];
     const stOvr=statusOvr[row.nk];
     if(suppOvr!==undefined)row.supplier=suppOvr;
     if(poOvr!==undefined){
@@ -752,6 +753,7 @@ function applyOverridesToRows(rows){
     }
     if(trackOvr)row.tracking=trackOvr;
     if(custPOOvr!==undefined)row.custPO=custPOOvr;
+    if(ddOvr){const d=new Date(ddOvr);if(!isNaN(d)){row.dd=d;row.isOvr=d<TODAY;row.daysOvr=row.isOvr?Math.floor((TODAY-d)/86400000):0;}}
     row.isPull=!!(row.custPO&&pullOrders[row.custPO]);
     if(stOvr!==undefined){
       row.status=stOvr;
@@ -3085,7 +3087,7 @@ function matchUpdateToRows(upd){
   return[];
 }
 
-const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה'};
+const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה',deliveryDate:'ת. אספקה'};
 const STATUS_HE={'ordered':'הוזמן מהספק','waiting_wh':'ממתין במחסן המוצא','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
 
 function _currentVal(row,field){
@@ -3096,13 +3098,19 @@ function _currentVal(row,field){
   if(field==='custPO')return fieldOvr[row.nk+'__custPO']||row.custPO||'';
   if(field==='status')return statusOvr[row.nk]||row.status||'none';
   if(field==='notes')return notes[row.nk]||'';
+  if(field==='deliveryDate'){
+    const ddOvr=fieldOvr[row.nk+'__dd'];
+    if(ddOvr)return ddOvr;
+    if(row.dd instanceof Date&&!isNaN(row.dd))return row.dd.toISOString().slice(0,10);
+    return'';
+  }
   return'';
 }
 
 function openImportPreview(updates,sourceType){
   if(!updates.length){toast('ה-AI לא מצא נתונים לעדכון');return;}
   _importChanges=[];
-  const fieldOrder=['tracking','status','supplier','poNum','custPO','notes'];
+  const fieldOrder=['tracking','deliveryDate','status','supplier','poNum','custPO','notes'];
   updates.forEach(upd=>{
     const matched=matchUpdateToRows(upd);
     // FIFO waterfall: when one MPN spans several SO lines and the doc has a
@@ -3147,11 +3155,19 @@ function openImportPreview(updates,sourceType){
           if(upd.notes)parts.push(upd.notes);
           newVal=parts.join(' · ');
         }
+        if(field==='deliveryDate'){
+          // must be a valid ISO date
+          if(!newVal||!/^\d{4}-\d{2}-\d{2}$/.test(newVal))return;
+        }
         if(field==='status'){
           // a partially-filled line is partially supplied, not fully
           if(c.partial&&(newVal==='supplied'))newVal='partial';
           if(!newVal)return;
-          if(!STATUS_HE[newVal])return;
+          // SO files may return 'pending' which isn't in STATUS_HE; allow known codes
+          const knownStatuses=new Set(Object.keys(STATUS_HE).concat(['pending','sourcing','qc_supp','cancelled_bts','none']));
+          if(!knownStatuses.has(newVal))return;
+          // for non-SO-file imports, skip statuses not displayable in Hebrew
+          if(sourceType!=='so_file'&&!STATUS_HE[newVal])return;
         }
         if(!newVal)return;
         // guard: only accept a poNum that looks like a BTS PO (starts with PO/פו, or is purely numeric ≥8 digits matching SAP style)
@@ -3197,7 +3213,7 @@ function openImportPreview(updates,sourceType){
     }
   }
 
-  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','coc':'תעודת התאמה','other':'מסמך'}[sourceType]||'מסמך';
+  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','coc':'תעודת התאמה','so_file':'הזמנת מכירה','other':'מסמך'}[sourceType]||'מסמך';
   document.getElementById('import-preview-title').textContent='📋 שינויים מוצעים מ'+srcLabel;
   const realChanges=_importChanges.filter(c=>!c.empty);
   document.getElementById('import-preview-sub').textContent=realChanges.length+' שינויים ב-'+updates.length+' פריטים';
@@ -3260,6 +3276,10 @@ function applyImportChanges(){
         fieldOvr[nk+'__tracking']=newVal;
         if(!statusOvr[nk]||statusOvr[nk]==='ordered'||statusOvr[nk]==='waiting_wh'||row.status==='waiting_wh'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
         row.tracking=newVal; row.cov='green';
+      } else if(field==='deliveryDate'){
+        fieldOvr[nk+'__dd']=newVal;
+        const d=new Date(newVal);
+        if(!isNaN(d)){row.dd=d;row.isOvr=d<TODAY;row.daysOvr=row.isOvr?Math.floor((TODAY-d)/86400000):0;}
       } else if(field==='supplier'){
         fieldOvr[nk+'__supp']=newVal; row.supplier=newVal;
       } else if(field==='poNum'){
