@@ -3172,10 +3172,10 @@ function openImportPreview(updates,sourceType){
         if(!newVal)return;
         // guard: only accept a poNum that looks like a BTS PO (starts with PO/פו, or is purely numeric ≥8 digits matching SAP style)
         if(field==='poNum'&&!/^(PO|פו)/i.test(newVal)&&!/^\d{8,}$/.test(newVal))return;
-        // guard: custPO is the end-customer's PO (master data). Only a customer-PO
-        // document may set it, and never overwrite an existing customer PO.
+        // guard: custPO is the end-customer's PO (master data). Only customer-PO
+        // or so_file documents may set it, and never overwrite an existing custPO.
         if(field==='custPO'){
-          if(sourceType!=='customer_po')return;
+          if(sourceType!=='customer_po'&&sourceType!=='so_file')return;
           if(_currentVal(row,'custPO'))return;
         }
         const oldVal=_currentVal(row,field);
@@ -3185,7 +3185,10 @@ function openImportPreview(updates,sourceType){
     });
     // if no field changes found but update exists, still add a row to show it was parsed
     if(!_importChanges.find(c=>c.upd===upd)){
-      _importChanges.push({upd,row:matched[0]||null,field:'',oldVal:'',newVal:'',checked:false,empty:true});
+      const fallbackRow=matched[0]||null;
+      // unmatched so_file rows are candidate new orders — mark them checked so user can see count
+      const isNewSO=sourceType==='so_file'&&!fallbackRow;
+      _importChanges.push({upd,row:fallbackRow,field:'',oldVal:'',newVal:'',checked:isNewSO,empty:true,newSORow:isNewSO});
     }
   });
 
@@ -3254,13 +3257,15 @@ function importToggleAll(val){_importChanges.forEach(c=>c.checked=val);_renderPr
 function _updateApplyCount(){
   const n=_importChanges.filter(c=>c.checked&&!c.empty&&c.row).length;
   const unmatched=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row);
-  const nuCustPO=new Set(unmatched.filter(c=>c.upd.custPO).map(c=>c.upd.custPO)).size;
-  const nuOther=unmatched.filter(c=>!c.upd.custPO).length;
+  const nuCustPO=new Set(unmatched.filter(c=>c.upd.custPO&&!c.newSORow).map(c=>c.upd.custPO)).size;
+  const nuNewSO=new Set(_importChanges.filter(c=>c.checked&&c.newSORow&&c.upd.so).map(c=>c.upd.so)).size;
+  const nuOther=unmatched.filter(c=>!c.upd.custPO&&!c.newSORow).length;
   let txt=n+' שינויים לביצוע';
   if(nuCustPO){
-    const custNames=[...new Set(unmatched.filter(c=>c.upd.custPO&&c.upd.customer).map(c=>c.upd.customer))];
+    const custNames=[...new Set(unmatched.filter(c=>c.upd.custPO&&c.upd.customer&&!c.newSORow).map(c=>c.upd.customer))];
     txt+=' + '+nuCustPO+' הזמנה'+(nuCustPO>1?'ות':'')+' זמניות ייווצרו'+(custNames.length?' ('+custNames.join(', ')+')'  :'');
   }
+  if(nuNewSO)txt+=' + '+nuNewSO+' הזמנ'+(nuNewSO>1?'אות':'ה')+' SO חדשות שאינן במערכת';
   if(nuOther)txt+=' + '+nuOther+' ממתינים';
   document.getElementById('import-apply-count').textContent=txt;
 }
