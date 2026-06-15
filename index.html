@@ -165,6 +165,7 @@ select:focus{border-color:var(--acc)}
 .tl-r{background:var(--red);box-shadow:0 0 6px rgba(255,77,77,.45)}.tl-o{background:var(--ora)}.tl-g{background:var(--grn)}.tl-x{background:#3a4460}
 .sonum{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--acc);white-space:nowrap}
 .sonum-temp{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ora);white-space:nowrap;opacity:.85}
+.sonum-soimp{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--acc);white-space:nowrap}
 .socpo{font-family:var(--mono);font-size:10px;color:var(--txt2);margin-top:1px}
 .socust{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .sodate{font-family:var(--mono);font-size:13px;white-space:nowrap;flex-shrink:0}
@@ -790,7 +791,7 @@ function startParse(file){
         applyOverridesToRows(allRows);
         soGroups=buildGroups(allRows);
         applyPendingCustPOs();
-        injectTempOrders();
+        injectTempOrders();injectSOImports();
         onLoaded(file.name);
       }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
     };
@@ -1280,7 +1281,7 @@ async function fetchNow() {
       applyOverridesToRows(allRows);
       soGroups = buildGroups(allRows);
       applyPendingCustPOs();
-      injectTempOrders();
+      injectTempOrders();injectSOImports();
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upl').style.display = 'none';
       document.getElementById('app').style.display = 'block';
@@ -1495,7 +1496,7 @@ async function handleTopbarUpload(e, type) {
           soGroups = buildGroups(allRows);
           if (poLoaded) linkPOtoSO();
           applyPendingCustPOs();
-          injectTempOrders();
+          injectTempOrders();injectSOImports();
           document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
           document.getElementById('upl').style.display = 'none';
           document.getElementById('app').style.display = 'block';
@@ -1607,7 +1608,7 @@ function launchDashboard(){
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
   applyPendingCustPOs();
-  injectTempOrders();
+  injectTempOrders();injectSOImports();
   document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
   // Process PO if loaded
   if(wizPOFile){
@@ -2016,7 +2017,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="${g.lines.some(r=>r.isTemp)?'sonum-temp':'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}${g.lines.some(r=>r.isTemp)?' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>':''}</div></div>
+        <div><div class="${g.lines.some(r=>r.isTemp)?'sonum-temp':g.lines.some(r=>r.isSOImport)?'sonum-soimp':'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}${g.lines.some(r=>r.isTemp)?' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>':''}${g.lines.some(r=>r.isSOImport)?' <span class="pull-badge" style="background:rgba(0,140,255,.12);color:var(--acc);border-color:rgba(0,140,255,.3)">PDF</span>':''}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -2647,7 +2648,7 @@ function closeQR(){document.getElementById('qr-modal').style.display='none';}
 
 <script>
 // ── IMPORT STATE ──
-let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text';
+let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text',_importSourceType='';
 let _icsGroup=null;
 let pendingCustPOs={};
 try{pendingCustPOs=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');}catch(e){}
@@ -3110,6 +3111,7 @@ function _currentVal(row,field){
 function openImportPreview(updates,sourceType){
   if(!updates.length){toast('ה-AI לא מצא נתונים לעדכון');return;}
   _importChanges=[];
+  _importSourceType=sourceType;
   const fieldOrder=['tracking','deliveryDate','status','supplier','poNum','custPO','notes'];
   updates.forEach(upd=>{
     const matched=matchUpdateToRows(upd);
@@ -3335,6 +3337,38 @@ function applyImportChanges(){
   try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
   try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
   try{localStorage.setItem('oo_pending_cpo',JSON.stringify(pendingCustPOs));}catch(e){}
+
+  // SO file import: promote TMP orders to real SO rows via oo_so_imports
+  if(_importSourceType==='so_file'){
+    let soImps;try{soImps=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){soImps={};}
+    let tempOrders;try{tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');}catch(e){tempOrders={};}
+    let soImpChanged=false,tmpChanged=false;
+    const allUpdates=[..._importChanges]; // includes newSORow entries
+    allUpdates.forEach(c=>{
+      const so=c.upd.so,mpn=c.upd.mpn;
+      if(!so||so.startsWith('TMP-')||!mpn)return;
+      if(!soImps[so])soImps[so]={custPO:c.upd.custPO||'',customer:c.upd.customer||'',lines:[]};
+      if(c.upd.custPO)soImps[so].custPO=c.upd.custPO;
+      if(c.upd.customer)soImps[so].customer=c.upd.customer;
+      const existLine=soImps[so].lines.find(l=>l.mpn===mpn);
+      const ld={mpn,qty:c.upd.qty||'',deliveryDate:c.upd.deliveryDate||'',
+                poNum:c.upd.poNum||'',supplier:c.upd.supplier||'',
+                notes:c.upd.notes||'',status:c.upd.status||'ordered'};
+      if(existLine)Object.assign(existLine,ld);else soImps[so].lines.push(ld);
+      soImpChanged=true;
+      // Remove TMP orders that share the same custPO
+      if(c.upd.custPO){
+        Object.keys(tempOrders).forEach(tso=>{
+          if(tempOrders[tso].custPO===c.upd.custPO){delete tempOrders[tso];tmpChanged=true;}
+        });
+      }
+    });
+    if(soImpChanged)try{localStorage.setItem('oo_so_imports',JSON.stringify(soImps));}catch(e){}
+    if(tmpChanged)try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+    injectTempOrders();
+    injectSOImports();
+  }
+
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
   applyFilters();
@@ -3361,12 +3395,16 @@ function applyPendingCustPOs(){
     delete pending[r.custPO];
     delete pendingCustPOs[r.custPO];
   });
-  // Remove temp orders for any custPO now matched to a real SO
+  // Remove temp and SO-import orders for any custPO now matched to a real SO
   if(matchedCustPOs.size){
     const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
     let tempChanged=false;
     Object.keys(tempOrders).forEach(tso=>{if(matchedCustPOs.has(tempOrders[tso].custPO)){delete tempOrders[tso];tempChanged=true;}});
     if(tempChanged)try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+    let soImps;try{soImps=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){soImps={};}
+    let soImpChanged=false;
+    Object.keys(soImps).forEach(so=>{if(matchedCustPOs.has(soImps[so].custPO)){delete soImps[so];soImpChanged=true;}});
+    if(soImpChanged)try{localStorage.setItem('oo_so_imports',JSON.stringify(soImps));}catch(e){}
   }
   if(changed){
     try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
@@ -3403,6 +3441,33 @@ function injectTempOrders(){
         qtyO:parseFloat(line.qty)||0,qtyR:parseFloat(line.qty)||0,
         dd,cov:'orange',daysOvr:isOvr?Math.ceil((now-dd)/86400000):0,
         isOvr,nk:tso+'__'+(line.mpn||''),isTemp:true
+      });
+    });
+  });
+  soGroups=buildGroups(allRows);
+}
+
+function injectSOImports(){
+  let soImps;
+  try{soImps=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){soImps={};}
+  if(!Object.keys(soImps).length)return;
+  const existingNKs=new Set(allRows.filter(r=>!r.isSOImport).map(r=>r.nk));
+  const now=new Date();now.setHours(0,0,0,0);
+  // Remove stale injected rows before re-injecting
+  allRows=allRows.filter(r=>!r.isSOImport);
+  Object.entries(soImps).forEach(([so,entry])=>{
+    (entry.lines||[]).forEach(line=>{
+      const nk=so+'__'+(line.mpn||'');
+      if(existingNKs.has(nk))return; // real Excel row takes precedence
+      const dd=line.deliveryDate?new Date(line.deliveryDate):null;
+      const isOvr=!!(dd&&dd<now);
+      allRows.push({
+        so,mpn:line.mpn||'',customer:entry.customer||'',custPO:entry.custPO||'',
+        poNum:line.poNum||'',supplier:line.supplier||'',
+        statusRaw:line.status||'ordered',status:line.status||'ordered',
+        qtyO:parseFloat(line.qty)||0,qtyR:parseFloat(line.qty)||0,
+        dd,cov:'green',daysOvr:isOvr&&dd?Math.ceil((now-dd)/86400000):0,
+        isOvr,nk,isSOImport:true
       });
     });
   });
