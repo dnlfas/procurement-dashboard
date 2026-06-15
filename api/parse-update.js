@@ -18,7 +18,8 @@ Each update object has these fields (strings unless noted, leave "" if unknown):
   deliveryDate – ISO date "YYYY-MM-DD" if found, else ""
 
 Rules:
-- PRIORITY — BTS Sales Order file (so_file): If the input is a JSON array whose rows include a column named "הזמנה" (containing SO numbers like "26000122" or "SO26000122") AND a column named "סטטוס פריט" — this is ALWAYS a BTS internal Sales Order export. Set sourceType to "so_file" regardless of any other content (even if the rows also contain customer PO numbers or customer names — those are informational columns, not proof of a customer PO document). For each non-empty row: so = row["הזמנה"], mpn = row["מספר פריט"] or row["מק"ט"] or row["מקט"], deliveryDate from row["ת. אספקה"] or row["תאריך אספקה"] (as ISO YYYY-MM-DD), qty from row["יתרה לאספקה"], supplier from row["שם ספק"], poNum from row["מספר הזמנת רכש"]. Map "סטטוס פריט" to status codes: "הוזמן מהספק"→"ordered", "טרם הוזמן"→"pending", "בקרת איכות"→"qc", "מחסן המוצא"→"waiting_wh", "נחת בארץ"→"in_transit", "הגשות למכס"→"customs_sub", "שוחרר ממכס"→"customs_rel", "שליחות"/"BTS"→"delivery_bts", "סופק ללקוח"→"supplied", "סופק חלקי"→"partial", "ממתין לאספקה"→"waiting_cust", "בוטל"→"cancelled". Leave custPO, customer, tracking, notes empty.
+- PRIORITY 1 — BTS order confirmation (so_file): If the document (image, PDF, or text) contains a title or heading "אישור הזמנה מספר SO..." or "אישור הזמנה מס' SO..." — this is a BTS-issued Sales Order confirmation sent TO a customer. Set sourceType to "so_file". DO NOT classify as "customer_po" — BTS is the SENDER here, not the customer. Extract: so from the SO number in the title (e.g. "SO26000131"), mpn from the "מק"ט" column (prefer "מק"ט לקוח" if present and non-empty), deliveryDate from "תאריך אספקה" (ISO YYYY-MM-DD), qty from "כמות" or "יתרה לאספקה". Leave custPO, customer, tracking, notes empty.
+- PRIORITY 2 — BTS Sales Order Excel file (so_file): If the input is a JSON array whose rows include a column named "הזמנה" (containing SO numbers like "26000122" or "SO26000122") AND a column named "סטטוס פריט" — this is ALWAYS a BTS internal Sales Order export. Set sourceType to "so_file" regardless of any other content (even if the rows also contain customer PO numbers or customer names — those are informational columns, not proof of a customer PO document). For each non-empty row: so = row["הזמנה"], mpn = row["מספר פריט"] or row["מק"ט"] or row["מקט"], deliveryDate from row["ת. אספקה"] or row["תאריך אספקה"] (as ISO YYYY-MM-DD), qty from row["יתרה לאספקה"], supplier from row["שם ספק"], poNum from row["מספר הזמנת רכש"]. Map "סטטוס פריט" to status codes: "הוזמן מהספק"→"ordered", "טרם הוזמן"→"pending", "בקרת איכות"→"qc", "מחסן המוצא"→"waiting_wh", "נחת בארץ"→"in_transit", "הגשות למכס"→"customs_sub", "שוחרר ממכס"→"customs_rel", "שליחות"/"BTS"→"delivery_bts", "סופק ללקוח"→"supplied", "סופק חלקי"→"partial", "ממתין לאספקה"→"waiting_cust", "בוטל"→"cancelled". Leave custPO, customer, tracking, notes empty.
 - When an email states that parts have been shipped to Winshare, to "our partner", or to a consolidation/forwarding warehouse, OR when an SF Express tracking number is provided (SF Express tracking numbers typically start with SF followed by digits, e.g. SF1234567890123), set status to "waiting_wh" and put the SF tracking number in notes (e.g. "SF Express: SF1234567890123"), NOT in the tracking field.
 - A BTS shipping notice is identified by a document number starting with "SH" (e.g. SH26000098). For BTS shipping notices set status to "waiting_cust" — goods have left BTS and are waiting for the customer to receive them.
 - For supplier shipping notices (document number does NOT start with "SH"): set status to "delivery_bts" when a tracking number is present; otherwise set status to "in_transit".
@@ -43,6 +44,78 @@ module.exports = async function handler(req, res) {
     for await (const chunk of req) body += chunk;
     const { type, content, mimeType, context } = JSON.parse(body);
     if (!content || !content.trim()) return res.status(400).json({ error: 'empty' });
+
+    // --- Server-side pre-detection for BTS Sales Order Excel files ---
+    // The AI cannot reliably distinguish SO Excel from customer PO, so we detect
+    // it in code by looking for the definitive Hebrew column names.
+    if (type !== 'image' && type !== 'pdf') {
+      try {
+        const arr = JSON.parse(content);
+        if (Array.isArray(arr) && arr.length > 0) {
+          const keys = Object.keys(arr[0]);
+          const findKey = (candidates) => keys.find(k => candidates.some(c => k.includes(c))) || null;
+          const soKey    = findKey(['הזמנה']);
+          const statusKey = findKey(['סטטוס פריט']);
+          if (soKey && statusKey) {
+            // Confirmed BTS SO Excel — parse directly, no AI call needed
+            const mpnKey  = findKey(['מספר פריט', 'מק"ט', "מק'ט", 'מקט']);
+            const dateKey = findKey(['ת. אספקה', 'תאריך אספקה']);
+            const qtyKey  = findKey(['יתרה לאספקה', 'כמות בהזמנה']);
+            const suppKey = findKey(['שם ספק']);
+            const poKey   = findKey(['מספר הזמנת רכש']);
+            const STATUS_MAP = {
+              'הוזמן מהספק':'ordered','טרם הוזמן':'pending','בקרת איכות ספק':'qc_supp',
+              'בקרת איכות':'qc','מחסן המוצא':'waiting_wh','נחת בארץ':'in_transit',
+              'הגשות למכס':'customs_sub','שוחרר ממכס':'customs_rel',
+              'שליחות':'delivery_bts','BTS':'delivery_bts',
+              'סופק ללקוח':'supplied','סופק חלקי':'partial',
+              'ממתין לאספקה':'waiting_cust','בוטל':'cancelled','איתור ספק':'sourcing'
+            };
+            function parseExcelDate(val) {
+              if (!val) return '';
+              if (typeof val === 'number' && val > 1) {
+                const d = new Date(Math.round((val - 25569) * 86400000));
+                return d.toISOString().slice(0, 10);
+              }
+              if (typeof val === 'string') {
+                const d = new Date(val);
+                if (!isNaN(d)) return d.toISOString().slice(0, 10);
+              }
+              return '';
+            }
+            let lastSO = '';
+            const seen = new Set();
+            const updates = [];
+            for (const r of arr) {
+              const so  = soKey  ? String(r[soKey]  || '').trim() : '';
+              const mpn = mpnKey ? String(r[mpnKey] || '').trim() : '';
+              if (so) lastSO = so;
+              const effectiveSO = so || lastSO;
+              if (!effectiveSO && !mpn) continue;
+              const nk = effectiveSO + '__' + mpn;
+              if (seen.has(nk)) continue;
+              seen.add(nk);
+              const statusRaw = statusKey ? String(r[statusKey] || '').trim() : '';
+              let status = '';
+              for (const [he, en] of Object.entries(STATUS_MAP)) {
+                if (statusRaw.includes(he)) { status = en; break; }
+              }
+              updates.push({
+                so: effectiveSO, mpn,
+                deliveryDate: dateKey ? parseExcelDate(r[dateKey]) : '',
+                status,
+                supplier: suppKey ? String(r[suppKey] || '').trim() : '',
+                poNum:    poKey   ? String(r[poKey]   || '').trim() : '',
+                qty:      qtyKey  ? String(r[qtyKey]  || '').trim() : '',
+                tracking: '', custPO: '', customer: '', notes: '', supplierRef: ''
+              });
+            }
+            return res.json({ ok: true, sourceType: 'so_file', updates });
+          }
+        }
+      } catch (_) { /* not JSON — fall through to AI */ }
+    }
+    // --- End SO pre-detection ---
 
     const client = new Anthropic();
 
