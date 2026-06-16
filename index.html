@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>מרכז שליטה — הזמנות פתוחות</title>
+<title>מרכז שליטה - BTS</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon.png">
@@ -40,6 +40,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tb-mid{display:flex;gap:0;border:1px solid var(--bdr);border-radius:6px;overflow:hidden;flex-shrink:0;max-width:none}
 .view-tab{padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;background:transparent;border:none;color:var(--txt2);transition:all .15s;white-space:nowrap;font-family:var(--sans)}
 .view-tab.on{background:var(--acc);color:#fff}
+.import-mobile-btn{display:none}
 .tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .fbadge{font-size:13px;font-family:var(--mono);color:var(--txt2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .btn{padding:6px 14px;border-radius:5px;font-family:var(--sans);font-size:12px;font-weight:700;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s;white-space:nowrap}
@@ -163,6 +164,8 @@ select:focus{border-color:var(--acc)}
 .stl{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .tl-r{background:var(--red);box-shadow:0 0 6px rgba(255,77,77,.45)}.tl-o{background:var(--ora)}.tl-g{background:var(--grn)}.tl-x{background:#3a4460}
 .sonum{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--acc);white-space:nowrap}
+.sonum-temp{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ora);white-space:nowrap;opacity:.85}
+.sonum-soimp{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--acc);white-space:nowrap}
 .socpo{font-family:var(--mono);font-size:10px;color:var(--txt2);margin-top:1px}
 .socust{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .sodate{font-family:var(--mono);font-size:13px;white-space:nowrap;flex-shrink:0}
@@ -384,6 +387,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
   .tb-mid::-webkit-scrollbar{display:none}
   .view-tab{flex:0 0 auto;text-align:center}
   .tb-right{display:none}
+  .import-mobile-btn{display:flex!important}
   /* content offset for taller topbar */
   #app{padding-top:96px}
   #upl{top:96px}
@@ -462,9 +466,10 @@ table.lt tbody tr:last-child td{border-bottom:none}
 <div class="topbar">
   <div class="tb-left">
     <div class="ldot"></div>
-    <div class="tb-title">מרכז שליטה — הזמנות פתוחות</div>
+    <div class="tb-title">מרכז שליטה - BTS</div>
   </div>
   <div class="tb-mid">
+    <button class="view-tab import-mobile-btn" onclick="openImportModal()">📥 ייבוא</button>
     <button class="view-tab on" id="tab-boss" onclick="setMainView('boss')">📊 מבט ניהולי</button>
     <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">📋 מבט עובד</button>
     <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">🏭 ספקים</button>
@@ -500,7 +505,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
     <!-- Wizard header -->
     <div style="text-align:center;margin-bottom:28px">
       <div style="font-size:32px;margin-bottom:10px">📊</div>
-      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">מרכז שליטה — הזמנות פתוחות</div>
+      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">מרכז שליטה - BTS</div>
       <div style="font-size:13px;color:var(--txt2)">טען קובץ אחד או שניים להתחלה</div>
     </div>
 
@@ -642,6 +647,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
         <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> באיחור<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים שתאריך האספקה המבוקש עבר.</span></span></label>
         <span class="ctl">תיק משיכה:</span>
         <select id="fpull" onchange="applyFilters()"><option value="">הכל</option><option value="pull">תיקי משיכה בלבד</option><option value="nopull">ללא תיקי משיכה</option></select>
+        <input id="fq" type="text" placeholder="חיפוש MPN / SO..." oninput="applyFilters()"
+          style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:5px 10px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;min-width:160px">
         <div class="cspc"></div>
         <button class="bexp" id="bex" onclick="expandAll(true)">פתח הכל ▾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">🔴 = יש פריט באיחור ללא כיסוי | 🟠 = יש פריט ללא PO | 🟢 = כל הפריטים מכוסים. המספרים בבאדג׳ים: כמות פריטים לפי קטגוריה.</span></span>
       </div>
@@ -739,6 +746,7 @@ function applyOverridesToRows(rows){
     const poOvr=fieldOvr[row.nk+'__po'];
     const trackOvr=fieldOvr[row.nk+'__tracking'];
     const custPOOvr=fieldOvr[row.nk+'__custPO'];
+    const ddOvr=fieldOvr[row.nk+'__dd'];
     const stOvr=statusOvr[row.nk];
     if(suppOvr!==undefined)row.supplier=suppOvr;
     if(poOvr!==undefined){
@@ -748,6 +756,7 @@ function applyOverridesToRows(rows){
     }
     if(trackOvr)row.tracking=trackOvr;
     if(custPOOvr!==undefined)row.custPO=custPOOvr;
+    if(ddOvr){const d=new Date(ddOvr);if(!isNaN(d)){row.dd=d;row.isOvr=d<TODAY;row.daysOvr=row.isOvr?Math.floor((TODAY-d)/86400000):0;}}
     row.isPull=!!(row.custPO&&pullOrders[row.custPO]);
     if(stOvr!==undefined){
       row.status=stOvr;
@@ -784,6 +793,7 @@ function startParse(file){
         applyOverridesToRows(allRows);
         soGroups=buildGroups(allRows);
         applyPendingCustPOs();
+        injectTempOrders();injectSOImports();
         onLoaded(file.name);
       }catch(err){document.getElementById('spin').style.display='none';toast('שגיאה: '+err.message);}
     };
@@ -1013,7 +1023,7 @@ function buildPOTable(rows,soMPNs,crossSO){
 
 // ── SO STATUS PANEL ──
 const isTV=window.screen.width>=1920;
-let sspOpen=!isTV, sspAllOpen=false;
+let sspOpen=false, sspAllOpen=false;
 function toggleFullscreen(){
   if(!document.fullscreenElement){document.documentElement.requestFullscreen();document.getElementById('fsbtn').textContent='✕';}
   else{document.exitFullscreen();document.getElementById('fsbtn').textContent='⛶';}
@@ -1273,6 +1283,7 @@ async function fetchNow() {
       applyOverridesToRows(allRows);
       soGroups = buildGroups(allRows);
       applyPendingCustPOs();
+      injectTempOrders();injectSOImports();
       document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
       document.getElementById('upl').style.display = 'none';
       document.getElementById('app').style.display = 'block';
@@ -1391,6 +1402,7 @@ function parseRows(raw){
     qtyR:   _findKey(keys,['יתרה לאספקה']),
     qtyO:   _findKey(keys,['כמות בהזמנה']),
     date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
+    price:  _findKey(keys,['מחיר ליחידה','מחיר']),
   };
   console.log('[SO keys used]',K);
   let _so='',_cust='',_custPO='';
@@ -1408,6 +1420,7 @@ function parseRows(raw){
     const statusRaw=s(r[K.status]);
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
+    const price=parseFloat(r[K.price])||0;
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1438,7 +1451,7 @@ function parseRows(raw){
     else if(status!=='none'&&status!=='cancelled')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 
@@ -1487,6 +1500,7 @@ async function handleTopbarUpload(e, type) {
           soGroups = buildGroups(allRows);
           if (poLoaded) linkPOtoSO();
           applyPendingCustPOs();
+          injectTempOrders();injectSOImports();
           document.getElementById('fbadge').textContent = 'SO · ' + allRows.length + ' שורות';
           document.getElementById('upl').style.display = 'none';
           document.getElementById('app').style.display = 'block';
@@ -1598,6 +1612,7 @@ function launchDashboard(){
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
   applyPendingCustPOs();
+  injectTempOrders();injectSOImports();
   document.getElementById('fbadge').textContent=wizSOFile.name+' · '+allRows.length+' שורות';
   // Process PO if loaded
   if(wizPOFile){
@@ -1644,6 +1659,7 @@ function parseRows(raw){
     qtyR:   _findKey(keys,['יתרה לאספקה']),
     qtyO:   _findKey(keys,['כמות בהזמנה']),
     date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
+    price:  _findKey(keys,['מחיר ליחידה','מחיר']),
   };
   console.log('[SO keys used]',K);
   let _so='',_cust='',_custPO='';
@@ -1662,6 +1678,7 @@ function parseRows(raw){
     const statusRaw=s(r[K.status]);
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
+    const price=parseFloat(r[K.price])||0;
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1692,7 +1709,7 @@ function parseRows(raw){
     else if(status!=='none'&&status!=='cancelled')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 function _dbgSO(rows){
@@ -1966,12 +1983,18 @@ function applyFilters(){
   const fu=document.getElementById('fu').checked;
   const fo=document.getElementById('fo').checked;
   const fpull=document.getElementById('fpull')?document.getElementById('fpull').value:'';
+  const fq=(document.getElementById('fq')?.value||'').trim().toUpperCase();
   filteredGroups=soGroups.map(g=>{
     let l=g.lines;
     if(fc)l=l.filter(x=>x.customer===fc);
     if(fs)l=l.filter(x=>x.supplier===fs);
     if(fu)l=l.filter(x=>x.cov!=='green');
     if(fo)l=l.filter(x=>x.isOvr);
+    if(fq){
+      const soMatch=g.so.toUpperCase().includes(fq)||(g.custPO||'').toUpperCase().includes(fq);
+      if(!soMatch)l=l.filter(x=>x.mpn.toUpperCase().includes(fq));
+      if(!l.length)return null;
+    }
     if(!l.length)return null;
     const grp=calcG({...g,lines:l});
     if(fpull==='pull'&&!grp.isPull)return null;
@@ -2006,7 +2029,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="sonum">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}</div></div>
+        <div><div class="${g.lines.some(r=>r.isTemp)?'sonum-temp':g.lines.some(r=>r.isSOImport)?'sonum-soimp':'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}${g.lines.some(r=>r.isTemp)?' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>':''}${g.lines.some(r=>r.isSOImport)?' <span class="pull-badge" style="background:rgba(0,140,255,.12);color:var(--acc);border-color:rgba(0,140,255,.3)">PDF</span>':''}</div></div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
@@ -2059,7 +2082,7 @@ function buildLT(lines){
   lines.forEach(r=>{});
   return`<table class="lt"><thead><tr>
     <th style="width:12px"></th><th>פריט (MPN)</th><th>ת. אספקה</th>
-    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">מספר מעקב משלוח. עדכון יעביר את הסטטוס אוטומטית ל"בשליחות ל-BTS".</span></span>מעקב</th>
+    <th>יתרה</th><th>מחיר</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">מספר מעקב משלוח. עדכון יעביר את הסטטוס אוטומטית ל"בשליחות ל-BTS".</span></span>מעקב</th>
     <th style="width:170px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
   </tr></thead><tbody>${lines.map(buildLR).join('')}</tbody></table>`;
 }
@@ -2128,6 +2151,7 @@ function buildLR(r){
     <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
+    <td class="qty">${r.price?r.price.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
     <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
     <td><textarea class="note-ta ${nv?'hn':''}" rows="1" data-key="${esc(r.nk)}"
       placeholder="הוסף הערה..." onchange="saveNote(this)" oninput="autoH(this)">${nv}</textarea></td>
@@ -2136,27 +2160,118 @@ function buildLR(r){
 
 // ── ICS ──
 function icsD(d){return d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate());}
+
 function dlSOICS(g){
   if(!g){toast('שגיאה');return;}
   const lwd=g.lines.filter(l=>l.dd);
   if(!lwd.length){toast('אין תאריכי אספקה בהזמנה זו');return;}
+  _icsGroup=g;
+  const firstDd=[...lwd].sort((a,b)=>a.dd-b.dd)[0].dd;
+  document.getElementById('ics-summary').value=`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${lwd.length} פריטים | ${fd(firstDd)}`;
+  document.getElementById('ics-event-date').value='0';
+  document.getElementById('ics-alert').value='7d_abs';
+  document.getElementById('ics-custom-date').style.display='none';
+  document.getElementById('ics-custom-alarm').style.display='none';
+  document.getElementById('ics-modal').style.display='flex';
+}
+function closeICSModal(){document.getElementById('ics-modal').style.display='none';}
+function icsUpdateCustomFields(){
+  document.getElementById('ics-custom-date').style.display=
+    document.getElementById('ics-event-date').value==='custom'?'block':'none';
+  document.getElementById('ics-custom-alarm').style.display=
+    document.getElementById('ics-alert').value==='custom'?'block':'none';
+}
+function _icsPresetOnDay(){
+  if(!_icsGroup)return;
+  _buildAndDownloadICS(_icsGroup,{eventOffset:0,alertType:'7d_abs',summary:document.getElementById('ics-summary').value.trim()});
+  closeICSModal();
+}
+function _icsPreset7Before(){
+  if(!_icsGroup)return;
+  _buildAndDownloadICS(_icsGroup,{eventOffset:7,alertType:'at_start',summary:document.getElementById('ics-summary').value.trim()});
+  closeICSModal();
+}
+function _icsTaskToday(){
+  if(!_icsGroup)return;
+  const g=_icsGroup;
+  const summary=document.getElementById('ics-summary').value.trim()||g.so;
+  const now=new Date();
+  const stamp=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T'+p2(now.getHours())+p2(now.getMinutes())+p2(now.getSeconds())+'Z';
+  // Floating local-time event at 09:00 today — no Z suffix so every calendar app
+  // interprets it in the device's own timezone (avoids UTC conversion surprises).
+  const dateStr=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate());
+  const uid=stamp+'-today-'+g.so+'@bts';
+  const lines=[
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//BTS//ProcurementDashboard//HE',
+    'BEGIN:VEVENT',
+    'UID:'+uid,
+    'DTSTAMP:'+stamp,
+    'DTSTART:'+dateStr+'T090000',
+    'DTEND:'+dateStr+'T100000',
+    'SUMMARY:'+summary,
+    'BEGIN:VALARM',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:'+summary,
+    'TRIGGER:-PT0M',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+  const blob=new Blob([lines.join('\r\n')],{type:'text/calendar'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='today_'+g.so+'.ics';
+  a.click();
+  closeICSModal();
+  toast('אירוע "לטיפול היום" יוצא');
+}
+function submitICSDownload(){
+  if(!_icsGroup)return;
+  const eventSel=document.getElementById('ics-event-date').value;
+  _buildAndDownloadICS(_icsGroup,{
+    eventOffset:eventSel==='custom'?'custom':parseInt(eventSel)||0,
+    customDate:document.getElementById('ics-custom-date').value,
+    alertType:document.getElementById('ics-alert').value,
+    customAlarm:document.getElementById('ics-custom-alarm').value,
+    summary:document.getElementById('ics-summary').value.trim()
+  });
+  closeICSModal();
+}
+function _buildAndDownloadICS(g,opts){
+  const lwd=g.lines.filter(l=>l.dd);
   const now=new Date();
   const dts=now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'T'+p2(now.getHours())+p2(now.getMinutes())+p2(now.getSeconds())+'Z';
-  const byR={};
-  lwd.forEach(r=>{const rem=new Date(r.dd.getTime()-7*86400000);const k=icsD(rem);if(!byR[k])byR[k]={rem,dd:r.dd,lines:[]};byR[k].lines.push(r);});
-  const evts=Object.values(byR).map(gr=>{
-    const rs=icsD(gr.rem),re=icsD(new Date(gr.rem.getTime()+86400000));
-    const uid=`so-${g.so}-${rs}-${Date.now()}@oo`.replace(/[^a-zA-Z0-9@\-]/g,'_');
-    const sum=`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${gr.lines.length} פריטים | ${fd(gr.dd)}`;
-    const desc=`הזמנה: ${g.so}\\nלקוח: ${g.customer||''}\\nת. אספקה: ${fd(gr.dd)}\\n\\nפריטים:\\n`+gr.lines.map(r=>`• ${r.mpn} — כמות: ${r.qtyR||r.qtyO} — ספק: ${r.supplier||'—'}`).join('\\n')+'\\n\\nתזכורת 7 ימים לפני.';
-    return['BEGIN:VEVENT',`UID:${uid}`,`DTSTAMP:${dts}`,`DTSTART;VALUE=DATE:${rs}`,`DTEND;VALUE=DATE:${re}`,`SUMMARY:${sum}`,`DESCRIPTION:${desc}`,'STATUS:CONFIRMED','TRANSP:TRANSPARENT','BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY',`DESCRIPTION:${sum}`,'END:VALARM','END:VEVENT'].join('\r\n');
+  const byD={};
+  lwd.forEach(r=>{const k=icsD(r.dd);if(!byD[k])byD[k]={dd:r.dd,lines:[]};byD[k].lines.push(r);});
+  const evts=Object.values(byD).map(gr=>{
+    let evtDate;
+    if(opts.eventOffset==='custom'&&opts.customDate){evtDate=new Date(opts.customDate);}
+    else{const off=typeof opts.eventOffset==='number'?opts.eventOffset:0;evtDate=new Date(gr.dd.getTime()-off*86400000);}
+    const es=icsD(evtDate),ee=icsD(new Date(evtDate.getTime()+86400000));
+    let trigger;
+    if(opts.alertType==='at_start')trigger='TRIGGER:-PT0M';
+    else if(opts.alertType==='1d')trigger='TRIGGER:-P1D';
+    else if(opts.alertType==='1w')trigger='TRIGGER:-P1W';
+    else if(opts.alertType==='7d_abs'){
+      const al=new Date(gr.dd.getTime()-7*86400000);
+      trigger='TRIGGER;VALUE=DATE-TIME:'+al.getFullYear()+p2(al.getMonth()+1)+p2(al.getDate())+'T070000Z';
+    } else if(opts.alertType==='custom'&&opts.customAlarm){
+      const dt=new Date(opts.customAlarm);
+      trigger='TRIGGER;VALUE=DATE-TIME:'+dt.getUTCFullYear()+p2(dt.getUTCMonth()+1)+p2(dt.getUTCDate())+'T'+p2(dt.getUTCHours())+p2(dt.getUTCMinutes())+'00Z';
+    } else trigger='TRIGGER:-PT0M';
+    const uid=`so-${g.so}-${es}-${Date.now()}@oo`.replace(/[^a-zA-Z0-9@\-]/g,'_');
+    const sum=opts.summary||`תזכורת אספקה: ${g.so} | ${g.customer||''} | ${gr.lines.length} פריטים | ${fd(gr.dd)}`;
+    const desc=`הזמנה: ${g.so}\\nלקוח: ${g.customer||''}\\nת. אספקה: ${fd(gr.dd)}\\n\\nפריטים:\\n`+gr.lines.map(r=>`• ${r.mpn} — כמות: ${r.qtyR||r.qtyO} — ספק: ${r.supplier||'—'}`).join('\\n');
+    return['BEGIN:VEVENT',`UID:${uid}`,`DTSTAMP:${dts}`,`DTSTART;VALUE=DATE:${es}`,`DTEND;VALUE=DATE:${ee}`,`SUMMARY:${sum}`,`DESCRIPTION:${desc}`,'STATUS:CONFIRMED','TRANSP:TRANSPARENT','BEGIN:VALARM',trigger,'ACTION:DISPLAY',`DESCRIPTION:${sum}`,'END:VALARM','END:VEVENT'].join('\r\n');
   });
   const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Open Orders Tracker//IL','CALSCALE:GREGORIAN','METHOD:PUBLISH',...evts,'END:VCALENDAR'].join('\r\n');
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'}));
   a.download=`reminder_${g.so.replace(/[^a-zA-Z0-9]/g,'_')}.ics`;
   a.click();URL.revokeObjectURL(a.href);
-  toast('📅 '+Object.keys(byR).length+' תזכורת/ות הורדו עבור '+g.so);
+  toast('📅 '+Object.keys(byD).length+' אירוע/ים הורדו עבור '+g.so);
 }
 
 // ── TRACKING URL ──
@@ -2546,7 +2661,8 @@ function closeQR(){document.getElementById('qr-modal').style.display='none';}
 
 <script>
 // ── IMPORT STATE ──
-let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text';
+let _importFile=null,_importExcelRows=null,_importChanges=[],_importTab='text',_importSourceType='';
+let _icsGroup=null;
 let pendingCustPOs={};
 try{pendingCustPOs=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');}catch(e){}
 
@@ -2859,6 +2975,7 @@ function submitRFQModal(){
 function openImportModal(){
   _importFile=null; _importExcelRows=null;
   document.getElementById('import-ta').value='';
+  document.getElementById('import-file-notes').value='';
   document.getElementById('import-file-label').textContent='לחץ לבחירת קובץ (Excel, PDF, תמונה)';
   document.getElementById('fi-import').value='';
   document.getElementById('import-err').style.display='none';
@@ -2871,7 +2988,9 @@ function closeImportModal(){document.getElementById('import-modal').style.displa
 function importSelectTab(t){
   _importTab=t;
   document.getElementById('import-section-text').style.display=t==='text'?'block':'none';
-  document.getElementById('import-section-file').style.display=t==='file'?'block':'none';
+  document.getElementById('import-section-file').style.display=t==='file'?'flex':'none';
+  document.getElementById('import-section-file').style.flexDirection='column';
+  document.getElementById('import-section-file').style.gap='10px';
   document.getElementById('import-tab-text').classList.toggle('on',t==='text');
   document.getElementById('import-tab-file').classList.toggle('on',t==='file');
 }
@@ -2917,13 +3036,14 @@ async function submitImportParse(){
       body={type:'text',content:txt};
     } else {
       if(!_importFile){document.getElementById('import-err').textContent='אנא בחר קובץ';document.getElementById('import-err').style.display='block';return;}
+      const fileNotes=document.getElementById('import-file-notes').value.trim();
       const isXlsx=/\.(xlsx|xls)$/i.test(_importFile.name);
       if(isXlsx&&_importExcelRows){
-        body={type:'excel',content:JSON.stringify(_importExcelRows)};
+        body={type:'excel',content:JSON.stringify(_importExcelRows),context:fileNotes||undefined};
       } else {
         const isPdf=_importFile.type==='application/pdf'||/\.pdf$/i.test(_importFile.name);
         const b64=await toBase64(_importFile);
-        body={type:isPdf?'pdf':'image',content:b64,mimeType:_importFile.type||'image/jpeg'};
+        body={type:isPdf?'pdf':'image',content:b64,mimeType:_importFile.type||'image/jpeg',context:fileNotes||undefined};
       }
     }
     const res=await fetch('/api/parse-update',{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'application/json'}});
@@ -2981,8 +3101,8 @@ function matchUpdateToRows(upd){
   return[];
 }
 
-const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה'};
-const STATUS_HE={'ordered':'הוזמן מהספק','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
+const FIELD_LABELS={tracking:'מעקב',supplier:'ספק',poNum:'PO רכש',custPO:'PO לקוח',status:'סטטוס',notes:'הערה',deliveryDate:'ת. אספקה'};
+const STATUS_HE={'ordered':'הוזמן מהספק','waiting_wh':'ממתין במחסן המוצא','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל'};
 
 function _currentVal(row,field){
   if(!row)return'';
@@ -2992,13 +3112,20 @@ function _currentVal(row,field){
   if(field==='custPO')return fieldOvr[row.nk+'__custPO']||row.custPO||'';
   if(field==='status')return statusOvr[row.nk]||row.status||'none';
   if(field==='notes')return notes[row.nk]||'';
+  if(field==='deliveryDate'){
+    const ddOvr=fieldOvr[row.nk+'__dd'];
+    if(ddOvr)return ddOvr;
+    if(row.dd instanceof Date&&!isNaN(row.dd))return row.dd.toISOString().slice(0,10);
+    return'';
+  }
   return'';
 }
 
 function openImportPreview(updates,sourceType){
   if(!updates.length){toast('ה-AI לא מצא נתונים לעדכון');return;}
   _importChanges=[];
-  const fieldOrder=['tracking','status','supplier','poNum','custPO','notes'];
+  _importSourceType=sourceType;
+  const fieldOrder=['tracking','deliveryDate','status','supplier','poNum','custPO','notes'];
   updates.forEach(upd=>{
     const matched=matchUpdateToRows(upd);
     // FIFO waterfall: when one MPN spans several SO lines and the doc has a
@@ -3008,7 +3135,7 @@ function openImportPreview(updates,sourceType){
     // order confirmation with a future delivery date is not labelled "shipped".
     const st=upd.status||'';
     const verb=(st==='supplied'||st==='partial')?'סופק'
-      :(['in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st)||upd.tracking)?'נשלח'
+      :(['waiting_wh','in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st)||upd.tracking)?'נשלח'
       :(st==='ordered')?'הוזמן':'כמות';
     let candidates; // [{row, allocNote, partial}]
     if(matched.length>=1&&qty>0){
@@ -3043,19 +3170,27 @@ function openImportPreview(updates,sourceType){
           if(upd.notes)parts.push(upd.notes);
           newVal=parts.join(' · ');
         }
+        if(field==='deliveryDate'){
+          // must be a valid ISO date
+          if(!newVal||!/^\d{4}-\d{2}-\d{2}$/.test(newVal))return;
+        }
         if(field==='status'){
           // a partially-filled line is partially supplied, not fully
           if(c.partial&&(newVal==='supplied'))newVal='partial';
           if(!newVal)return;
-          if(!STATUS_HE[newVal])return;
+          // SO files may return 'pending' which isn't in STATUS_HE; allow known codes
+          const knownStatuses=new Set(Object.keys(STATUS_HE).concat(['pending','sourcing','qc_supp','cancelled_bts','none']));
+          if(!knownStatuses.has(newVal))return;
+          // for non-SO-file imports, skip statuses not displayable in Hebrew
+          if(sourceType!=='so_file'&&!STATUS_HE[newVal])return;
         }
         if(!newVal)return;
         // guard: only accept a poNum that looks like a BTS PO (starts with PO/פו, or is purely numeric ≥8 digits matching SAP style)
         if(field==='poNum'&&!/^(PO|פו)/i.test(newVal)&&!/^\d{8,}$/.test(newVal))return;
-        // guard: custPO is the end-customer's PO (master data). Only a customer-PO
-        // document may set it, and never overwrite an existing customer PO.
+        // guard: custPO is the end-customer's PO (master data). Only customer-PO
+        // or so_file documents may set it, and never overwrite an existing custPO.
         if(field==='custPO'){
-          if(sourceType!=='customer_po')return;
+          if(sourceType!=='customer_po'&&sourceType!=='so_file')return;
           if(_currentVal(row,'custPO'))return;
         }
         const oldVal=_currentVal(row,field);
@@ -3065,11 +3200,38 @@ function openImportPreview(updates,sourceType){
     });
     // if no field changes found but update exists, still add a row to show it was parsed
     if(!_importChanges.find(c=>c.upd===upd)){
-      _importChanges.push({upd,row:matched[0]||null,field:'',oldVal:'',newVal:'',checked:false,empty:true});
+      const fallbackRow=matched[0]||null;
+      // unmatched so_file rows are candidate new orders — mark them checked so user can see count
+      const isNewSO=sourceType==='so_file'&&!fallbackRow;
+      _importChanges.push({upd,row:fallbackRow,field:'',oldVal:'',newVal:'',checked:isNewSO,empty:true,newSORow:isNewSO});
     }
   });
 
-  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','other':'מסמך'}[sourceType]||'מסמך';
+  // Bulk waiting_wh expansion: if a DHL tracking came in for a row that was
+  // waiting_wh, offer the same tracking to ALL other waiting_wh rows.
+  const wwhTrackings=[];
+  for(const c of _importChanges){
+    if(c.field==='tracking'&&c.newVal){
+      // Trigger if the matched row was waiting_wh, OR if unmatched (general DHL shipment notice)
+      const curSt=c.row?(statusOvr[c.row.nk]??c.row.status):null;
+      if((!c.row||curSt==='waiting_wh')&&!wwhTrackings.includes(c.newVal))
+        wwhTrackings.push(c.newVal);
+    }
+  }
+  if(wwhTrackings.length){
+    const bulkTracking=wwhTrackings[0];
+    const coveredNks=new Set(_importChanges.filter(c=>c.row).map(c=>c.row.nk));
+    for(const row of allRows){
+      const curSt=statusOvr[row.nk]??row.status;
+      if(curSt!=='waiting_wh')continue;
+      if(coveredNks.has(row.nk))continue;
+      const oldVal=_currentVal(row,'tracking');
+      if(oldVal===bulkTracking)continue;
+      _importChanges.push({upd:{tracking:bulkTracking},row,field:'tracking',oldVal,newVal:bulkTracking,checked:true,empty:false,wwhBulk:true});
+    }
+  }
+
+  const srcLabel={'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','coc':'תעודת התאמה','so_file':'הזמנת מכירה','other':'מסמך'}[sourceType]||'מסמך';
   document.getElementById('import-preview-title').textContent='📋 שינויים מוצעים מ'+srcLabel;
   const realChanges=_importChanges.filter(c=>!c.empty);
   document.getElementById('import-preview-sub').textContent=realChanges.length+' שינויים ב-'+updates.length+' פריטים';
@@ -3085,6 +3247,8 @@ function _renderPreviewTable(){
     if(c.empty){
       return`<tr><td></td><td class="import-new">${esc(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—')}</td><td colspan="4" style="color:var(--txt2);font-size:11px">אין שינויים לעדכון</td></tr>`;
     }
+    const sectionHdr=(c.wwhBulk&&(i===0||!_importChanges[i-1].wwhBulk))
+      ?`<tr><td colspan="6" style="padding:5px 8px;font-size:11px;color:var(--txt2);background:var(--sur2);border-top:1px solid var(--bdr)">📦 הזמנות נוספות ממתינות במחסן המוצא — עדכון מספר מעקב DHL</td></tr>`:'';
     const rowLabel=c.row?c.row.so:'—';
     const mpnLabel=c.row?c.row.mpn:(c.upd.mpn||c.upd.custPO||c.upd.poNum||'—');
     const trunc=v=>v.length>70?v.slice(0,68)+'…':v;
@@ -3092,7 +3256,7 @@ function _renderPreviewTable(){
     const newDisp=trunc(newRaw);
     const oldDisp=c.field==='status'?(STATUS_HE[c.oldVal]||c.oldVal||'—'):trunc(c.oldVal||'—');
     const unmatch=!c.row?`<span class="import-unmatched">לא נמצאה הזמנה</span>`:'';
-    return`<tr>
+    return sectionHdr+`<tr>
       <td><input type="checkbox" data-idx="${i}" ${c.checked?'checked':''} onchange="importChkChange(${i},this.checked)"></td>
       <td class="import-new">${esc(mpnLabel)}</td>
       <td style="font-size:11px;color:var(--txt2)">${esc(rowLabel)}${unmatch}</td>
@@ -3107,8 +3271,18 @@ function importChkChange(idx,val){_importChanges[idx].checked=val;_updateApplyCo
 function importToggleAll(val){_importChanges.forEach(c=>c.checked=val);_renderPreviewTable();_updateApplyCount();}
 function _updateApplyCount(){
   const n=_importChanges.filter(c=>c.checked&&!c.empty&&c.row).length;
-  const nu=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row).length;
-  document.getElementById('import-apply-count').textContent=n+' שינויים לביצוע'+(nu?' + '+nu+' ממתינים':'');
+  const unmatched=_importChanges.filter(c=>c.checked&&!c.empty&&!c.row);
+  const nuCustPO=new Set(unmatched.filter(c=>c.upd.custPO&&!c.newSORow).map(c=>c.upd.custPO)).size;
+  const nuNewSO=new Set(_importChanges.filter(c=>c.checked&&c.newSORow&&c.upd.so).map(c=>c.upd.so)).size;
+  const nuOther=unmatched.filter(c=>!c.upd.custPO&&!c.newSORow).length;
+  let txt=n+' שינויים לביצוע';
+  if(nuCustPO){
+    const custNames=[...new Set(unmatched.filter(c=>c.upd.custPO&&c.upd.customer&&!c.newSORow).map(c=>c.upd.customer))];
+    txt+=' + '+nuCustPO+' הזמנה'+(nuCustPO>1?'ות':'')+' זמניות ייווצרו'+(custNames.length?' ('+custNames.join(', ')+')'  :'');
+  }
+  if(nuNewSO)txt+=' + '+nuNewSO+' הזמנ'+(nuNewSO>1?'אות':'ה')+' SO חדשות שאינן במערכת';
+  if(nuOther)txt+=' + '+nuOther+' ממתינים';
+  document.getElementById('import-apply-count').textContent=txt;
 }
 
 function applyImportChanges(){
@@ -3120,8 +3294,12 @@ function applyImportChanges(){
       const nk=row.nk;
       if(field==='tracking'){
         fieldOvr[nk+'__tracking']=newVal;
-        if(!statusOvr[nk]||statusOvr[nk]==='ordered'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
+        if(!statusOvr[nk]||statusOvr[nk]==='ordered'||statusOvr[nk]==='waiting_wh'||row.status==='waiting_wh'){statusOvr[nk]='delivery_bts';row.status='delivery_bts';}
         row.tracking=newVal; row.cov='green';
+      } else if(field==='deliveryDate'){
+        fieldOvr[nk+'__dd']=newVal;
+        const d=new Date(newVal);
+        if(!isNaN(d)){row.dd=d;row.isOvr=d<TODAY;row.daysOvr=row.isOvr?Math.floor((TODAY-d)/86400000):0;}
       } else if(field==='supplier'){
         fieldOvr[nk+'__supp']=newVal; row.supplier=newVal;
       } else if(field==='poNum'){
@@ -3150,10 +3328,60 @@ function applyImportChanges(){
       count++;
     }
   });
+  // Create temp SO entries for unmatched customer-PO lines
+  const unmatchedByCustPO=new Map();
+  toApply.forEach(c=>{if(!c.row&&c.upd.custPO)unmatchedByCustPO.set(c.upd.custPO,(unmatchedByCustPO.get(c.upd.custPO)||new Set()).add(c.upd));});
+  if(unmatchedByCustPO.size){
+    const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
+    const custPOtoTSO={};
+    Object.entries(tempOrders).forEach(([tso,e])=>{custPOtoTSO[e.custPO]=tso;});
+    unmatchedByCustPO.forEach((updSet,custPO)=>{
+      const tso=custPOtoTSO[custPO]||_genTempSO();
+      if(!tempOrders[tso])tempOrders[tso]={custPO,customer:([...updSet][0].customer||''),lines:[]};
+      updSet.forEach(upd=>{
+        if(!tempOrders[tso].lines.find(l=>l.mpn===upd.mpn))
+          tempOrders[tso].lines.push({mpn:upd.mpn||'',qty:upd.qty||'',poNum:upd.poNum||'',supplier:upd.supplier||'',notes:upd.notes||'',deliveryDate:upd.deliveryDate||''});
+      });
+    });
+    try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+    injectTempOrders();
+  }
   try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
   try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
   try{localStorage.setItem(NK,JSON.stringify(notes));}catch(e){}
   try{localStorage.setItem('oo_pending_cpo',JSON.stringify(pendingCustPOs));}catch(e){}
+
+  // SO file import: promote TMP orders to real SO rows via oo_so_imports
+  if(_importSourceType==='so_file'){
+    let soImps;try{soImps=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){soImps={};}
+    let tempOrders;try{tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');}catch(e){tempOrders={};}
+    let soImpChanged=false,tmpChanged=false;
+    const allUpdates=[..._importChanges]; // includes newSORow entries
+    allUpdates.forEach(c=>{
+      const so=c.upd.so,mpn=c.upd.mpn;
+      if(!so||so.startsWith('TMP-')||!mpn)return;
+      if(!soImps[so])soImps[so]={custPO:c.upd.custPO||'',customer:c.upd.customer||'',lines:[]};
+      if(c.upd.custPO)soImps[so].custPO=c.upd.custPO;
+      if(c.upd.customer)soImps[so].customer=c.upd.customer;
+      const existLine=soImps[so].lines.find(l=>l.mpn===mpn);
+      const ld={mpn,qty:c.upd.qty||'',deliveryDate:c.upd.deliveryDate||'',
+                poNum:c.upd.poNum||'',supplier:c.upd.supplier||'',
+                notes:c.upd.notes||'',status:c.upd.status||'ordered'};
+      if(existLine)Object.assign(existLine,ld);else soImps[so].lines.push(ld);
+      soImpChanged=true;
+      // Remove TMP orders that share the same custPO
+      if(c.upd.custPO){
+        Object.keys(tempOrders).forEach(tso=>{
+          if(tempOrders[tso].custPO===c.upd.custPO){delete tempOrders[tso];tmpChanged=true;}
+        });
+      }
+    });
+    if(soImpChanged)try{localStorage.setItem('oo_so_imports',JSON.stringify(soImps));}catch(e){}
+    if(tmpChanged)try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+    injectTempOrders();
+    injectSOImports();
+  }
+
   applyOverridesToRows(allRows);
   soGroups=buildGroups(allRows);
   applyFilters();
@@ -3168,6 +3396,7 @@ function applyPendingCustPOs(){
   const pending=JSON.parse(localStorage.getItem('oo_pending_cpo')||'{}');
   if(!Object.keys(pending).length)return;
   let changed=false;
+  const matchedCustPOs=new Set();
   allRows.forEach(r=>{
     const p=pending[r.custPO];
     if(!p)return;
@@ -3175,9 +3404,21 @@ function applyPendingCustPOs(){
     if(p.poNum&&fieldOvr[r.nk+'__po']===undefined){fieldOvr[r.nk+'__po']=p.poNum;r.poNum=p.poNum;changed=true;}
     if(p.tracking&&fieldOvr[r.nk+'__tracking']===undefined){fieldOvr[r.nk+'__tracking']=p.tracking;r.tracking=p.tracking;if(!statusOvr[r.nk])statusOvr[r.nk]='delivery_bts';changed=true;}
     if(p.notes&&!notes[r.nk]){notes[r.nk]=p.notes;changed=true;}
+    matchedCustPOs.add(r.custPO);
     delete pending[r.custPO];
     delete pendingCustPOs[r.custPO];
   });
+  // Remove temp and SO-import orders for any custPO now matched to a real SO
+  if(matchedCustPOs.size){
+    const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
+    let tempChanged=false;
+    Object.keys(tempOrders).forEach(tso=>{if(matchedCustPOs.has(tempOrders[tso].custPO)){delete tempOrders[tso];tempChanged=true;}});
+    if(tempChanged)try{localStorage.setItem('oo_temp_orders',JSON.stringify(tempOrders));}catch(e){}
+    let soImps;try{soImps=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){soImps={};}
+    let soImpChanged=false;
+    Object.keys(soImps).forEach(so=>{if(matchedCustPOs.has(soImps[so].custPO)){delete soImps[so];soImpChanged=true;}});
+    if(soImpChanged)try{localStorage.setItem('oo_so_imports',JSON.stringify(soImps));}catch(e){}
+  }
   if(changed){
     try{localStorage.setItem('oo_fields',JSON.stringify(fieldOvr));}catch(e){}
     try{localStorage.setItem('oo_status',JSON.stringify(statusOvr));}catch(e){}
@@ -3186,6 +3427,64 @@ function applyPendingCustPOs(){
     syncOverrides();
   }
   updateImportBadge();
+}
+
+function _genTempSO(){
+  const t=new Date();
+  const d=t.getFullYear().toString()+String(t.getMonth()+1).padStart(2,'0')+String(t.getDate()).padStart(2,'0');
+  let ctr=JSON.parse(localStorage.getItem('oo_temp_ctr')||'{}');
+  if(ctr.date!==d)ctr={date:d,n:0};
+  ctr.n++;
+  try{localStorage.setItem('oo_temp_ctr',JSON.stringify(ctr));}catch(e){}
+  return'TMP-'+d+'-'+ctr.n;
+}
+
+function injectTempOrders(){
+  const tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');
+  if(!Object.keys(tempOrders).length)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  Object.entries(tempOrders).forEach(([tso,entry])=>{
+    (entry.lines||[]).forEach(line=>{
+      const dd=line.deliveryDate?new Date(line.deliveryDate):null;
+      const isOvr=!!(dd&&dd<now);
+      allRows.push({
+        so:tso,mpn:line.mpn||'',customer:entry.customer||'',custPO:entry.custPO||'',
+        poNum:line.poNum||'',supplier:line.supplier||'',
+        statusRaw:'ממתין לטיפול',status:'pending',
+        qtyO:parseFloat(line.qty)||0,qtyR:parseFloat(line.qty)||0,
+        dd,cov:'orange',daysOvr:isOvr?Math.ceil((now-dd)/86400000):0,
+        isOvr,nk:tso+'__'+(line.mpn||''),isTemp:true
+      });
+    });
+  });
+  soGroups=buildGroups(allRows);
+}
+
+function injectSOImports(){
+  let soImps;
+  try{soImps=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){soImps={};}
+  if(!Object.keys(soImps).length)return;
+  const existingNKs=new Set(allRows.filter(r=>!r.isSOImport).map(r=>r.nk));
+  const now=new Date();now.setHours(0,0,0,0);
+  // Remove stale injected rows before re-injecting
+  allRows=allRows.filter(r=>!r.isSOImport);
+  Object.entries(soImps).forEach(([so,entry])=>{
+    (entry.lines||[]).forEach(line=>{
+      const nk=so+'__'+(line.mpn||'');
+      if(existingNKs.has(nk))return; // real Excel row takes precedence
+      const dd=line.deliveryDate?new Date(line.deliveryDate):null;
+      const isOvr=!!(dd&&dd<now);
+      allRows.push({
+        so,mpn:line.mpn||'',customer:entry.customer||'',custPO:entry.custPO||'',
+        poNum:line.poNum||'',supplier:line.supplier||'',
+        statusRaw:line.status||'ordered',status:line.status||'ordered',
+        qtyO:parseFloat(line.qty)||0,qtyR:parseFloat(line.qty)||0,
+        dd,cov:'green',daysOvr:isOvr&&dd?Math.ceil((now-dd)/86400000):0,
+        isOvr,nk,isSOImport:true
+      });
+    });
+  });
+  soGroups=buildGroups(allRows);
 }
 
 function updateImportBadge(){
@@ -3212,6 +3511,7 @@ function updateImportBadge(){
       <div class="import-dropzone" onclick="document.getElementById('fi-import').click()">
         <div id="import-file-label">לחץ לבחירת קובץ (Excel, PDF, תמונה)</div>
       </div>
+      <textarea id="import-file-notes" rows="3" placeholder="הערות לקובץ (אופציונלי): מספר מעקב, שם ספק, מספר הזמנה..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:12px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
     </div>
     <div id="import-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -3239,6 +3539,54 @@ function updateImportBadge(){
       <span id="import-apply-count" style="font-size:12px;color:var(--txt2);font-family:var(--mono)"></span>
       <button class="btn btn-ghost" onclick="closeImportPreview()">ביטול</button>
       <button class="btn btn-blue" id="import-apply" onclick="applyImportChanges()">החל שינויים</button>
+    </div>
+  </div>
+</div>
+<!-- ICS MODAL -->
+<div id="ics-modal" onclick="if(event.target===this)closeICSModal()" style="display:none;position:fixed;inset:0;z-index:970;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:14px">
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📅 הגדרות אירוע לוח שנה</div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">כותרת</label>
+      <input id="ics-summary" type="text" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;width:100%;box-sizing:border-box;direction:rtl">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">תאריך האירוע</label>
+      <select id="ics-event-date" onchange="icsUpdateCustomFields()" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;direction:rtl;width:100%">
+        <option value="0">תאריך האספקה</option>
+        <option value="7">7 ימים לפני האספקה</option>
+        <option value="14">14 ימים לפני האספקה</option>
+        <option value="custom">תאריך מותאם</option>
+      </select>
+      <input id="ics-custom-date" type="date" style="display:none;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">התראה</label>
+      <select id="ics-alert" onchange="icsUpdateCustomFields()" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;direction:rtl;width:100%">
+        <option value="7d_abs">7 ימים לפני האספקה (Custom)</option>
+        <option value="at_start">בזמן האירוע</option>
+        <option value="1d">יום לפני האירוע</option>
+        <option value="1w">שבוע לפני האירוע</option>
+        <option value="custom">תאריך ושעה מותאמים</option>
+      </select>
+      <input id="ics-custom-alarm" type="datetime-local" style="display:none;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
+    </div>
+
+    <div style="border-top:1px solid var(--bdr);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:11px;color:var(--txt2)">קיצורים מהירים:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:12px" onclick="_icsPresetOnDay()">📅 ביום האספקה + התראה 7 ימים לפני</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--ora)" onclick="_icsPreset7Before()">⚡ 7 ימים לפני + התראה בזמן האירוע</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--grn)" onclick="_icsTaskToday()">✅ לטיפול היום</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeICSModal()">ביטול</button>
+      <button class="btn btn-blue" onclick="submitICSDownload()">📅 הורד ICS</button>
     </div>
   </div>
 </div>
