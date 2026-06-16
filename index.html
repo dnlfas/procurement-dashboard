@@ -647,6 +647,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
         <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> באיחור<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים שתאריך האספקה המבוקש עבר.</span></span></label>
         <span class="ctl">תיק משיכה:</span>
         <select id="fpull" onchange="applyFilters()"><option value="">הכל</option><option value="pull">תיקי משיכה בלבד</option><option value="nopull">ללא תיקי משיכה</option></select>
+        <input id="fq" type="text" placeholder="חיפוש MPN / SO..." oninput="applyFilters()"
+          style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:5px 10px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;min-width:160px">
         <div class="cspc"></div>
         <button class="bexp" id="bex" onclick="expandAll(true)">פתח הכל ▾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">🔴 = יש פריט באיחור ללא כיסוי | 🟠 = יש פריט ללא PO | 🟢 = כל הפריטים מכוסים. המספרים בבאדג׳ים: כמות פריטים לפי קטגוריה.</span></span>
       </div>
@@ -1400,6 +1402,7 @@ function parseRows(raw){
     qtyR:   _findKey(keys,['יתרה לאספקה']),
     qtyO:   _findKey(keys,['כמות בהזמנה']),
     date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
+    price:  _findKey(keys,['מחיר ליחידה','מחיר']),
   };
   console.log('[SO keys used]',K);
   let _so='',_cust='',_custPO='';
@@ -1417,6 +1420,7 @@ function parseRows(raw){
     const statusRaw=s(r[K.status]);
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
+    const price=parseFloat(r[K.price])||0;
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1447,7 +1451,7 @@ function parseRows(raw){
     else if(status!=='none'&&status!=='cancelled')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 
@@ -1655,6 +1659,7 @@ function parseRows(raw){
     qtyR:   _findKey(keys,['יתרה לאספקה']),
     qtyO:   _findKey(keys,['כמות בהזמנה']),
     date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
+    price:  _findKey(keys,['מחיר ליחידה','מחיר']),
   };
   console.log('[SO keys used]',K);
   let _so='',_cust='',_custPO='';
@@ -1673,6 +1678,7 @@ function parseRows(raw){
     const statusRaw=s(r[K.status]);
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
+    const price=parseFloat(r[K.price])||0;
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1703,7 +1709,7 @@ function parseRows(raw){
     else if(status!=='none'&&status!=='cancelled')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 function _dbgSO(rows){
@@ -1977,12 +1983,18 @@ function applyFilters(){
   const fu=document.getElementById('fu').checked;
   const fo=document.getElementById('fo').checked;
   const fpull=document.getElementById('fpull')?document.getElementById('fpull').value:'';
+  const fq=(document.getElementById('fq')?.value||'').trim().toUpperCase();
   filteredGroups=soGroups.map(g=>{
     let l=g.lines;
     if(fc)l=l.filter(x=>x.customer===fc);
     if(fs)l=l.filter(x=>x.supplier===fs);
     if(fu)l=l.filter(x=>x.cov!=='green');
     if(fo)l=l.filter(x=>x.isOvr);
+    if(fq){
+      const soMatch=g.so.toUpperCase().includes(fq)||(g.custPO||'').toUpperCase().includes(fq);
+      if(!soMatch)l=l.filter(x=>x.mpn.toUpperCase().includes(fq));
+      if(!l.length)return null;
+    }
     if(!l.length)return null;
     const grp=calcG({...g,lines:l});
     if(fpull==='pull'&&!grp.isPull)return null;
@@ -2070,7 +2082,7 @@ function buildLT(lines){
   lines.forEach(r=>{});
   return`<table class="lt"><thead><tr>
     <th style="width:12px"></th><th>פריט (MPN)</th><th>ת. אספקה</th>
-    <th>יתרה</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">מספר מעקב משלוח. עדכון יעביר את הסטטוס אוטומטית ל"בשליחות ל-BTS".</span></span>מעקב</th>
+    <th>יתרה</th><th>מחיר</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת שם הספק. שינויים נשמרים בדפדפן. טקסט כחול = ערך ידני (שונה מהאקסל).</span></span>ספק</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">לחץ לעריכת מספר הזמנת הרכש. הוספת PO תשנה את רמזור הפריט לירוק (מכוסה).</span></span>PO רכש</th><th><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">מספר מעקב משלוח. עדכון יעביר את הסטטוס אוטומטית ל"בשליחות ל-BTS".</span></span>מעקב</th>
     <th style="width:170px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">עדכון ידני של סטטוס הפריט. הסטטוס נשמר בדפדפן ונשמר גם לאחר טעינה מחדש של הקובץ. משפיע על רמזור הכיסוי.</span></span>סטטוס</th><th style="min-width:150px"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">הערה חופשית לפריט. נשמרת אוטומטית בדפדפן. ניתן לייצא את כל ההערות לקובץ CSV.</span></span>הערות</th>
   </tr></thead><tbody>${lines.map(buildLR).join('')}</tbody></table>`;
 }
@@ -2139,6 +2151,7 @@ function buildLR(r){
     <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
+    <td class="qty">${r.price?r.price.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
     <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
     <td><textarea class="note-ta ${nv?'hn':''}" rows="1" data-key="${esc(r.nk)}"
       placeholder="הוסף הערה..." onchange="saveNote(this)" oninput="autoH(this)">${nv}</textarea></td>
