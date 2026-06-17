@@ -1404,6 +1404,7 @@ function parseRows(raw){
     qtyO:   _findKey(keys,['כמות בהזמנה']),
     date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
     price:  _findKey(keys,['מחיר ליחידה','מחיר יחידה']),
+    curr:   _findKey(keys,['יחידת מטבע','מטבע']),
   };
   console.log('[SO keys used]',K);
   let _so='',_cust='',_custPO='';
@@ -1422,6 +1423,7 @@ function parseRows(raw){
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
     const price=parseFloat(String(r[K.price]||'').replace(/[^\d.-]/g,''))||0;
+    const currency=s(r[K.curr]).replace(/[^\w$€£]/g,'').toUpperCase()||'ILS';
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1452,7 +1454,7 @@ function parseRows(raw){
     else if(status!=='none'&&status!=='cancelled')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,currency,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 
@@ -1661,6 +1663,7 @@ function parseRows(raw){
     qtyO:   _findKey(keys,['כמות בהזמנה']),
     date:   _findKey(keys,['ת. אספקה','תאריך אספקה']),
     price:  _findKey(keys,['מחיר ליחידה','מחיר יחידה']),
+    curr:   _findKey(keys,['יחידת מטבע','מטבע']),
   };
   console.log('[SO keys used]',K);
   let _so='',_cust='',_custPO='';
@@ -1680,6 +1683,7 @@ function parseRows(raw){
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
     const price=parseFloat(String(r[K.price]||'').replace(/[^\d.-]/g,''))||0;
+    const currency=s(r[K.curr]).replace(/[^\w$€£]/g,'').toUpperCase()||'ILS';
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1710,7 +1714,7 @@ function parseRows(raw){
     else if(status!=='none'&&status!=='cancelled')cov='orange';
     else if(isOvr)cov='red';
     const daysOvr=(isOvr&&dd)?Math.floor((TODAY-dd)/86400000):0;
-    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
+    return{so,mpn,customer,custPO,poNum,supplier,statusRaw,status,qtyO,qtyR,price,currency,dd,cov,daysOvr,isOvr,nk:so+'__'+mpn};
   }).filter(Boolean);
 }
 function _dbgSO(rows){
@@ -2152,7 +2156,7 @@ function buildLR(r){
     <td><div class="mpn" title="${esc(r.desc||r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR||r.qtyO}</td>
-    <td class="qty">${r.price?r.price.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
+    <td class="qty">${r.price?(({'ILS':'₪','USD':'$','EUR':'€','GBP':'£'})[r.currency]||r.currency||'₪')+r.price.toLocaleString('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</td>
     <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
     <td><textarea class="note-ta ${nv?'hn':''}" rows="1" data-key="${esc(r.nk)}"
       placeholder="הוסף הערה..." onchange="saveNote(this)" oninput="autoH(this)">${nv}</textarea></td>
