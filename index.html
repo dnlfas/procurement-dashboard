@@ -1425,8 +1425,19 @@ function parseRows(raw){
     const priceRaw=String(r[K.price]||'');
     const price=parseFloat(priceRaw.replace(/[^\d.-]/g,''))||0;
     const currFromPrice=/\$/.test(priceRaw)?'$':/€/.test(priceRaw)?'EUR':/£/.test(priceRaw)?'GBP':'';
+    // Scan the column right after price for a currency code (SAP places currency unit in next col)
+    const priceIdx=keys.indexOf(K.price);
+    let currFromAdj='';
+    for(let ci=priceIdx+1;ci<=priceIdx+2&&ci<keys.length;ci++){
+      const v=s(r[keys[ci]]).trim();
+      if(v==='$'||v==='USD'){currFromAdj='$';break;}
+      if(v==='ILS'){currFromAdj='ILS';break;}
+      if(v==='EUR'||v==='€'){currFromAdj='EUR';break;}
+      if(v==='GBP'||v==='£'){currFromAdj='GBP';break;}
+    }
     const currColRaw=s(r[K.curr]).trim();
-    const currency=currFromPrice||(currColRaw==='ILS'?'ILS':currColRaw==='$'||currColRaw==='USD'?'$':currColRaw==='EUR'?'EUR':currColRaw==='GBP'?'GBP':currColRaw||'ILS');
+    const currFromCol=currColRaw==='$'||currColRaw==='USD'?'$':currColRaw==='ILS'?'ILS':currColRaw==='EUR'?'EUR':currColRaw==='GBP'?'GBP':'';
+    const currency=currFromPrice||currFromAdj||currFromCol||'ILS';
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1688,8 +1699,18 @@ function parseRows(raw){
     const priceRaw=String(r[K.price]||'');
     const price=parseFloat(priceRaw.replace(/[^\d.-]/g,''))||0;
     const currFromPrice=/\$/.test(priceRaw)?'$':/€/.test(priceRaw)?'EUR':/£/.test(priceRaw)?'GBP':'';
+    const priceIdx=keys.indexOf(K.price);
+    let currFromAdj='';
+    for(let ci=priceIdx+1;ci<=priceIdx+2&&ci<keys.length;ci++){
+      const v=s(r[keys[ci]]).trim();
+      if(v==='$'||v==='USD'){currFromAdj='$';break;}
+      if(v==='ILS'){currFromAdj='ILS';break;}
+      if(v==='EUR'||v==='€'){currFromAdj='EUR';break;}
+      if(v==='GBP'||v==='£'){currFromAdj='GBP';break;}
+    }
     const currColRaw=s(r[K.curr]).trim();
-    const currency=currFromPrice||(currColRaw==='ILS'?'ILS':currColRaw==='$'||currColRaw==='USD'?'$':currColRaw==='EUR'?'EUR':currColRaw==='GBP'?'GBP':currColRaw||'ILS');
+    const currFromCol=currColRaw==='$'||currColRaw==='USD'?'$':currColRaw==='ILS'?'ILS':currColRaw==='EUR'?'EUR':currColRaw==='GBP'?'GBP':'';
+    const currency=currFromPrice||currFromAdj||currFromCol||'ILS';
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
