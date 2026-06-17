@@ -168,6 +168,7 @@ select:focus{border-color:var(--acc)}
 .sonum-soimp{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--acc);white-space:nowrap}
 .socpo{font-family:var(--mono);font-size:10px;color:var(--txt2);margin-top:1px}
 .socust{font-size:15px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.socust-sub{font-size:11px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;margin-top:1px}
 .sodate{font-family:var(--mono);font-size:13px;white-space:nowrap;flex-shrink:0}
 .sodate.past{color:var(--red);font-weight:700}.sodate.curr{color:var(--ora);font-weight:700}
 .sobadges{display:flex;gap:5px;align-items:center;flex-shrink:0}
@@ -1420,7 +1421,7 @@ function parseRows(raw){
     const statusRaw=s(r[K.status]);
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
-    const price=parseFloat(r[K.price])||0;
+    const price=parseFloat(String(r[K.price]||'').replace(/[^\d.-]/g,''))||0;
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -1678,7 +1679,7 @@ function parseRows(raw){
     const statusRaw=s(r[K.status]);
     const qtyR=parseFloat(r[K.qtyR])||0;
     const qtyO=parseFloat(r[K.qtyO])||0;
-    const price=parseFloat(r[K.price])||0;
+    const price=parseFloat(String(r[K.price]||'').replace(/[^\d.-]/g,''))||0;
     let dd=null;
     const rd=r[K.date];
     if(rd instanceof Date&&!isNaN(rd))dd=new Date(rd.getFullYear(),rd.getMonth(),rd.getDate());
@@ -2029,7 +2030,7 @@ function renderSOCard(g){
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="${g.lines.some(r=>r.isTemp)?'sonum-temp':g.lines.some(r=>r.isSOImport)?'sonum-soimp':'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}${g.lines.some(r=>r.isTemp)?' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>':''}${g.lines.some(r=>r.isSOImport)?' <span class="pull-badge" style="background:rgba(0,140,255,.12);color:var(--acc);border-color:rgba(0,140,255,.3)">PDF</span>':''}</div></div>
+        <div><div class="${g.lines.some(r=>r.isTemp)?'sonum-temp':g.lines.some(r=>r.isSOImport)?'sonum-soimp':'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull?' <span class="pull-badge">תיק משיכה</span>':''}${g.lines.some(r=>r.isTemp)?' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>':''}${g.lines.some(r=>r.isSOImport)?' <span class="pull-badge" style="background:rgba(0,140,255,.12);color:var(--acc);border-color:rgba(0,140,255,.3)">PDF</span>':''}</div>${g.customer?`<div class="socust-sub">${esc(g.customer)}</div>`:''}</div>
       </div>
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
