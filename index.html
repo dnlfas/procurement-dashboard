@@ -723,7 +723,11 @@ let _syncTimer=null;
 function syncOverrides(){
   clearTimeout(_syncTimer);
   _syncTimer=setTimeout(function(){
-    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes,pullOrders:pullOrders});
+    let tempOrders={},soImports={},pendingCPO=[];
+    try{tempOrders=JSON.parse(localStorage.getItem('oo_temp_orders')||'{}');}catch(e){}
+    try{soImports=JSON.parse(localStorage.getItem('oo_so_imports')||'{}');}catch(e){}
+    try{pendingCPO=JSON.parse(localStorage.getItem('oo_pending_cpo')||'[]');}catch(e){}
+    const payload=JSON.stringify({fieldOvr:fieldOvr,statusOvr:statusOvr,notes:notes,pullOrders:pullOrders,tempOrders:tempOrders,soImports:soImports,pendingCPO:pendingCPO});
     fetch('/api/overrides',{method:'POST',body:payload,headers:{'Content-Type':'application/json'}}).catch(function(){});
   },1200);
 }
@@ -736,8 +740,11 @@ async function loadOverridesFromBlob(){
     if(d.statusOvr){Object.assign(statusOvr,d.statusOvr);localStorage.setItem('oo_status',JSON.stringify(statusOvr));}
     if(d.notes){Object.assign(notes,d.notes);localStorage.setItem(NK,JSON.stringify(notes));}
     if(d.pullOrders){Object.assign(pullOrders,d.pullOrders);localStorage.setItem('oo_pull',JSON.stringify(pullOrders));}
+    if(d.tempOrders&&Object.keys(d.tempOrders).length){localStorage.setItem('oo_temp_orders',JSON.stringify(d.tempOrders));}
+    if(d.soImports&&Object.keys(d.soImports).length){localStorage.setItem('oo_so_imports',JSON.stringify(d.soImports));}
+    if(d.pendingCPO&&d.pendingCPO.length){localStorage.setItem('oo_pending_cpo',JSON.stringify(d.pendingCPO));}
     cleanupNotes();
-    if(allRows.length){applyOverridesToRows(allRows);soGroups=buildGroups(allRows);applyFilters();renderBoss();}
+    if(allRows.length){applyOverridesToRows(allRows);soGroups=buildGroups(allRows);injectTempOrders();injectSOImports();applyFilters();renderBoss();}
   }catch(e){}
 }
 
