@@ -1,3 +1,13 @@
 {
-  "version": 2
+  "version": 2,
+  "headers": [
+    {
+      "source": "/src/(.*)\\.js",
+      "headers": [{ "key": "Content-Type", "value": "text/javascript; charset=utf-8" }]
+    },
+    {
+      "source": "/src/(.*)\\.css",
+      "headers": [{ "key": "Content-Type", "value": "text/css; charset=utf-8" }]
+    }
+  ]
 }
