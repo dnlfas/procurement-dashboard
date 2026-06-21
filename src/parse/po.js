@@ -72,6 +72,7 @@ export function linkPOtoSO() {
     const k = r.mpn.trim().toUpperCase();
     if ((r.cov === 'orange' || r.cov === 'red') && mpnSet.has(k)) r.cov = 'green';
     if (!r.supplier && byMPN[k]) r.supplier = byMPN[k].supplier;
+    if (!r.poNum && !state.fieldOvr[r.nk + '__po'] && byMPNAll[k]?.poNum) r.poNum = byMPNAll[k].poNum;
     if (state.statusOvr[r.nk] === undefined) {
       const p = byMPNAll[k];
       if (p) {
