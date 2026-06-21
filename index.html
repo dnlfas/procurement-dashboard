@@ -371,6 +371,9 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .rfq-row-inp:focus{border-color:rgba(74,143,255,.5)}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(70px);background:#0a0d13;color:#fff;padding:9px 20px;border-radius:6px;font-size:13px;font-family:var(--mono);transition:transform .25s;z-index:9999;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.35)}
 .toast.show{transform:translateX(-50%) translateY(0)}
+.risk-divider{border-top:1px solid var(--bdr);margin:4px 10px;padding:4px 4px 0;font-size:10px;font-family:var(--mono);color:var(--txt2);letter-spacing:.8px;text-transform:uppercase}
+.risk-alert{display:flex;align-items:center;gap:8px;background:var(--red-d);border-right:3px solid var(--red);border-radius:5px;padding:7px 10px;margin-bottom:6px;font-size:12px;font-family:var(--mono);color:var(--red)}
+.badge-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
 
 /* desktop/TV: boss-view fills screen below fixed topbar */
@@ -603,8 +606,8 @@ table.lt tbody tr:last-child td{border-bottom:none}
       <div class="ssp-head" onclick="toggleSSP()">
         <div class="ssp-title">סטטוס הזמנות פתוחות לפי לקוח</div>
         <div class="ssp-badges">
-          <span class="badge b-x" id="ssp-badge-cust"></span>
-          <span class="badge b-r" id="ssp-badge-ovr"></span>
+          <span class="badge b-x badge-link" id="ssp-badge-cust" onclick="setMainView('emp');setEmpTab('so');applyFilters()" title="עבור לרשימת הזמנות"></span>
+          <span class="badge b-r badge-link" id="ssp-badge-ovr" onclick="setMainView('emp');setEmpTab('today')" title="עבור לפריטים דחופים"></span>
           <span class="badge b-x" id="ssp-chev" style="font-size:11px;font-family:var(--mono)">▲</span>
         </div>
       </div>
@@ -1836,7 +1839,17 @@ function renderBoss(){
   document.getElementById('bk2').textContent=pnd;
   document.getElementById('bk2s').textContent='שורות פריטים';
   document.getElementById('bk3').textContent=ord;
-  document.getElementById('bk3s').textContent=pct+'% מהפריטים'+(poLoaded?' (כולל PO)':'');
+  // Coverage trend: compare with last saved pct
+  let trendStr='';
+  try{
+    const hist=JSON.parse(localStorage.getItem('oo_cov_pct_hist')||'[]');
+    const prev=hist.length?hist[hist.length-1].pct:null;
+    if(prev!==null){const d=pct-prev;trendStr=d>0?' ↑'+d+'%':d<0?' ↓'+Math.abs(d)+'%':' →';}
+    hist.push({ts:Date.now(),pct});
+    if(hist.length>7)hist.shift();
+    localStorage.setItem('oo_cov_pct_hist',JSON.stringify(hist));
+  }catch(e){}
+  document.getElementById('bk3s').textContent=pct+'% מהפריטים'+(poLoaded?' (כולל PO)':'')+trendStr;
   document.getElementById('bk4').textContent=soGroups.length;
   document.getElementById('bk4s').textContent=all.length+' פריטים';
   renderChart();
@@ -1885,7 +1898,9 @@ function renderDueThisWeek(){
   const el=document.getElementById('due-week-list');
   const cnt=document.getElementById('due-week-count');
   if(!items.length){
-    el.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--txt2);text-align:center;font-family:var(--mono)">אין פריטים לטיפול השבוע ✓</div>';
+    const ovrCount=allRows.filter(r=>r.isOvr&&r.cov!=='green').length;
+    const ovrNote=ovrCount?` · ${ovrCount} פריטים כבר באיחור`:'';
+    el.innerHTML=`<div style="padding:10px 14px;font-size:12px;color:var(--txt2);text-align:center;font-family:var(--mono)">✓ אין פריטים חדשים השבוע${ovrNote}</div>`;
     cnt.textContent='';
     return;
   }
@@ -1924,12 +1939,21 @@ function renderCustRisk(){
   const el=document.getElementById('cust-risk');
   document.getElementById('cust-count').textContent='('+sorted.length+')';
   const shortName=n=>n.replace(/\(.*?\)/g,'').replace(/בע"מ/g,'').trim().slice(0,24);
-  el.innerHTML=sorted.map(([k,v])=>{
+  // High-concentration alert: top customer with ≥50 overdue
+  let alertHTML='';
+  if(sorted.length&&sorted[0][1].ovr>=50){
+    const [topK,topV]=sorted[0];
+    alertHTML=`<div class="risk-alert">⚠ ${esc(shortName(topK))} — ${topV.ovr} פריטים באיחור — ריכוז גבוה</div>`;
+  }
+  let seenNonOvr=false;
+  el.innerHTML=alertHTML+sorted.map(([k,v])=>{
     const badges=[];
     if(v.ovr>0)badges.push(`<span class="risk-badge rb-red">🔴 ${v.ovr} באיחור</span>`);
     if(v.unc>0)badges.push(`<span class="risk-badge rb-ora">⚠ ${v.unc} ממתין</span>`);
     if(v.cov>0)badges.push(`<span class="risk-badge rb-grn">✓ ${v.cov}</span>`);
-    return`<div class="risk-row" style="flex-wrap:wrap;gap:6px">
+    let divider='';
+    if(!seenNonOvr&&v.ovr===0){seenNonOvr=true;divider='<div class="risk-divider">ממתין בלבד</div>';}
+    return divider+`<div class="risk-row" style="flex-wrap:wrap;gap:6px">
       <div class="risk-name" style="min-width:120px">${esc(shortName(k))}</div>
       <div style="display:flex;gap:4px;flex-wrap:wrap">${badges.join('')}</div>
     </div>`;
