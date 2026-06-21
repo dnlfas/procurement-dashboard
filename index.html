@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>×ž×¨×›×– ×©×œ×™×˜×” - BTS</title>
+<title>מרכז שליטה - BTS</title>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.png" type="image/png">
 <link rel="apple-touch-icon" href="/icon.png">
@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="×ž×¨×›×– ×©×œ×™×˜×”">
+<meta name="apple-mobile-web-app-title" content="מרכז שליטה">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Heebo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/src/styles/main.css">
 <link rel="stylesheet" href="/src/styles/boss.css">
@@ -28,15 +28,15 @@
   <div style="background:var(--sur);border:1px solid var(--bdr);border-radius:14px;padding:36px 32px;width:min(360px,92vw);display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center">
     <img src="/icon.png" style="width:72px;height:72px;border-radius:16px;object-fit:contain">
     <div>
-      <div style="font-size:18px;font-weight:800;color:var(--txtb)">×ž×¨×›×– ×©×œ×™×˜×”</div>
-      <div style="font-size:12px;color:var(--txt2);margin-top:4px;font-family:var(--mono)">×”×–×ž× ×•×ª ×¤×ª×•×—×•×ª â€” BTS</div>
+      <div style="font-size:18px;font-weight:800;color:var(--txtb)">מרכז שליטה</div>
+      <div style="font-size:12px;color:var(--txt2);margin-top:4px;font-family:var(--mono)">הזמנות פתוחות — BTS</div>
     </div>
     <div style="width:100%;display:flex;flex-direction:column;gap:10px">
-      <input id="ls-pw" type="password" placeholder="×¡×™×¡×ž×”" autocomplete="current-password"
+      <input id="ls-pw" type="password" placeholder="סיסמה" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')doLogin()"
         style="width:100%;background:var(--sur3);border:1px solid var(--bdr);border-radius:7px;padding:10px 14px;font-size:15px;font-family:var(--sans);color:var(--txt);outline:none;text-align:center;direction:ltr">
-      <div id="ls-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)">×¡×™×¡×ž×” ×©×’×•×™×” â€” × ×¡×” ×©× ×™×ª</div>
-      <button class="btn btn-blue" style="width:100%;padding:10px;font-size:15px" onclick="doLogin()">×›× ×™×¡×”</button>
+      <div id="ls-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)">סיסמה שגויה — נסה שנית</div>
+      <button class="btn btn-blue" style="width:100%;padding:10px;font-size:15px" onclick="doLogin()">כניסה</button>
     </div>
   </div>
 </div>
@@ -46,30 +46,30 @@
 <div class="topbar">
   <div class="tb-left">
     <div class="ldot"></div>
-    <div class="tb-title">×ž×¨×›×– ×©×œ×™×˜×” - BTS</div>
+    <div class="tb-title">מרכז שליטה - BTS</div>
   </div>
   <div class="tb-mid">
-    <button class="view-tab import-mobile-btn" onclick="openImportModal()">ðŸ“¥ ×™×™×‘×•×</button>
-    <button class="view-tab on" id="tab-boss" onclick="setMainView('boss')">ðŸ“Š ×ž×‘×˜ × ×™×”×•×œ×™</button>
-    <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">ðŸ“‹ ×ž×‘×˜ ×¢×•×‘×“</button>
-    <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">ðŸ­ ×¡×¤×§×™×</button>
-    <button class="view-tab" id="tab-rfq" onclick="setMainView('rfq')">ðŸ’¬ RFQ</button>
+    <button class="view-tab import-mobile-btn" onclick="openImportModal()">📥 ייבוא</button>
+    <button class="view-tab on" id="tab-boss" onclick="setMainView('boss')">📊 מבט ניהולי</button>
+    <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">📋 מבט עובד</button>
+    <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">🏭 ספקים</button>
+    <button class="view-tab" id="tab-rfq" onclick="setMainView('rfq')">💬 RFQ</button>
   </div>
   <div class="tb-right">
-    <div id="spin">×˜×•×¢×Ÿ...</div>
-    <div class="fbadge" id="fbadge">×œ× ×˜×¢×•×Ÿ ×§×•×‘×¥ SO</div>
+    <div id="spin">טוען...</div>
+    <div class="fbadge" id="fbadge">לא טעון קובץ SO</div>
     <div class="fbadge" id="fbadge-po" style="display:none"></div>
-    <button class="btn btn-ghost" id="wiz-reload-btn" style="display:none" onclick="showWizard()" title="×˜×¢×Ÿ ×§×‘×¦×™× ×ž×—×“×©">â¬† ×§×‘×¦×™×</button>
+    <button class="btn btn-ghost" id="wiz-reload-btn" style="display:none" onclick="showWizard()" title="טען קבצים מחדש">⬆ קבצים</button>
     <button id="expbtn" style="display:none"></button>
     <div id="suppbadge" style="display:none"></div>
     <div class="tb-divider" style="width:1px;height:20px;background:var(--bdr);flex-shrink:0"></div>
-    <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="×¢×“×›×Ÿ ×§×•×‘×¥ ×”×–×ž× ×•×ª ×¤×ª×•×—×•×ª ×‘-Vercel">ðŸ“¤ SO</button>
-    <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="×¢×“×›×Ÿ ×§×•×‘×¥ ×ž×¢×§×‘ ×¨×›×© ×‘-Vercel">ðŸ“¤ PO</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('fi-so-upload').click()" title="עדכן קובץ הזמנות פתוחות ב-Vercel">📤 SO</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('fi-po-upload').click()" title="עדכן קובץ מעקב רכש ב-Vercel">📤 PO</button>
     <div class="fbadge" id="upload-status" style="display:none;font-size:11px"></div>
-    <button class="btn btn-ghost" onclick="openImportModal()" title="×™×™×‘×•× × ×ª×•× ×™× ×ž××™×ž×™×™×œ / ×§×•×‘×¥">ðŸ“¥ ×™×™×‘×•×</button><span id="import-pending-badge" style="display:none;background:var(--ora);color:#000;border-radius:8px;font-size:10px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-right:2px"></span>
-    <button class="btn btn-ghost" onclick="showQR()" title="QR ×§×•×“ ×œ×¤×ª×™×—×” ×‘×ž×›×©×™×¨ ××—×¨">ðŸ“± QR</button>
-    <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="×ž×¡×š ×ž×œ×">â›¶</button>
-    <button class="btn btn-ghost" onclick="doLogout()" title="×™×¦×™××”" style="color:var(--txt2)">âŽ‹</button>
+    <button class="btn btn-ghost" onclick="openImportModal()" title="ייבוא נתונים מאימייל / קובץ">📥 ייבוא</button><span id="import-pending-badge" style="display:none;background:var(--ora);color:#000;border-radius:8px;font-size:10px;padding:1px 5px;font-family:var(--mono);font-weight:700;margin-right:2px"></span>
+    <button class="btn btn-ghost" onclick="showQR()" title="QR קוד לפתיחה במכשיר אחר">📱 QR</button>
+    <button class="btn btn-ghost" id="fsbtn" onclick="toggleFullscreen()" title="מסך מלא">⛶</button>
+    <button class="btn btn-ghost" onclick="doLogout()" title="יציאה" style="color:var(--txt2)">⎋</button>
   </div>
 </div>
 <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)" style="display:none">
@@ -84,47 +84,47 @@
 
     <!-- Wizard header -->
     <div style="text-align:center;margin-bottom:28px">
-      <div style="font-size:32px;margin-bottom:10px">ðŸ“Š</div>
-      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">×ž×¨×›×– ×©×œ×™×˜×” - BTS</div>
-      <div style="font-size:13px;color:var(--txt2)">×˜×¢×Ÿ ×§×•×‘×¥ ××—×“ ××• ×©× ×™×™× ×œ×”×ª×—×œ×”</div>
+      <div style="font-size:32px;margin-bottom:10px">📊</div>
+      <div style="font-size:22px;font-weight:900;color:var(--txtb);margin-bottom:6px">מרכז שליטה - BTS</div>
+      <div style="font-size:13px;color:var(--txt2)">טען קובץ אחד או שניים להתחלה</div>
     </div>
 
-    <!-- Step 1 â€” SO file (required) -->
+    <!-- Step 1 — SO file (required) -->
     <div class="wiz-card" id="wiz-so" ondragover="event.preventDefault();this.classList.add('dov')" ondragleave="this.classList.remove('dov')" ondrop="handleWizDrop(event,'so')">
       <div class="wiz-card-left">
         <div class="wiz-step-num" id="wiz-so-num">1</div>
       </div>
       <div class="wiz-card-body">
-        <div class="wiz-card-title">ðŸ“„ ×”×–×ž× ×•×ª ×¤×ª×•×—×•×ª <span class="wiz-req">× ×“×¨×©</span></div>
-        <div class="wiz-card-sub">×§×•×‘×¥ <span class="wiz-file">×”×–×ž× ×•×ª_×¤×ª×•×—×•×ª.xlsx</span> â€” ×ž×™×•×¦× ×ž×¤×¨×™×•×¨×™×˜×™</div>
-        <div class="wiz-status" id="wiz-so-status">×œ× × ×˜×¢×Ÿ</div>
+        <div class="wiz-card-title">📄 הזמנות פתוחות <span class="wiz-req">נדרש</span></div>
+        <div class="wiz-card-sub">קובץ <span class="wiz-file">הזמנות_פתוחות.xlsx</span> — מיוצא מפריוריטי</div>
+        <div class="wiz-status" id="wiz-so-status">לא נטען</div>
       </div>
       <div class="wiz-card-action">
-        <button class="btn btn-blue" onclick="trigWiz('so')">×‘×—×¨ ×§×•×‘×¥</button>
+        <button class="btn btn-blue" onclick="trigWiz('so')">בחר קובץ</button>
       </div>
     </div>
 
-    <!-- Step 2 â€” PO file (optional) -->
+    <!-- Step 2 — PO file (optional) -->
     <div class="wiz-card wiz-optional" id="wiz-po" ondragover="event.preventDefault();this.classList.add('dov')" ondragleave="this.classList.remove('dov')" ondrop="handleWizDrop(event,'po')">
       <div class="wiz-card-left">
         <div class="wiz-step-num" id="wiz-po-num">2</div>
       </div>
       <div class="wiz-card-body">
-        <div class="wiz-card-title">ðŸ“¦ ×ž×¢×§×‘ ×¨×›×© <span class="wiz-opt">××•×¤×¦×™×•× ×œ×™</span></div>
-        <div class="wiz-card-sub">×§×•×‘×¥ <span class="wiz-file">×ž×¢×§×‘_×¨×›×©.xlsx</span> â€” ×ž×‘×˜ ×¡×¤×§×™× ×•-PO</div>
-        <div class="wiz-status" id="wiz-po-status">×œ× × ×˜×¢×Ÿ</div>
+        <div class="wiz-card-title">📦 מעקב רכש <span class="wiz-opt">אופציונלי</span></div>
+        <div class="wiz-card-sub">קובץ <span class="wiz-file">מעקב_רכש.xlsx</span> — מבט ספקים ו-PO</div>
+        <div class="wiz-status" id="wiz-po-status">לא נטען</div>
       </div>
       <div class="wiz-card-action">
-        <button class="btn btn-ghost" onclick="trigWiz('po')">×‘×—×¨ ×§×•×‘×¥</button>
+        <button class="btn btn-ghost" onclick="trigWiz('po')">בחר קובץ</button>
       </div>
     </div>
 
     <!-- Launch button -->
     <div style="margin-top:20px;text-align:center">
       <button class="btn btn-blue" id="wiz-launch" style="display:none;padding:12px 40px;font-size:15px;border-radius:8px" onclick="launchDashboard()">
-        ðŸš€ ×¤×ª×— ×“×©×‘×•×¨×“
+        🚀 פתח דשבורד
       </button>
-      <div style="font-size:11px;color:var(--txt2);margin-top:12px;font-family:var(--mono)">×”× ×ª×•× ×™× ×œ× ×¢×•×–×‘×™× ××ª ×”×ž×—×©×‘ ×©×œ×š Â· ×’×¨×•×¨ ×§×‘×¦×™× ×œ×›××Ÿ</div>
+      <div style="font-size:11px;color:var(--txt2);margin-top:12px;font-family:var(--mono)">הנתונים לא עוזבים את המחשב שלך · גרור קבצים לכאן</div>
     </div>
 
   </div>
@@ -133,46 +133,46 @@
 <!-- APP -->
 <div id="app">
 
-  <!-- â•â• BOSS VIEW â•â• -->
+  <!-- ══ BOSS VIEW ══ -->
   <div id="boss-view" style="display:flex;flex-direction:column;gap:8px;padding:12px 20px">
     <div class="kpi-row">
-      <div class="kpi kr"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×¤×¨×™×˜×™× ×©×ª××¨×™×š ×”××¡×¤×§×” ×©×œ×”× ×¢×‘×¨ ×•×¢×“×™×™×Ÿ ××™×Ÿ ×œ×”× ×”×–×ž× ×ª ×¨×›×© (PO) ××• ×¡×˜×˜×•×¡ "×”×•×–×ž×Ÿ ×ž×¡×¤×§". ×“×•×¨×©×™× ×˜×™×¤×•×œ ×ž×™×™×“×™.</span></span>×‘××™×—×•×¨ ×œ×œ× ×›×™×¡×•×™</div><div class="kpi-val" id="bk1">â€”</div><div class="kpi-sub" id="bk1s"></div></div>
-      <div class="kpi ko"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×¤×¨×™×˜×™× ×©×ª××¨×™×›× ×¢×“×™×™×Ÿ ×œ× ×¢×‘×¨ ××š ××™×Ÿ ×œ×”× PO ×•××™×Ÿ ×¡×˜×˜×•×¡ "×”×•×–×ž×Ÿ". ×™×© ×œ×˜×¤×œ ×‘×”× ×œ×¤× ×™ ×©×™×”×¤×›×• ×œ××™×—×•×¨.</span></span>×ž×ž×ª×™×Ÿ ×œ×˜×™×¤×•×œ</div><div class="kpi-val" id="bk2">â€”</div><div class="kpi-sub" id="bk2s"></div></div>
-      <div class="kpi kg"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×¤×¨×™×˜×™× ×¢× ×”×–×ž× ×ª ×¨×›×© (PO) ×§×™×™×ž×ª ××• ×¡×˜×˜×•×¡ "×”×•×–×ž×Ÿ ×ž×¡×¤×§". ×”×¤×¨×™×˜ ×ž×›×•×¡×” ×•××™×Ÿ ×¦×•×¨×š ×‘×¤×¢×•×œ×”.</span></span>×ž×›×•×¡×” / ×”×•×–×ž×Ÿ</div><div class="kpi-val" id="bk3">â€”</div><div class="kpi-sub" id="bk3s"></div></div>
-      <div class="kpi kb"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×ž×¡×¤×¨ ×”×–×ž× ×•×ª ×”×ž×›×™×¨×” (SO) ×”×¤×ª×•×—×•×ª ×”×›×•×œ×œ, ×•×ž×¡×¤×¨ ×©×•×¨×•×ª ×”×¤×¨×™×˜×™× ×‘×ª×•×›×Ÿ.</span></span>×¡×”"×› ×”×–×ž× ×•×ª</div><div class="kpi-val" id="bk4">â€”</div><div class="kpi-sub" id="bk4s"></div></div>
+      <div class="kpi kr"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריך האספקה שלהם עבר ועדיין אין להם הזמנת רכש (PO) או סטטוס "הוזמן מספק". דורשים טיפול מיידי.</span></span>באיחור ללא כיסוי</div><div class="kpi-val" id="bk1">—</div><div class="kpi-sub" id="bk1s"></div></div>
+      <div class="kpi ko"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריכם עדיין לא עבר אך אין להם PO ואין סטטוס "הוזמן". יש לטפל בהם לפני שיהפכו לאיחור.</span></span>ממתין לטיפול</div><div class="kpi-val" id="bk2">—</div><div class="kpi-sub" id="bk2s"></div></div>
+      <div class="kpi kg"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים עם הזמנת רכש (PO) קיימת או סטטוס "הוזמן מספק". הפריט מכוסה ואין צורך בפעולה.</span></span>מכוסה / הוזמן</div><div class="kpi-val" id="bk3">—</div><div class="kpi-sub" id="bk3s"></div></div>
+      <div class="kpi kb"><div class="kpi-lbl"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">מספר הזמנות המכירה (SO) הפתוחות הכולל, ומספר שורות הפריטים בתוכן.</span></span>סה"כ הזמנות</div><div class="kpi-val" id="bk4">—</div><div class="kpi-sub" id="bk4s"></div></div>
     </div>
 
     <div class="boss-grid">
       <!-- Chart + Due This Week -->
       <div style="display:flex;flex-direction:column;gap:6px;min-height:0">
         <div class="panel">
-          <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×ž×¡×¤×¨ ×¤×¨×™×˜×™× ×œ×¤×™ ×—×•×“×© ×ª××¨×™×š ××¡×¤×§×” ×ž×‘×•×§×©. ××“×•× = ×—×•×“×© ×©×¢×‘×¨, ×›×ª×•× = ×”×—×•×“×© ×”× ×•×›×—×™, ×›×—×•×œ = ×—×•×“×©×™× ×¢×ª×™×“×™×™×.</span></span>×ª×—×–×™×ª ×œ×¤×™ ×—×•×“×© ××¡×¤×§×”</div>
+          <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">מספר פריטים לפי חודש תאריך אספקה מבוקש. אדום = חודש שעבר, כתום = החודש הנוכחי, כחול = חודשים עתידיים.</span></span>תחזית לפי חודש אספקה</div>
           <div class="chart-wrap">
             <div class="bar-row" id="chart-bars"></div>
             <div class="chart-legend">
-              <div class="cl-item"><div class="cl-dot" style="background:var(--red)"></div>×¢×‘×¨</div>
-              <div class="cl-item"><div class="cl-dot" style="background:var(--ora)"></div>×©×•×˜×£</div>
-              <div class="cl-item"><div class="cl-dot" style="background:var(--acc)"></div>×¢×ª×™×“</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--red)"></div>עבר</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--ora)"></div>שוטף</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--acc)"></div>עתיד</div>
             </div>
           </div>
         </div>
         <div class="panel" style="flex:1;min-height:0">
-          <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×¤×¨×™×˜×™× ×©×ª××¨×™×š ×”××¡×¤×§×” ×©×œ×”× ×”×•× ×‘×©×‘×¢×ª ×”×™×ž×™× ×”×§×¨×•×‘×™× ×•×¢×“×™×™×Ÿ ××™×Ÿ ×œ×”× ×›×™×¡×•×™ PO. ×“×•×¨×©×™× ×”×–×ž× ×” ×ž×™×™×“×™×ª.</span></span>×œ×˜×™×¤×•×œ ×”×©×‘×•×¢ <span id="due-week-count" style="color:var(--ora)"></span></div>
+          <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">פריטים שתאריך האספקה שלהם הוא בשבעת הימים הקרובים ועדיין אין להם כיסוי PO. דורשים הזמנה מיידית.</span></span>לטיפול השבוע <span id="due-week-count" style="color:var(--ora)"></span></div>
           <div class="pbody" id="due-week-list"></div>
         </div>
       </div>
 
       <!-- Customers at risk -->
       <div class="panel">
-        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×œ×§×•×—×•×ª ×©×™×© ×œ×”× ×¤×¨×™×˜×™× ×‘××™×—×•×¨ ×œ×œ× ×›×™×¡×•×™. ×ž×¡×¤×¨ ×”×¤×¨×™×˜×™× ×•×ª××¨×™×š ×”××™×—×•×¨ ×”×ž×•×§×“× ×‘×™×•×ª×¨.</span></span>×œ×§×•×—×•×ª ×‘×¡×™×›×•×Ÿ <span id="cust-count" style="color:var(--red)"></span></div>
+        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">לקוחות שיש להם פריטים באיחור ללא כיסוי. מספר הפריטים ותאריך האיחור המוקדם ביותר.</span></span>לקוחות בסיכון <span id="cust-count" style="color:var(--red)"></span></div>
         <div class="pbody" id="cust-risk"></div>
       </div>
 
       <!-- Suppliers + coverage -->
       <div class="panel">
-        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">×¡×¤×§×™× ×¢× ×”×–×ž× ×•×ª ×¤×ª×•×—×•×ª. ××“×•× = ×™×© ×¤×¨×™×˜×™× ×‘××™×—×•×¨, ×¡×’×•×œ = ×‘×‘×§×¨×ª ××™×›×•×ª, ×™×¨×•×§ = ×”×›×œ ×ª×§×™×Ÿ.</span></span>×¡×¤×§×™× ×¤×¢×™×œ×™×</div>
+        <div class="phead"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">ספקים עם הזמנות פתוחות. אדום = יש פריטים באיחור, סגול = בבקרת איכות, ירוק = הכל תקין.</span></span>ספקים פעילים</div>
         <div class="pbody" id="supp-list"></div>
-        <div class="phead" style="margin-top:2px"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">××—×•×– ×”×¤×¨×™×˜×™× ×©×™×© ×œ×”× PO ××• ×¡×˜×˜×•×¡ "×”×•×–×ž×Ÿ" ×ž×ª×•×š ×¡×š ×”×¤×¨×™×˜×™× ×”×¤×ª×•×—×™× ×©×œ ××•×ª×• ×œ×§×•×—.</span></span>×›×™×¡×•×™ ×œ×¤×™ ×œ×§×•×—</div>
+        <div class="phead" style="margin-top:2px"><span class="tip"><span class="tip-icon">?</span><span class="tip-box">אחוז הפריטים שיש להם PO או סטטוס "הוזמן" מתוך סך הפריטים הפתוחים של אותו לקוח.</span></span>כיסוי לפי לקוח</div>
         <div class="cov-wrap" id="cov-list"></div>
       </div>
     </div>
@@ -180,28 +180,28 @@
     <!-- SO STATUS PANEL -->
     <div class="so-status-panel" id="ssp">
       <div class="ssp-head" onclick="toggleSSP()">
-        <div class="ssp-title">×¡×˜×˜×•×¡ ×”×–×ž× ×•×ª ×¤×ª×•×—×•×ª ×œ×¤×™ ×œ×§×•×—</div>
+        <div class="ssp-title">סטטוס הזמנות פתוחות לפי לקוח</div>
         <div class="ssp-badges">
-          <span class="badge b-x badge-link" id="ssp-badge-cust" onclick="setMainView('emp');setEmpTab('so');applyFilters()" title="×¢×‘×•×¨ ×œ×¨×©×™×ž×ª ×”×–×ž× ×•×ª"></span>
-          <span class="badge b-r badge-link" id="ssp-badge-ovr" onclick="setMainView('emp');setEmpTab('today')" title="×¢×‘×•×¨ ×œ×¤×¨×™×˜×™× ×“×—×•×¤×™×"></span>
-          <span class="badge b-x" id="ssp-chev" style="font-size:11px;font-family:var(--mono)">â–²</span>
+          <span class="badge b-x badge-link" id="ssp-badge-cust" onclick="setMainView('emp');setEmpTab('so');applyFilters()" title="עבור לרשימת הזמנות"></span>
+          <span class="badge b-r badge-link" id="ssp-badge-ovr" onclick="setMainView('emp');setEmpTab('today')" title="עבור לפריטים דחופים"></span>
+          <span class="badge b-x" id="ssp-chev" style="font-size:11px;font-family:var(--mono)">▲</span>
         </div>
       </div>
       <div class="ssp-body" id="ssp-body">
         <div id="ssp-list"></div>
         <div class="ssp-more" id="ssp-more" style="display:none">
           <span id="ssp-more-txt"></span>
-          <span onclick="sspShowAll()" style="cursor:pointer">×”×¦×’ ×”×›×œ â–¸</span>
+          <span onclick="sspShowAll()" style="cursor:pointer">הצג הכל ▸</span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- â•â• EMPLOYEE VIEW â•â• -->
+  <!-- ══ EMPLOYEE VIEW ══ -->
   <div id="emp-view">
     <div class="emp-tabs">
-      <button class="etab on" id="et1" onclick="setEmpTab('today')">ðŸ”´ ×œ×˜×™×¤×•×œ ×”×™×•×</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">×¨×©×™×ž×ª ×¤×¨×™×˜×™× ×“×—×•×¤×™×: ×ª××¨×™×š ××¡×¤×§×” ×¢×‘×¨ + ××™×Ÿ PO + ×œ× ×‘×•×˜×œ. ×ž×ž×•×™× ×™× ×œ×¤×™ ×’×™×œ ×”××™×—×•×¨.</span></span>
-      <button class="etab" id="et2" onclick="setEmpTab('so')">ðŸ“‹ ×›×œ ×”×”×–×ž× ×•×ª</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">×›×œ ×”×–×ž× ×•×ª ×”×ž×›×™×¨×” ×”×¤×ª×•×—×•×ª. ×œ×—×¥ ×¢×œ ×©×•×¨×” ×œ×¤×ª×™×—×ª ×¤×™×¨×•×˜ ×”×¤×¨×™×˜×™×. ××“×•× = ×™×© ××™×—×•×¨×™×, ×›×ª×•× = ×ž×ž×ª×™×Ÿ ×œ×˜×™×¤×•×œ, ×™×¨×•×§ = ×”×›×œ ×ž×›×•×¡×”.</span></span>
+      <button class="etab on" id="et1" onclick="setEmpTab('today')">🔴 לטיפול היום</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">רשימת פריטים דחופים: תאריך אספקה עבר + אין PO + לא בוטל. ממוינים לפי גיל האיחור.</span></span>
+      <button class="etab" id="et2" onclick="setEmpTab('so')">📋 כל ההזמנות</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">כל הזמנות המכירה הפתוחות. לחץ על שורה לפתיחת פירוט הפריטים. אדום = יש איחורים, כתום = ממתין לטיפול, ירוק = הכל מכוסה.</span></span>
       <div class="cspc"></div>
       <div style="font-size:11px;font-family:var(--mono);color:var(--txt2)" id="emp-stat"></div>
     </div>
@@ -210,7 +210,7 @@
     <div class="emp-body" id="tab-today">
       <div class="today-grid">
         <div class="panel" style="grid-column:1 / -1">
-          <div class="phead">×¤×¨×™×˜×™× ×“×—×•×¤×™× â€” ×œ×œ× PO + ×ª××¨×™×š ×¢×‘×¨ <span id="today-count" style="color:var(--red)"></span></div>
+          <div class="phead">פריטים דחופים — ללא PO + תאריך עבר <span id="today-count" style="color:var(--red)"></span></div>
           <div style="padding:8px 10px;display:flex;flex-direction:column;gap:4px" id="today-list"></div>
         </div>
       </div>
@@ -219,64 +219,64 @@
     <!-- SO sub-view -->
     <div class="emp-body" id="tab-so" style="display:none">
       <div class="so-controls">
-        <span class="ctl"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">×¡×™× ×•×Ÿ ×œ×”×¦×’×ª ×”×–×ž× ×•×ª ×©×œ ×œ×§×•×— ×¡×¤×¦×™×¤×™ ×‘×œ×‘×“.</span></span>×œ×§×•×—:</span>
-        <select id="fc" onchange="applyFilters()"><option value="">×”×›×œ</option></select>
-        <span class="ctl"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">×¡×™× ×•×Ÿ ×œ×”×¦×’×ª ×¤×¨×™×˜×™× ×©×ž×©×•×™×›×™× ×œ×¡×¤×§ ×¡×¤×¦×™×¤×™ ×‘×œ×‘×“.</span></span>×¡×¤×§:</span>
-        <select id="fs" onchange="applyFilters()"><option value="">×”×›×œ</option></select>
-        <label class="chk"><input type="checkbox" id="fu" onchange="applyFilters()"> ×œ× ×ž×›×•×¡×™×<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">×ž×¦×™×’ ×¨×§ ×¤×¨×™×˜×™× ×œ×œ× PO ×•×œ×œ× ×¡×˜×˜×•×¡ "×”×•×–×ž×Ÿ ×ž×¡×¤×§".</span></span></label>
-        <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> ×‘××™×—×•×¨<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">×ž×¦×™×’ ×¨×§ ×¤×¨×™×˜×™× ×©×ª××¨×™×š ×”××¡×¤×§×” ×”×ž×‘×•×§×© ×¢×‘×¨.</span></span></label>
-        <span class="ctl">×ª×™×§ ×ž×©×™×›×”:</span>
-        <select id="fpull" onchange="applyFilters()"><option value="">×”×›×œ</option><option value="pull">×ª×™×§×™ ×ž×©×™×›×” ×‘×œ×‘×“</option><option value="nopull">×œ×œ× ×ª×™×§×™ ×ž×©×™×›×”</option></select>
-        <input id="fq" type="text" placeholder="×—×™×¤×•×© MPN / SO..." oninput="applyFilters()"
+        <span class="ctl"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">סינון להצגת הזמנות של לקוח ספציפי בלבד.</span></span>לקוח:</span>
+        <select id="fc" onchange="applyFilters()"><option value="">הכל</option></select>
+        <span class="ctl"><span class="tip tip-l"><span class="tip-icon">?</span><span class="tip-box">סינון להצגת פריטים שמשויכים לספק ספציפי בלבד.</span></span>ספק:</span>
+        <select id="fs" onchange="applyFilters()"><option value="">הכל</option></select>
+        <label class="chk"><input type="checkbox" id="fu" onchange="applyFilters()"> לא מכוסים<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים ללא PO וללא סטטוס "הוזמן מספק".</span></span></label>
+        <label class="chk"><input type="checkbox" id="fo" onchange="applyFilters()"> באיחור<span class="tip" style="margin-right:5px"><span class="tip-icon">?</span><span class="tip-box">מציג רק פריטים שתאריך האספקה המבוקש עבר.</span></span></label>
+        <span class="ctl">תיק משיכה:</span>
+        <select id="fpull" onchange="applyFilters()"><option value="">הכל</option><option value="pull">תיקי משיכה בלבד</option><option value="nopull">ללא תיקי משיכה</option></select>
+        <input id="fq" type="text" placeholder="חיפוש MPN / SO..." oninput="applyFilters()"
           style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:5px 10px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;min-width:160px">
         <div class="cspc"></div>
-        <button class="bexp" id="bex" onclick="expandAll(true)">×¤×ª×— ×”×›×œ â–¾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">ðŸ”´ = ×™×© ×¤×¨×™×˜ ×‘××™×—×•×¨ ×œ×œ× ×›×™×¡×•×™ | ðŸŸ  = ×™×© ×¤×¨×™×˜ ×œ×œ× PO | ðŸŸ¢ = ×›×œ ×”×¤×¨×™×˜×™× ×ž×›×•×¡×™×. ×”×ž×¡×¤×¨×™× ×‘×‘××“×’×³×™×: ×›×ž×•×ª ×¤×¨×™×˜×™× ×œ×¤×™ ×§×˜×’×•×¨×™×”.</span></span>
+        <button class="bexp" id="bex" onclick="expandAll(true)">פתח הכל ▾</button><span class="tip tip-l" style="margin-right:6px"><span class="tip-icon">?</span><span class="tip-box">🔴 = יש פריט באיחור ללא כיסוי | 🟠 = יש פריט ללא PO | 🟢 = כל הפריטים מכוסים. המספרים בבאדג׳ים: כמות פריטים לפי קטגוריה.</span></span>
       </div>
       <div id="so-content"></div>
     </div>
   </div>
-  <!-- â•â• SUPPLIER VIEW â•â• -->
+  <!-- ══ SUPPLIER VIEW ══ -->
   <div id="supp-view" style="display:none; padding:16px 20px;">
     <div id="supp-nopo" style="text-align:center;padding:60px;color:var(--txt2)">
-      <div style="font-size:40px;margin-bottom:14px">ðŸ“¦</div>
-      <div style="font-size:16px;font-weight:600;color:var(--txtb);margin-bottom:8px">×˜×¢×Ÿ ×§×•×‘×¥ ×ž×¢×§×‘ ×¨×›×©</div>
-      <div style="font-size:13px;margin-bottom:20px;">×œ×—×¥ ×¢×œ "â¬† PO" ×‘×¡×¨×’×œ ×”×¢×œ×™×•×Ÿ ×›×“×™ ×œ×˜×¢×•×Ÿ ××ª ×§×•×‘×¥ <span style="font-family:var(--mono)">×ž×¢×§×‘_×¨×›×©.xlsx</span></div>
-      <button class="btn btn-blue" onclick="trigUpPO()">â¬† ×˜×¢×Ÿ ×§×•×‘×¥ PO</button>
+      <div style="font-size:40px;margin-bottom:14px">📦</div>
+      <div style="font-size:16px;font-weight:600;color:var(--txtb);margin-bottom:8px">טען קובץ מעקב רכש</div>
+      <div style="font-size:13px;margin-bottom:20px;">לחץ על "⬆ PO" בסרגל העליון כדי לטעון את קובץ <span style="font-family:var(--mono)">מעקב_רכש.xlsx</span></div>
+      <button class="btn btn-blue" onclick="trigUpPO()">⬆ טען קובץ PO</button>
     </div>
     <div id="supp-content" style="display:none;flex-direction:column;gap:12px">
       <div class="kpi-row">
-        <div class="kpi kb"><div class="kpi-lbl">×¡×¤×§×™× ×¤×¢×™×œ×™×</div><div class="kpi-val" id="sk1">â€”</div><div class="kpi-sub" id="sk1s"></div></div>
-        <div class="kpi kr"><div class="kpi-lbl">×©×•×¨×•×ª ×‘××™×—×•×¨</div><div class="kpi-val" id="sk2">â€”</div><div class="kpi-sub" id="sk2s"></div></div>
-        <div class="kpi ko"><div class="kpi-lbl">×©×•×•×™ ×™×ª×¨×”</div><div class="kpi-val" id="sk3">â€”</div><div class="kpi-sub" id="sk3s"></div></div>
-        <div class="kpi kg"><div class="kpi-lbl">×ž×—×•×‘×¨×™× ×œ-SO</div><div class="kpi-val" id="sk4">â€”</div><div class="kpi-sub" id="sk4s"></div></div>
+        <div class="kpi kb"><div class="kpi-lbl">ספקים פעילים</div><div class="kpi-val" id="sk1">—</div><div class="kpi-sub" id="sk1s"></div></div>
+        <div class="kpi kr"><div class="kpi-lbl">שורות באיחור</div><div class="kpi-val" id="sk2">—</div><div class="kpi-sub" id="sk2s"></div></div>
+        <div class="kpi ko"><div class="kpi-lbl">שווי יתרה</div><div class="kpi-val" id="sk3">—</div><div class="kpi-sub" id="sk3s"></div></div>
+        <div class="kpi kg"><div class="kpi-lbl">מחוברים ל-SO</div><div class="kpi-val" id="sk4">—</div><div class="kpi-sub" id="sk4s"></div></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" id="supp-search" placeholder="×—×¤×© ×¡×¤×§..." oninput="renderSuppliers()"
+        <input type="text" id="supp-search" placeholder="חפש ספק..." oninput="renderSuppliers()"
           style="flex:1;background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:7px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl">
-        <label class="chk"><input type="checkbox" id="supp-ovr-only" onchange="renderSuppliers()"> ×‘××™×—×•×¨ ×‘×œ×‘×“</label>
-        <label class="chk"><input type="checkbox" id="supp-cross" onchange="renderSuppliers()"> ×”×¦×œ×‘×ª SO</label>
+        <label class="chk"><input type="checkbox" id="supp-ovr-only" onchange="renderSuppliers()"> באיחור בלבד</label>
+        <label class="chk"><input type="checkbox" id="supp-cross" onchange="renderSuppliers()"> הצלבת SO</label>
       </div>
       <div id="supp-cards" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
   </div>
 
-  <!-- â•â• RFQ VIEW â•â• -->
+  <!-- ══ RFQ VIEW ══ -->
   <div id="rfq-view" style="display:none;padding:16px;max-width:940px;margin:0 auto">
     <div class="kpi-row" style="margin-bottom:16px">
-      <div class="kpi kb"><div class="kpi-lbl">×‘×§×©×•×ª ×¤×ª×•×—×•×ª</div><div class="kpi-val" id="rk1">0</div><div class="kpi-sub" id="rk1s"></div></div>
-      <div class="kpi kr"><div class="kpi-lbl">×“×—×•×¤×•×ª / ×‘××™×—×•×¨</div><div class="kpi-val" id="rk2">0</div><div class="kpi-sub" id="rk2s"></div></div>
-      <div class="kpi kg"><div class="kpi-lbl">× ×©×œ×—×• ×”×©×‘×•×¢</div><div class="kpi-val" id="rk3">0</div><div class="kpi-sub" id="rk3s"></div></div>
-      <div class="kpi ko"><div class="kpi-lbl">×ž×ž×•×¦×¢ ×ž×¢× ×”</div><div class="kpi-val" id="rk4">â€”</div><div class="kpi-sub" id="rk4s">×©×¢×•×ª</div></div>
+      <div class="kpi kb"><div class="kpi-lbl">בקשות פתוחות</div><div class="kpi-val" id="rk1">0</div><div class="kpi-sub" id="rk1s"></div></div>
+      <div class="kpi kr"><div class="kpi-lbl">דחופות / באיחור</div><div class="kpi-val" id="rk2">0</div><div class="kpi-sub" id="rk2s"></div></div>
+      <div class="kpi kg"><div class="kpi-lbl">נשלחו השבוע</div><div class="kpi-val" id="rk3">0</div><div class="kpi-sub" id="rk3s"></div></div>
+      <div class="kpi ko"><div class="kpi-lbl">ממוצע מענה</div><div class="kpi-val" id="rk4">—</div><div class="kpi-sub" id="rk4s">שעות</div></div>
     </div>
     <div class="rfq-filter-bar">
-      <button class="rfq-ftab on" id="rfqf-all" onclick="setRFQFilter('all')">×”×›×œ</button>
-      <button class="rfq-ftab" id="rfqf-open" onclick="setRFQFilter('open')">×¤×ª×•×—×•×ª</button>
-      <button class="rfq-ftab" id="rfqf-urgent" onclick="setRFQFilter('urgent')">×“×—×•×¤×•×ª</button>
-      <button class="rfq-ftab" id="rfqf-sent" onclick="setRFQFilter('sent')">× ×©×œ×—×•</button>
-      <button class="rfq-ftab" id="rfqf-closed" onclick="setRFQFilter('closed')">×¡×’×•×¨×•×ª</button>
-      <input class="rfq-search" id="rfq-search" type="text" placeholder="×—×¤×© ×œ×§×•×— ××• ×ž×¡×¤×¨ ×‘×§×©×”..." oninput="renderRFQList()">
-      <button class="btn btn-ghost" onclick="openEmailPasteModal()">ðŸ“§ ×ž××™×ž×™×™×œ</button>
-      <button class="btn btn-blue" onclick="openRFQModal()">ï¼‹ ×”×•×¡×£ ×‘×§×©×”</button>
+      <button class="rfq-ftab on" id="rfqf-all" onclick="setRFQFilter('all')">הכל</button>
+      <button class="rfq-ftab" id="rfqf-open" onclick="setRFQFilter('open')">פתוחות</button>
+      <button class="rfq-ftab" id="rfqf-urgent" onclick="setRFQFilter('urgent')">דחופות</button>
+      <button class="rfq-ftab" id="rfqf-sent" onclick="setRFQFilter('sent')">נשלחו</button>
+      <button class="rfq-ftab" id="rfqf-closed" onclick="setRFQFilter('closed')">סגורות</button>
+      <input class="rfq-search" id="rfq-search" type="text" placeholder="חפש לקוח או מספר בקשה..." oninput="renderRFQList()">
+      <button class="btn btn-ghost" onclick="openEmailPasteModal()">📧 מאימייל</button>
+      <button class="btn btn-blue" onclick="openRFQModal()">＋ הוסף בקשה</button>
     </div>
     <div id="rfq-list" style="display:flex;flex-direction:column;gap:8px"></div>
   </div>
@@ -288,20 +288,20 @@
 <!-- SETTINGS OVERLAY -->
 <div class="settings-overlay" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
   <div class="settings-card">
-    <div class="settings-title">âš™ ×”×’×“×¨×•×ª ×©×œ×™×¤×” â€” Google Drive</div>
-    <div class="settings-sub">×”×“×‘×§ ×œ×™× ×§×™ ×©×™×ª×•×£ ×©×œ ×”×§×‘×¦×™× ×ž-Google Drive. ×”×“×©×‘×•×¨×“ ×™×©×œ×•×£ ××•×˜×•×ž×˜×™×ª ×‘×›×œ ×¤×ª×™×—×”.</div>
+    <div class="settings-title">⚙ הגדרות שליפה — Google Drive</div>
+    <div class="settings-sub">הדבק לינקי שיתוף של הקבצים מ-Google Drive. הדשבורד ישלוף אוטומטית בכל פתיחה.</div>
 
     <div class="settings-field">
-      <div class="settings-label">ðŸ“„ ×§×•×‘×¥ SO â€” ×”×–×ž× ×•×ª_×¤×ª×•×—×•×ª.xlsx</div>
+      <div class="settings-label">📄 קובץ SO — הזמנות_פתוחות.xlsx</div>
       <input class="settings-input" id="set-so-url" type="text"
         placeholder="https://drive.google.com/file/d/.../view" oninput="markInputChanged(this)">
       <div style="font-size:10px;color:var(--txt2);margin-top:4px;font-family:var(--mono)">
-        Google Drive â†’ ×§×•×‘×¥ â† ×©×ª×£ â† ×›×œ ×ž×™ ×©×™×© ×œ×• ×§×™×©×•×¨ â† ×”×¢×ª×§ ×§×™×©×•×¨
+        Google Drive → קובץ ← שתף ← כל מי שיש לו קישור ← העתק קישור
       </div>
     </div>
 
     <div class="settings-field">
-      <div class="settings-label">ðŸ“¦ ×§×•×‘×¥ PO â€” ×ž×¢×§×‘_×¨×›×©.xlsx</div>
+      <div class="settings-label">📦 קובץ PO — מעקב_רכש.xlsx</div>
       <input class="settings-input" id="set-po-url" type="text"
         placeholder="https://drive.google.com/file/d/.../view" oninput="markInputChanged(this)">
     </div>
@@ -309,33 +309,33 @@
     <div id="settings-status" class="settings-status" style="display:none"></div>
 
     <div class="settings-row">
-      <button class="btn btn-blue" onclick="saveAndFetch()">ðŸ’¾ ×©×ž×•×¨ ×•×©×œ×•×£ ×¢×›×©×™×•</button>
-      <button class="btn btn-ghost" onclick="fetchNow()" id="btn-refresh-now" style="display:none">ðŸ”„ ×¨×¢× ×Ÿ × ×ª×•× ×™×</button>
-      <button class="btn btn-ghost" onclick="clearSettings()" style="color:var(--red);border-color:rgba(255,77,77,.3)">âœ• × ×§×”</button>
-      <button class="btn btn-ghost" onclick="closeSettings()" style="margin-right:auto">×¡×’×•×¨</button>
+      <button class="btn btn-blue" onclick="saveAndFetch()">💾 שמור ושלוף עכשיו</button>
+      <button class="btn btn-ghost" onclick="fetchNow()" id="btn-refresh-now" style="display:none">🔄 רענן נתונים</button>
+      <button class="btn btn-ghost" onclick="clearSettings()" style="color:var(--red);border-color:rgba(255,77,77,.3)">✕ נקה</button>
+      <button class="btn btn-ghost" onclick="closeSettings()" style="margin-right:auto">סגור</button>
     </div>
   </div>
 </div>
 <!-- QR modal -->
 <div id="qr-modal" onclick="closeQR()" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;text-align:center;min-width:240px">
-    <div style="font-size:13px;color:var(--txt2);font-family:var(--mono);margin-bottom:14px">×¡×¨×•×§ ×œ×¤×ª×™×—×” ×‘×ž×›×©×™×¨ ××—×¨</div>
+    <div style="font-size:13px;color:var(--txt2);font-family:var(--mono);margin-bottom:14px">סרוק לפתיחה במכשיר אחר</div>
     <div id="qr-canvas" style="background:#fff;padding:10px;border-radius:8px;display:inline-block;line-height:0"></div>
     <div id="qr-url" style="margin-top:12px;font-size:11px;color:var(--acc);font-family:var(--mono);word-break:break-all;direction:ltr"></div>
-    <button class="btn btn-ghost" style="margin-top:14px" onclick="closeQR()">×¡×’×•×¨</button>
+    <button class="btn btn-ghost" style="margin-top:14px" onclick="closeQR()">סגור</button>
   </div>
 </div>
 
 <!-- EMAIL PASTE MODAL -->
 <div id="rfq-email-modal" onclick="if(event.target===this)closeEmailPasteModal()" style="display:none;position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(520px,95vw);display:flex;flex-direction:column;gap:14px">
-    <div style="font-size:16px;font-weight:700;color:var(--txtb)">ðŸ“§ × ×™×ª×•×— ×‘×§×©×” ×ž××™×ž×™×™×œ</div>
-    <div style="font-size:13px;color:var(--txt2)">×”×“×‘×§ ××ª ×ª×•×›×Ÿ ×”×ž×™×™×œ ×”×ž×œ× â€” ×”-AI ×™×—×œ×¥ ××ª ×©× ×”×œ×§×•×—, ×ž×¡×¤×¨ ×”×‘×§×©×”, ×”×¤×¨×™×˜×™× ×•×”×ª××¨×™×š.</div>
-    <textarea id="rfq-email-ta" rows="10" placeholder="×”×“×‘×§ ×›××Ÿ ××ª ×”×ž×™×™×œ..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical"></textarea>
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📧 ניתוח בקשה מאימייל</div>
+    <div style="font-size:13px;color:var(--txt2)">הדבק את תוכן המייל המלא — ה-AI יחלץ את שם הלקוח, מספר הבקשה, הפריטים והתאריך.</div>
+    <textarea id="rfq-email-ta" rows="10" placeholder="הדבק כאן את המייל..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical"></textarea>
     <div id="rfq-email-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeEmailPasteModal()">×‘×™×˜×•×œ</button>
-      <button class="btn btn-blue" id="rfq-email-submit" onclick="submitEmailParse()">âœ¨ × ×ª×— ×¢× AI</button>
+      <button class="btn btn-ghost" onclick="closeEmailPasteModal()">ביטול</button>
+      <button class="btn btn-blue" id="rfq-email-submit" onclick="submitEmailParse()">✨ נתח עם AI</button>
     </div>
   </div>
 </div>
@@ -343,29 +343,29 @@
 <!-- RFQ MODAL -->
 <div id="rfq-modal" onclick="if(event.target===this)closeRFQModal()" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(660px,96vw);display:flex;flex-direction:column;gap:14px">
-    <div style="font-size:16px;font-weight:700;color:var(--txtb)">ðŸ’¬ ×‘×§×©×ª ×”×¦×¢×ª ×ž×—×™×¨ ×—×“×©×”</div>
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">💬 בקשת הצעת מחיר חדשה</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <div style="flex:2;min-width:160px;display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">×œ×§×•×— *</label>
-        <input id="rfq-f-cust" type="text" placeholder="×©× ×”×œ×§×•×—" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:14px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%">
+        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">לקוח *</label>
+        <input id="rfq-f-cust" type="text" placeholder="שם הלקוח" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:14px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%">
       </div>
       <div style="flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">×ž×¡×¤×¨ ×‘×§×©×” <span style="opacity:.6">(××•×¤×¦×™×•× ×œ×™)</span></label>
+        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">מספר בקשה <span style="opacity:.6">(אופציונלי)</span></label>
         <input id="rfq-f-req" type="text" placeholder="RFQ-2026-045" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:13px;font-family:var(--mono);color:var(--txt);outline:none;direction:ltr;width:100%">
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">×¤×¨×™×˜×™×</label>
-        <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="addRFQRow()">ï¼‹ ×©×•×¨×”</button>
+        <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">פריטים</label>
+        <button class="btn btn-ghost" style="font-size:11px;padding:3px 10px" onclick="addRFQRow()">＋ שורה</button>
       </div>
       <div style="overflow-x:auto;border:1px solid var(--bdr);border-radius:6px">
         <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)">
           <thead><tr>
             <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:120px">MPN</th>
             <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:90px">MFG</th>
-            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:60px">×›×ž×•×ª</th>
-            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:80px">×”×¢×¨×•×ª</th>
+            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:60px">כמות</th>
+            <th style="color:var(--txt2);padding:6px 8px;border-bottom:1px solid var(--bdr);text-align:right;min-width:80px">הערות</th>
             <th style="width:28px;border-bottom:1px solid var(--bdr)"></th>
           </tr></thead>
           <tbody id="rfq-items-body"></tbody>
@@ -373,12 +373,12 @@
       </div>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">×ª××¨×™×š ×•×©×¢×ª ×§×‘×œ×”</label>
+      <label style="font-size:12px;color:var(--txt2);font-family:var(--mono)">תאריך ושעת קבלה</label>
       <input id="rfq-f-date" type="datetime-local" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:8px 12px;font-size:13px;font-family:var(--mono);color:var(--txt);outline:none;width:100%;direction:ltr">
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeRFQModal()">×‘×™×˜×•×œ</button>
-      <button class="btn btn-blue" onclick="submitRFQModal()">×©×ž×•×¨</button>
+      <button class="btn btn-ghost" onclick="closeRFQModal()">ביטול</button>
+      <button class="btn btn-blue" onclick="submitRFQModal()">שמור</button>
     </div>
   </div>
 </div>
@@ -386,25 +386,25 @@
 <!-- IMPORT INPUT MODAL -->
 <div id="import-modal" onclick="if(event.target===this)closeImportModal()" style="display:none;position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(560px,95vw);display:flex;flex-direction:column;gap:14px">
-    <div style="font-size:16px;font-weight:700;color:var(--txtb)">ðŸ“¥ ×™×™×‘×•× × ×ª×•× ×™×</div>
-    <div style="font-size:13px;color:var(--txt2)">×™×™×‘× ×¢×“×›×•× ×™× ×ž××™×ž×™×™×œ, ×”×•×“×¢×ª ×ž×©×œ×•×—, ×—×©×‘×•× ×™×ª, PO ×œ×§×•×— ××• ×§×•×‘×¥ â€” ×”-AI ×™×—×œ×¥ ××ª ×”×©×™× ×•×™×™× ×œ××™×©×•×¨.</div>
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📥 ייבוא נתונים</div>
+    <div style="font-size:13px;color:var(--txt2)">ייבא עדכונים מאימייל, הודעת משלוח, חשבונית, PO לקוח או קובץ — ה-AI יחלץ את השינויים לאישור.</div>
     <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr)">
-      <button class="import-tab on" id="import-tab-text" onclick="importSelectTab('text')">ðŸ“ ×”×“×‘×§ ×˜×§×¡×˜</button>
-      <button class="import-tab" id="import-tab-file" onclick="importSelectTab('file')">ðŸ“Ž ×”×¢×œ×” ×§×•×‘×¥</button>
+      <button class="import-tab on" id="import-tab-text" onclick="importSelectTab('text')">📝 הדבק טקסט</button>
+      <button class="import-tab" id="import-tab-file" onclick="importSelectTab('file')">📎 העלה קובץ</button>
     </div>
     <div id="import-section-text">
-      <textarea id="import-ta" rows="10" placeholder="×”×“×‘×§ ×›××Ÿ ××ª ×ª×•×›×Ÿ ×”×ž×™×™×œ, ×”×•×“×¢×ª ×”×ž×©×œ×•×—, ×”×—×©×‘×•× ×™×ª..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
+      <textarea id="import-ta" rows="10" placeholder="הדבק כאן את תוכן המייל, הודעת המשלוח, החשבונית..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:10px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
     </div>
     <div id="import-section-file" style="display:none">
       <div class="import-dropzone" onclick="document.getElementById('fi-import').click()">
-        <div id="import-file-label">×œ×—×¥ ×œ×‘×—×™×¨×ª ×§×•×‘×¥ (Excel, PDF, ×ª×ž×•× ×”)</div>
+        <div id="import-file-label">לחץ לבחירת קובץ (Excel, PDF, תמונה)</div>
       </div>
-      <textarea id="import-file-notes" rows="3" placeholder="×”×¢×¨×•×ª ×œ×§×•×‘×¥ (××•×¤×¦×™×•× ×œ×™): ×ž×¡×¤×¨ ×ž×¢×§×‘, ×©× ×¡×¤×§, ×ž×¡×¤×¨ ×”×–×ž× ×”..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:12px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
+      <textarea id="import-file-notes" rows="3" placeholder="הערות לקובץ (אופציונלי): מספר מעקב, שם ספק, מספר הזמנה..." style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:12px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl;width:100%;resize:vertical;box-sizing:border-box"></textarea>
     </div>
     <div id="import-err" style="display:none;font-size:12px;color:var(--red);font-family:var(--mono)"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeImportModal()">×‘×™×˜×•×œ</button>
-      <button class="btn btn-blue" id="import-submit" onclick="submitImportParse()">âœ¨ × ×ª×— ×¢× AI</button>
+      <button class="btn btn-ghost" onclick="closeImportModal()">ביטול</button>
+      <button class="btn btn-blue" id="import-submit" onclick="submitImportParse()">✨ נתח עם AI</button>
     </div>
   </div>
 </div>
@@ -412,69 +412,69 @@
 <!-- IMPORT PREVIEW MODAL -->
 <div id="import-preview-modal" onclick="if(event.target===this)closeImportPreview()" style="display:none;position:fixed;inset:0;z-index:965;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(820px,96vw);display:flex;flex-direction:column;gap:14px;max-height:90vh">
-    <div style="font-size:16px;font-weight:700;color:var(--txtb)" id="import-preview-title">ðŸ“‹ ×©×™× ×•×™×™× ×ž×•×¦×¢×™×</div>
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)" id="import-preview-title">📋 שינויים מוצעים</div>
     <div style="font-size:12px;color:var(--txt2)" id="import-preview-sub"></div>
     <div style="overflow:auto;flex:1">
       <table class="import-tbl">
         <thead><tr>
-          <th style="width:32px"><input type="checkbox" id="import-chk-all" onchange="importToggleAll(this.checked)" title="×‘×—×¨ ×”×›×œ"></th>
-          <th>MPN</th><th>×”×–×ž× ×”</th><th>×©×“×”</th><th>×¢×¨×š × ×•×›×—×™</th><th>×¢×¨×š ×—×“×©</th>
+          <th style="width:32px"><input type="checkbox" id="import-chk-all" onchange="importToggleAll(this.checked)" title="בחר הכל"></th>
+          <th>MPN</th><th>הזמנה</th><th>שדה</th><th>ערך נוכחי</th><th>ערך חדש</th>
         </tr></thead>
         <tbody id="import-preview-body"></tbody>
       </table>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;align-items:center">
       <span id="import-apply-count" style="font-size:12px;color:var(--txt2);font-family:var(--mono)"></span>
-      <button class="btn btn-ghost" onclick="closeImportPreview()">×‘×™×˜×•×œ</button>
-      <button class="btn btn-blue" id="import-apply" onclick="applyImportChanges()">×”×—×œ ×©×™× ×•×™×™×</button>
+      <button class="btn btn-ghost" onclick="closeImportPreview()">ביטול</button>
+      <button class="btn btn-blue" id="import-apply" onclick="applyImportChanges()">החל שינויים</button>
     </div>
   </div>
 </div>
 <!-- ICS MODAL -->
 <div id="ics-modal" onclick="if(event.target===this)closeICSModal()" style="display:none;position:fixed;inset:0;z-index:970;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:14px">
-    <div style="font-size:16px;font-weight:700;color:var(--txtb)">ðŸ“… ×”×’×“×¨×•×ª ××™×¨×•×¢ ×œ×•×— ×©× ×”</div>
+    <div style="font-size:16px;font-weight:700;color:var(--txtb)">📅 הגדרות אירוע לוח שנה</div>
 
     <div style="display:flex;flex-direction:column;gap:5px">
-      <label style="font-size:12px;color:var(--txt2)">×›×•×ª×¨×ª</label>
+      <label style="font-size:12px;color:var(--txt2)">כותרת</label>
       <input id="ics-summary" type="text" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;width:100%;box-sizing:border-box;direction:rtl">
     </div>
 
     <div style="display:flex;flex-direction:column;gap:5px">
-      <label style="font-size:12px;color:var(--txt2)">×ª××¨×™×š ×”××™×¨×•×¢</label>
+      <label style="font-size:12px;color:var(--txt2)">תאריך האירוע</label>
       <select id="ics-event-date" onchange="icsUpdateCustomFields()" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;direction:rtl;width:100%">
-        <option value="0">×ª××¨×™×š ×”××¡×¤×§×”</option>
-        <option value="7">7 ×™×ž×™× ×œ×¤× ×™ ×”××¡×¤×§×”</option>
-        <option value="14">14 ×™×ž×™× ×œ×¤× ×™ ×”××¡×¤×§×”</option>
-        <option value="custom">×ª××¨×™×š ×ž×•×ª××</option>
+        <option value="0">תאריך האספקה</option>
+        <option value="7">7 ימים לפני האספקה</option>
+        <option value="14">14 ימים לפני האספקה</option>
+        <option value="custom">תאריך מותאם</option>
       </select>
       <input id="ics-custom-date" type="date" style="display:none;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
     </div>
 
     <div style="display:flex;flex-direction:column;gap:5px">
-      <label style="font-size:12px;color:var(--txt2)">×”×ª×¨××”</label>
+      <label style="font-size:12px;color:var(--txt2)">התראה</label>
       <select id="ics-alert" onchange="icsUpdateCustomFields()" style="background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none;direction:rtl;width:100%">
-        <option value="7d_abs">7 ×™×ž×™× ×œ×¤× ×™ ×”××¡×¤×§×” (Custom)</option>
-        <option value="at_start">×‘×–×ž×Ÿ ×”××™×¨×•×¢</option>
-        <option value="1d">×™×•× ×œ×¤× ×™ ×”××™×¨×•×¢</option>
-        <option value="1w">×©×‘×•×¢ ×œ×¤× ×™ ×”××™×¨×•×¢</option>
-        <option value="custom">×ª××¨×™×š ×•×©×¢×” ×ž×•×ª××ž×™×</option>
+        <option value="7d_abs">7 ימים לפני האספקה (Custom)</option>
+        <option value="at_start">בזמן האירוע</option>
+        <option value="1d">יום לפני האירוע</option>
+        <option value="1w">שבוע לפני האירוע</option>
+        <option value="custom">תאריך ושעה מותאמים</option>
       </select>
       <input id="ics-custom-alarm" type="datetime-local" style="display:none;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
     </div>
 
     <div style="border-top:1px solid var(--bdr);padding-top:12px;display:flex;flex-direction:column;gap:8px">
-      <div style="font-size:11px;color:var(--txt2)">×§×™×¦×•×¨×™× ×ž×”×™×¨×™×:</div>
+      <div style="font-size:11px;color:var(--txt2)">קיצורים מהירים:</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost" style="font-size:12px" onclick="_icsPresetOnDay()">ðŸ“… ×‘×™×•× ×”××¡×¤×§×” + ×”×ª×¨××” 7 ×™×ž×™× ×œ×¤× ×™</button>
-        <button class="btn btn-ghost" style="font-size:12px;color:var(--ora)" onclick="_icsPreset7Before()">âš¡ 7 ×™×ž×™× ×œ×¤× ×™ + ×”×ª×¨××” ×‘×–×ž×Ÿ ×”××™×¨×•×¢</button>
-        <button class="btn btn-ghost" style="font-size:12px;color:var(--grn)" onclick="_icsTaskToday()">âœ… ×œ×˜×™×¤×•×œ ×”×™×•×</button>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="_icsPresetOnDay()">📅 ביום האספקה + התראה 7 ימים לפני</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--ora)" onclick="_icsPreset7Before()">⚡ 7 ימים לפני + התראה בזמן האירוע</button>
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--grn)" onclick="_icsTaskToday()">✅ לטיפול היום</button>
       </div>
     </div>
 
     <div style="display:flex;gap:8px;justify-content:flex-end">
-      <button class="btn btn-ghost" onclick="closeICSModal()">×‘×™×˜×•×œ</button>
-      <button class="btn btn-blue" onclick="submitICSDownload()">ðŸ“… ×”×•×¨×“ ICS</button>
+      <button class="btn btn-ghost" onclick="closeICSModal()">ביטול</button>
+      <button class="btn btn-blue" onclick="submitICSDownload()">📅 הורד ICS</button>
     </div>
   </div>
 </div>
