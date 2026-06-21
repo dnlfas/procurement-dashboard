@@ -1,0 +1,30 @@
+.supp-view{padding:16px 24px}
+.supp-nopo{text-align:center;padding:48px 24px;color:var(--txt2)}
+.supp-nopo-icon{font-size:40px;margin-bottom:12px}
+.supp-nopo-title{font-size:16px;font-weight:700;color:var(--txt2);margin-bottom:8px}
+.supp-nopo-sub{font-size:13px;color:var(--txt2)}
+
+.supp-kpi-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.supp-kpi{flex:1;min-width:140px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rp);padding:12px 16px}
+.supp-kpi-label{font-size:10px;font-family:var(--mono);color:var(--txt2);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px}
+.supp-kpi-val{font-size:22px;font-weight:900;color:var(--txtb);font-family:var(--mono)}
+
+.supp-grid{display:flex;flex-direction:column;gap:10px}
+.supp-card{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rph);overflow:hidden;transition:border-color .15s}
+.supp-card-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;transition:background .12s}
+.supp-card-hdr:hover{background:rgba(255,255,255,.03)}
+.supp-card-name{font-size:15px;font-weight:700;color:var(--txtb);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.supp-card-meta{font-size:11px;font-family:var(--mono);color:var(--txt2);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.supp-card-body{display:none;padding:12px 16px;border-top:1px solid var(--bdr)}
+.supp-card-body.open{display:block}
+
+.po-table-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--bdr)}
+table.po-table{width:100%;border-collapse:collapse;font-size:12px}
+table.po-table th{background:var(--sur2);color:var(--txt2);font-family:var(--mono);font-size:10px;letter-spacing:.5px;padding:7px 10px;text-align:right;border-bottom:1px solid var(--bdr);white-space:nowrap}
+table.po-table td{padding:7px 10px;border-bottom:1px solid rgba(42,51,73,.5);color:var(--txt);vertical-align:top;font-family:var(--mono);font-size:11px}
+table.po-table tr:last-child td{border-bottom:none}
+table.po-table tr:hover td{background:rgba(255,255,255,.02)}
+.po-match{color:var(--grn)}
+.po-no-match{color:var(--txt2)}
+.po-late{color:var(--red)}
+.po-warn{color:var(--ora)}
