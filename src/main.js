@@ -88,6 +88,7 @@ import {
 function renderAll() {
   fillSelects();
   applyFilters();
+  renderToday();
   renderBoss();
   renderSSP();
   renderRFQ();
@@ -108,6 +109,7 @@ setUploadCallbacks(
   function onSOLoaded() {
     fillSelects();
     applyFilters();
+    renderToday();
     renderBoss();
     renderSSP();
     renderRFQ();
@@ -130,6 +132,7 @@ setApiCallbacks(function onDataLoaded(type) {
   if (type === 'so') {
     fillSelects();
     applyFilters();
+    renderToday();
     renderBoss();
     renderSSP();
     renderRFQ();
@@ -160,6 +163,9 @@ async function initApp() {
 // Expose ALL onclick-referenced functions on window
 // ─────────────────────────────────────────────────────────────
 Object.assign(window, {
+  // state (needed for onclick attribute access)
+  state,
+
   // utils
   toast, showQR, closeQR, expandNotes,
 

@@ -95,7 +95,7 @@ export function renderSOCard(g) {
       <div class="socust">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
       <div class="sobadges">${bs.join('')}</div>
-      <div onclick="event.stopPropagation();dlSOICS(soReg['${esc(g.so)}'])">
+      <div onclick="event.stopPropagation();dlSOICS(state.soReg['${esc(g.so)}'])">
         <button class="bics" title="הורד קובץ ICS">📅 ICS</button>
       </div>
       <div class="so-actions" onclick="event.stopPropagation()">

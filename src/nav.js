@@ -26,6 +26,7 @@ export function setEmpTab(t) {
   document.getElementById('tab-so').style.display = t === 'so' ? 'block' : 'none';
   document.getElementById('et1').classList.toggle('on', t === 'today');
   document.getElementById('et2').classList.toggle('on', t === 'so');
+  if (t === 'today' && window.renderToday) window.renderToday();
 }
 
 export function openSOInEmp(so) {
