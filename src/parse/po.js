@@ -60,21 +60,32 @@ export function parsePOFile(raw) {
   }).filter(Boolean);
 }
 
+export function bestPOMatch(soRow, candidates) {
+  if (!candidates.length) return null;
+  if (!soRow.dd || candidates.length === 1) return candidates[0];
+  return candidates.reduce((best, p) => {
+    if (!p.dd) return best || p;
+    if (!best || !best.dd) return p;
+    return Math.abs(p.dd - soRow.dd) < Math.abs(best.dd - soRow.dd) ? p : best;
+  }, null) || candidates[0];
+}
+
 export function linkPOtoSO() {
   if (!state.poLoaded || !state.allRows.length) return;
-  const mpnSet = new Set(state.poRows.filter(p => p.qtyR > 0).map(p => p.mpn.trim().toUpperCase()));
-  const byMPN = {};
-  state.poRows.filter(p => p.qtyR > 0).forEach(p => { const k = p.mpn.trim().toUpperCase(); if (!byMPN[k]) byMPN[k] = p; });
-  const byMPNAll = {};
-  state.poRows.forEach(p => { const k = p.mpn.trim().toUpperCase(); if (!byMPNAll[k]) byMPNAll[k] = p; });
+  const byMPNList = {};
+  state.poRows.forEach(p => { const k = p.mpn.trim().toUpperCase(); if (!byMPNList[k]) byMPNList[k] = []; byMPNList[k].push(p); });
   let statusChanged = false;
   state.allRows.forEach(r => {
     const k = r.mpn.trim().toUpperCase();
-    if ((r.cov === 'orange' || r.cov === 'red') && mpnSet.has(k)) r.cov = 'green';
-    if (!r.supplier && byMPN[k]) r.supplier = byMPN[k].supplier;
-    if (!r.poNum && !state.fieldOvr[r.nk + '__po'] && byMPNAll[k]?.poNum) r.poNum = byMPNAll[k].poNum;
+    const all = byMPNList[k] || [];
+    const withQty = all.filter(p => p.qtyR > 0);
+    if ((r.cov === 'orange' || r.cov === 'red') && withQty.length) r.cov = 'green';
+    const bestWithQty = bestPOMatch(r, withQty);
+    if (!r.supplier && bestWithQty) r.supplier = bestWithQty.supplier;
+    const bestAll = bestPOMatch(r, all);
+    if (!r.poNum && !state.fieldOvr[r.nk + '__po'] && bestAll?.poNum) r.poNum = bestAll.poNum;
     if (state.statusOvr[r.nk] === undefined) {
-      const p = byMPNAll[k];
+      const p = bestAll;
       if (p) {
         let inferred = null;
         if (p.qtyS > 0 && p.qtyR > 0) inferred = 'partial';

@@ -2,6 +2,7 @@ import { state, TODAY, NK } from '../state.js';
 import { esc, fd, p2, autoH, expandNotes } from '../utils.js';
 import { calcG } from '../parse/so.js';
 import { saveField, saveStatus, saveNote } from '../persistence.js';
+import { bestPOMatch } from '../parse/po.js';
 
 export function renderToday() {
   const urgent = state.allRows
@@ -188,7 +189,7 @@ export function buildLR(r) {
   let poAutoStatus = null;
   if (state.poLoaded) {
     const mpnUp = r.mpn.trim().toUpperCase();
-    const poMatch = state.poRows.find(p => p.mpn.trim().toUpperCase() === mpnUp);
+    const poMatch = bestPOMatch(r, state.poRows.filter(p => p.mpn.trim().toUpperCase() === mpnUp));
     if (poMatch) {
       if (poMatch.qtyS > 0 && poMatch.qtyR > 0) poAutoStatus = 'partial';
       else if (poMatch.qtyS > 0 && poMatch.qtyR === 0) poAutoStatus = 'supplied';
