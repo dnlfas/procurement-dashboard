@@ -3,13 +3,13 @@ import { esc, fd, p2 } from '../utils.js';
 import { renderSSP } from './ssp.js';
 
 export function renderBoss() {
-  const all = state.allRows;
+  const all = state.allRows.filter(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts');
   const poMPNs = new Set(state.poRows.map(r => r.mpn.trim().toUpperCase()));
   const covFn = l => l.cov === 'green' || (state.poLoaded && poMPNs.has(l.mpn.trim().toUpperCase()));
   const ovr = all.filter(l => l.isOvr && !covFn(l)).length;
   const pnd = all.filter(l => !l.isOvr && !covFn(l)).length;
   const ord = all.filter(l => covFn(l)).length;
-  const pct = Math.round(ord / all.length * 100);
+  const pct = all.length ? Math.round(ord / all.length * 100) : 0;
   document.getElementById('bk1').textContent = ovr;
   document.getElementById('bk1s').textContent = 'שורות פריטים';
   document.getElementById('bk2').textContent = pnd;
@@ -25,7 +25,7 @@ export function renderBoss() {
     localStorage.setItem('oo_cov_pct_hist', JSON.stringify(hist));
   } catch(e) {}
   document.getElementById('bk3s').textContent = pct + '% מהפריטים' + (state.poLoaded ? ' (כולל PO)' : '') + trendStr;
-  document.getElementById('bk4').textContent = state.soGroups.length;
+  document.getElementById('bk4').textContent = state.soGroups.filter(g => g.lines.some(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts')).length;
   document.getElementById('bk4s').textContent = all.length + ' פריטים';
   renderChart();
   renderDueThisWeek();
@@ -38,7 +38,7 @@ export function renderBoss() {
 export function renderChart() {
   const todayKey = TODAY.getFullYear() + '-' + p2(TODAY.getMonth() + 1);
   const byM = {};
-  state.allRows.forEach(r => {
+  state.allRows.filter(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts').forEach(r => {
     if (!r.dd) return;
     const k = r.dd.getFullYear() + '-' + p2(r.dd.getMonth() + 1);
     byM[k] = (byM[k] || 0) + 1;
@@ -134,7 +134,7 @@ export function renderCustRisk() {
 
 export function renderSuppList() {
   const byS = {};
-  state.allRows.filter(r => r.supplier).forEach(r => {
+  state.allRows.filter(r => r.supplier && r.status !== 'cancelled' && r.status !== 'cancelled_bts').forEach(r => {
     if (!byS[r.supplier]) byS[r.supplier] = { total: 0, ovr: 0, qc: 0 };
     byS[r.supplier].total++;
     if (r.isOvr && r.cov !== 'green') byS[r.supplier].ovr++;
@@ -155,7 +155,7 @@ export function renderSuppList() {
 export function renderCoverage() {
   const byC = {};
   const poMPNs = new Set(state.poRows.map(r => r.mpn.trim().toUpperCase()));
-  state.allRows.forEach(r => {
+  state.allRows.filter(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts').forEach(r => {
     const k = (r.customer || 'לא ידוע').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 20);
     if (!byC[k]) byC[k] = { tot: 0, cov: 0, poCov: 0 };
     byC[k].tot++;

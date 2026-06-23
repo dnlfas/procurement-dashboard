@@ -45,7 +45,8 @@ export function applyFilters() {
   const fpull = document.getElementById('fpull') ? document.getElementById('fpull').value : '';
   const fq = (document.getElementById('fq')?.value || '').trim().toUpperCase();
   state.filteredGroups = state.soGroups.map(g => {
-    let l = g.lines;
+    let l = g.lines.filter(x => x.status !== 'cancelled' && x.status !== 'cancelled_bts');
+    if (!l.length) return null;
     if (fc) l = l.filter(x => x.customer === fc);
     if (fs) l = l.filter(x => x.supplier === fs);
     if (fu) l = l.filter(x => x.cov !== 'green');
