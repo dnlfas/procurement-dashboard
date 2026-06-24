@@ -6,7 +6,7 @@ import { bestPOMatch } from '../parse/po.js';
 
 export function renderToday() {
   const urgent = state.allRows
-    .filter(r => r.isOvr && r.cov !== 'green' && r.status !== 'cancelled')
+    .filter(r => r.isOvr && r.status !== 'supplied' && r.status !== 'cancelled' && r.status !== 'cancelled_bts')
     .sort((a, b) => b.daysOvr - a.daysOvr);
   document.getElementById('today-count').textContent = '(' + urgent.length + ')';
   const el = document.getElementById('today-list');
@@ -216,7 +216,7 @@ export function buildLR(r) {
     ${STATUSES.map(([v, l]) => `<option value="${v}" ${effStatus === v ? 'selected' : ''}>${l}</option>`).join('')}
   </select>`;
   const nv = esc(state.notes[r.nk] || '');
-  return `<tr class="${(r.isOvr && r.cov !== 'green') ? 'lno' : ''}">
+  return `<tr class="${(r.isOvr && r.status !== 'supplied') ? 'lno' : ''}">
     <td style="text-align:center"><span class="lntl tl-${r.cov === 'green' ? 'g' : r.cov === 'orange' ? 'o' : r.cov === 'red' ? 'r' : 'x'}"></span></td>
     <td><div class="mpn" title="${esc(r.desc || r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>

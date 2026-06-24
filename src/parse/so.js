@@ -119,8 +119,8 @@ export function calcG(g) {
   const l = g.lines, ds = l.map(x => x.dd).filter(Boolean);
   g.mn = ds.length ? new Date(Math.min(...ds.map(d => d.getTime()))) : null;
   g.mx = ds.length ? new Date(Math.max(...ds.map(d => d.getTime()))) : null;
-  g.ovr = l.filter(x => x.isOvr && x.cov !== 'green').length;
-  g.unc = l.filter(x => x.cov !== 'green').length;
+  g.ovr = l.filter(x => x.isOvr && x.status !== 'supplied').length;
+  g.unc = l.filter(x => x.cov !== 'green' && x.status !== 'supplied').length;
   g.cov = l.filter(x => x.cov === 'green').length;
   if (g.ovr > 0) g.tl = 'red'; else if (g.unc > 0) g.tl = 'orange'; else g.tl = 'green';
   g.supps = [...new Set(l.map(x => x.supplier).filter(Boolean))];

@@ -6,8 +6,8 @@ export function renderBoss() {
   const all = state.allRows.filter(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts');
   const poMPNs = new Set(state.poRows.map(r => r.mpn.trim().toUpperCase()));
   const covFn = l => l.cov === 'green' || (state.poLoaded && poMPNs.has(l.mpn.trim().toUpperCase()));
-  const ovr = all.filter(l => l.isOvr && !covFn(l)).length;
-  const pnd = all.filter(l => !l.isOvr && !covFn(l)).length;
+  const ovr = all.filter(l => l.isOvr && l.status !== 'supplied').length;
+  const pnd = all.filter(l => !l.isOvr && !covFn(l) && l.status !== 'supplied').length;
   const ord = all.filter(l => covFn(l)).length;
   const pct = all.length ? Math.round(ord / all.length * 100) : 0;
   document.getElementById('bk1').textContent = ovr;
@@ -98,7 +98,7 @@ export function renderCustRisk() {
     const k = r.customer || 'לא ידוע';
     if (!byC[k]) byC[k] = { total: 0, ovr: 0, unc: 0, cov: 0, earliest: null };
     byC[k].total++;
-    if (r.isOvr && r.cov !== 'green') {
+    if (r.isOvr && r.status !== 'supplied') {
       byC[k].ovr++;
       if (!byC[k].earliest || r.dd < byC[k].earliest) byC[k].earliest = r.dd;
     }
