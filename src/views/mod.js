@@ -117,42 +117,69 @@ function _renderMODDue(modRows) {
 
 function _renderMODUpcoming(modRows) {
   const DAY = 86400000;
-  const eligible = modRows.filter(r => r.dd && !r.isOvr && r.status !== 'supplied');
-  const urgent = eligible.filter(r => { const d = (r.dd - TODAY) / DAY; return d >= 0 && d <= 14; }).sort((a, b) => a.dd - b.dd);
-  const soon   = eligible.filter(r => { const d = (r.dd - TODAY) / DAY; return d > 14 && d <= 30; }).sort((a, b) => a.dd - b.dd);
+  const eligible = modRows.filter(r => r.dd && !r.isOvr && r.status !== 'supplied' && (r.dd - TODAY) / DAY <= 30 && (r.dd - TODAY) / DAY >= 0);
 
-  const total = urgent.length + soon.length;
-  document.getElementById('mod-upcoming-count').textContent = total ? total : '';
+  // Group by SO
+  const bySOMap = {};
+  eligible.forEach(r => {
+    if (!bySOMap[r.so]) bySOMap[r.so] = { so: r.so, custPO: r.custPO || '', lines: [] };
+    bySOMap[r.so].lines.push(r);
+  });
 
-  const rowHTML = r => {
+  // Sort lines within each group by dd asc; compute earliest diff for tier assignment
+  const soGroups = Object.values(bySOMap).map(g => {
+    g.lines.sort((a, b) => a.dd - b.dd);
+    g.earliestDiff = (g.lines[0].dd - TODAY) / DAY;
+    return g;
+  });
+
+  const urgentSOs = soGroups.filter(g => g.earliestDiff <= 14).sort((a, b) => a.earliestDiff - b.earliestDiff);
+  const soonSOs   = soGroups.filter(g => g.earliestDiff > 14).sort((a, b) => a.earliestDiff - b.earliestDiff);
+
+  const totalSOs = urgentSOs.length + soonSOs.length;
+  document.getElementById('mod-upcoming-count').textContent = totalSOs ? totalSOs + ' הזמנות' : '';
+
+  const itemRow = r => {
     const days = Math.floor((r.dd - TODAY) / DAY);
     const cls = days <= 14 ? 'rb-red' : 'rb-ora';
     const covDot = r.cov === 'green'
-      ? '<span style="color:var(--grn);font-size:14px" title="מכוסה">●</span>'
-      : '<span style="color:var(--txt2);font-size:14px" title="לא מכוסה">○</span>';
-    return `<div class="risk-row">
+      ? '<span style="color:var(--grn);font-size:13px" title="מכוסה">●</span>'
+      : '<span style="color:var(--txt2);font-size:13px" title="לא מכוסה">○</span>';
+    return `<div class="risk-row" style="padding-right:28px">
       <span class="risk-badge ${cls}" style="min-width:32px;text-align:center">${days}י׳</span>
-      <div class="risk-name" style="font-size:13px;font-family:var(--mono)">${esc(r.mpn)}</div>
-      <div style="font-size:12px;color:var(--txt2);flex-shrink:0">${esc(r.custPO || r.so || '')}</div>
+      <div class="risk-name" style="font-size:12px;font-family:var(--mono)">${esc(r.mpn)}</div>
       <div style="font-size:12px;color:var(--txt2);flex-shrink:0;font-family:var(--mono)">${fd(r.dd)}</div>
       ${covDot}
     </div>`;
   };
 
+  const soBlock = g => {
+    const minD = g.lines[0].dd, maxD = g.lines[g.lines.length - 1].dd;
+    const dateRange = minD.getTime() === maxD.getTime() ? fd(minD) : fd(minD) + ' – ' + fd(maxD);
+    return `<div style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 14px;background:var(--sur3);border-bottom:1px solid var(--bdr)">
+        <span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--txtb)">${esc(g.so)}</span>
+        ${g.custPO ? `<span style="font-size:12px;color:var(--txt2)">${esc(g.custPO)}</span>` : ''}
+        <span style="font-size:11px;color:var(--txt2);margin-right:auto">${g.lines.length} פריטים · ${dateRange}</span>
+      </div>
+      ${g.lines.map(itemRow).join('')}
+    </div>`;
+  };
+
   const el = document.getElementById('mod-upcoming');
-  if (!urgent.length && !soon.length) {
+  if (!urgentSOs.length && !soonSOs.length) {
     el.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--txt2);text-align:center;font-family:var(--mono)">✓ אין אספקות קרובות ב-30 הימים הקרובים</div>';
     return;
   }
 
   let html = '';
-  if (urgent.length) {
-    html += `<div style="font-size:11px;font-weight:700;color:var(--red);padding:6px 14px 2px;font-family:var(--mono);letter-spacing:.03em">דחוף — עד שבועיים <span style="opacity:.7">(${urgent.length})</span></div>`;
-    html += urgent.map(rowHTML).join('');
+  if (urgentSOs.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--red);padding:6px 14px 4px;font-family:var(--mono);letter-spacing:.03em">דחוף — עד שבועיים <span style="opacity:.7">(${urgentSOs.length} הזמנות)</span></div>`;
+    html += urgentSOs.map(soBlock).join('');
   }
-  if (soon.length) {
-    html += `<div style="font-size:11px;font-weight:700;color:var(--ora);padding:${urgent.length ? '10px' : '6px'} 14px 2px;font-family:var(--mono);letter-spacing:.03em">ממתין — עד חודש <span style="opacity:.7">(${soon.length})</span></div>`;
-    html += soon.map(rowHTML).join('');
+  if (soonSOs.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--ora);padding:${urgentSOs.length ? '10px' : '6px'} 14px 4px;font-family:var(--mono);letter-spacing:.03em">ממתין — עד חודש <span style="opacity:.7">(${soonSOs.length} הזמנות)</span></div>`;
+    html += soonSOs.map(soBlock).join('');
   }
   el.innerHTML = html;
 }
