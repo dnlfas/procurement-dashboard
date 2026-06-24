@@ -25,6 +25,8 @@ export function renderMOD() {
     document.getElementById('mod-due-list').innerHTML = '';
     document.getElementById('mod-due-count').textContent = '';
     document.getElementById('mod-chart-bars').innerHTML = '';
+    document.getElementById('mod-upcoming').innerHTML = '';
+    document.getElementById('mod-upcoming-count').textContent = '';
     return;
   }
 
@@ -55,6 +57,7 @@ export function renderMOD() {
 
   _renderMODChart(modRows);
   _renderMODDue(modRows);
+  _renderMODUpcoming(modRows);
   _renderMODSOList(modGroups);
 }
 
@@ -110,6 +113,48 @@ function _renderMODDue(modRows) {
       <div style="font-size:12px;color:var(--txt2);flex-shrink:0">${esc(r.custPO || r.so || '')}</div>
     </div>`;
   }).join('') + (items.length > 8 ? `<div style="font-size:11px;color:var(--txt2);text-align:center;padding:4px 0;font-family:var(--mono)">+${items.length - 8} נוספים</div>` : '');
+}
+
+function _renderMODUpcoming(modRows) {
+  const DAY = 86400000;
+  const eligible = modRows.filter(r => r.dd && !r.isOvr && r.status !== 'supplied');
+  const urgent = eligible.filter(r => { const d = (r.dd - TODAY) / DAY; return d >= 0 && d <= 14; }).sort((a, b) => a.dd - b.dd);
+  const soon   = eligible.filter(r => { const d = (r.dd - TODAY) / DAY; return d > 14 && d <= 30; }).sort((a, b) => a.dd - b.dd);
+
+  const total = urgent.length + soon.length;
+  document.getElementById('mod-upcoming-count').textContent = total ? total : '';
+
+  const rowHTML = r => {
+    const days = Math.floor((r.dd - TODAY) / DAY);
+    const cls = days <= 14 ? 'rb-red' : 'rb-ora';
+    const covDot = r.cov === 'green'
+      ? '<span style="color:var(--grn);font-size:14px" title="מכוסה">●</span>'
+      : '<span style="color:var(--txt2);font-size:14px" title="לא מכוסה">○</span>';
+    return `<div class="risk-row">
+      <span class="risk-badge ${cls}" style="min-width:32px;text-align:center">${days}י׳</span>
+      <div class="risk-name" style="font-size:13px;font-family:var(--mono)">${esc(r.mpn)}</div>
+      <div style="font-size:12px;color:var(--txt2);flex-shrink:0">${esc(r.custPO || r.so || '')}</div>
+      <div style="font-size:12px;color:var(--txt2);flex-shrink:0;font-family:var(--mono)">${fd(r.dd)}</div>
+      ${covDot}
+    </div>`;
+  };
+
+  const el = document.getElementById('mod-upcoming');
+  if (!urgent.length && !soon.length) {
+    el.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--txt2);text-align:center;font-family:var(--mono)">✓ אין אספקות קרובות ב-30 הימים הקרובים</div>';
+    return;
+  }
+
+  let html = '';
+  if (urgent.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--red);padding:6px 14px 2px;font-family:var(--mono);letter-spacing:.03em">דחוף — עד שבועיים <span style="opacity:.7">(${urgent.length})</span></div>`;
+    html += urgent.map(rowHTML).join('');
+  }
+  if (soon.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--ora);padding:${urgent.length ? '10px' : '6px'} 14px 2px;font-family:var(--mono);letter-spacing:.03em">ממתין — עד חודש <span style="opacity:.7">(${soon.length})</span></div>`;
+    html += soon.map(rowHTML).join('');
+  }
+  el.innerHTML = html;
 }
 
 function _renderMODSOList(modGroups) {
