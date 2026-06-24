@@ -1,4 +1,4 @@
-export const TODAY = new Date(2026, 4, 19);
+export const TODAY = new Date(new Date().setHours(0, 0, 0, 0));
 export const NK = 'openorders_v5_notes';
 export const SETTINGS_KEY = 'oo_gdrive_settings';
 export const RFQ_KEY = 'oo_rfq';
