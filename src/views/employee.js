@@ -61,7 +61,12 @@ export function applyFilters() {
     if (fpull === 'pull' && !grp.isPull) return null;
     if (fpull === 'nopull' && grp.isPull) return null;
     return grp;
-  }).filter(Boolean);
+  }).filter(Boolean).sort((a, b) => {
+    const o = { red: 0, orange: 1, green: 2, grey: 3 };
+    if (o[a.tl] !== o[b.tl]) return o[a.tl] - o[b.tl];
+    if (!a.mn) return 1; if (!b.mn) return -1;
+    return a.mn - b.mn;
+  });
   state.soReg = {};
   state.filteredGroups.forEach(g => { state.soReg[g.so] = g; });
   renderSOList();

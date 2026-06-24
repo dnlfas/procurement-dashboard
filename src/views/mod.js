@@ -1,5 +1,6 @@
 import { state, TODAY } from '../state.js';
 import { esc, fd, p2 } from '../utils.js';
+import { calcG } from '../parse/so.js';
 
 const MOD_KEY = 'משרד הביטחון';
 const isMOD = r => (r.customer || '').includes(MOD_KEY);
@@ -38,13 +39,28 @@ export function renderMOD() {
   const ord = modRows.filter(r => covFn(r)).length;
   const pct = Math.round(ord / modRows.length * 100);
 
+  const _tlO = { red: 0, orange: 1, green: 2, grey: 3 };
+  const urgencySort = (a, b) => {
+    if (_tlO[a.tl] !== _tlO[b.tl]) return _tlO[a.tl] - _tlO[b.tl];
+    if (!a.mn) return 1; if (!b.mn) return -1;
+    return a.mn - b.mn;
+  };
+
   const modGroups = state.soGroups
     .map(g => {
       const lines = g.lines.filter(r => isMOD(r) && notCanc(r));
       if (!lines.length) return null;
-      return { ...g, lines };
+      return calcG({ ...g, lines });
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort(urgencySort);
+
+  const fpull = document.getElementById('mod-fpull')?.value || '';
+  const visibleGroups = modGroups.filter(g => {
+    if (fpull === 'pull' && !g.isPull) return false;
+    if (fpull === 'nopull' && g.isPull) return false;
+    return true;
+  });
 
   document.getElementById('mk1').textContent = ovr;
   document.getElementById('mk1s').textContent = 'שורות פריטים';
@@ -52,13 +68,13 @@ export function renderMOD() {
   document.getElementById('mk2s').textContent = 'שורות פריטים';
   document.getElementById('mk3').textContent = ord;
   document.getElementById('mk3s').textContent = pct + '% מכוסה · ' + modRows.length + ' פריטים';
-  document.getElementById('mk4').textContent = modGroups.length;
+  document.getElementById('mk4').textContent = visibleGroups.length;
   document.getElementById('mk4s').textContent = modRows.length + ' פריטים';
 
   _renderMODChart(modRows);
   _renderMODDue(modRows);
-  _renderMODUpcoming(modRows);
-  _renderMODSOList(modGroups);
+  _renderMODUpcoming(visibleGroups.flatMap(g => g.lines));
+  _renderMODSOList(visibleGroups);
 }
 
 function _renderMODChart(modRows) {
@@ -213,6 +229,7 @@ function _renderMODSOList(modGroups) {
       ovrCnt ? `<span class="risk-badge rb-red">${ovrCnt} באיחור</span>` : '',
       pndCnt ? `<span class="risk-badge rb-ora">${pndCnt} ממתין</span>` : '',
       covCnt ? `<span class="risk-badge rb-grn">✓ ${covCnt}</span>` : '',
+      g.isPull ? '<span class="pull-badge">תיק משיכה</span>' : '',
     ].filter(Boolean).join('');
 
     const lineRows = lines.map(r => {
