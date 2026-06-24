@@ -13,12 +13,16 @@ export function setMainView(v) {
   document.getElementById('emp-view').style.display = v === 'emp' ? 'block' : 'none';
   document.getElementById('supp-view').style.display = v === 'supp' ? 'block' : 'none';
   document.getElementById('rfq-view').style.display = v === 'rfq' ? 'block' : 'none';
+  document.getElementById('mod-view').style.display = v === 'mod' ? 'flex' : 'none';
+  document.getElementById('mod-view').style.flexDirection = v === 'mod' ? 'column' : '';
   document.getElementById('tab-boss').classList.toggle('on', v === 'boss');
   document.getElementById('tab-emp').classList.toggle('on', v === 'emp');
   document.getElementById('tab-supp').classList.toggle('on', v === 'supp');
   document.getElementById('tab-rfq').classList.toggle('on', v === 'rfq');
+  document.getElementById('tab-mod').classList.toggle('on', v === 'mod');
   if (v === 'rfq') { if (_renderRFQ) _renderRFQ(); }
   else { if (_stopRFQTimer) _stopRFQTimer(); }
+  if (v === 'mod' && window.renderMOD) window.renderMOD();
 }
 
 export function setEmpTab(t) {

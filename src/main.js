@@ -46,6 +46,9 @@ import { renderSupplierKPIs, renderSuppliers, buildPOTable } from './views/suppl
 // ── Views: SSP ────────────────────────────────────────────────
 import { renderSSP, toggleSSP, togCG, togSODetail, sspShowAll } from './views/ssp.js';
 
+// ── Views: MOD ────────────────────────────────────────────────
+import { renderMOD, togMODSO } from './views/mod.js';
+
 // ── Views: RFQ ────────────────────────────────────────────────
 import {
   renderRFQ, renderRFQList, setRFQFilter,
@@ -92,6 +95,7 @@ function renderAll() {
   renderBoss();
   renderSSP();
   renderRFQ();
+  renderMOD();
   renderSupplierKPIs();
   renderSuppliers();
   updateImportBadge();
@@ -113,6 +117,7 @@ setUploadCallbacks(
     renderBoss();
     renderSSP();
     renderRFQ();
+    renderMOD();
     updateImportBadge();
   },
   // onPO: after PO file parsed
@@ -136,6 +141,7 @@ setApiCallbacks(function onDataLoaded(type) {
     renderBoss();
     renderSSP();
     renderRFQ();
+    renderMOD();
     updateImportBadge();
   } else if (type === 'po') {
     renderSupplierKPIs();
@@ -190,6 +196,9 @@ Object.assign(window, {
   // views — employee
   renderToday, fillSelects, applyFilters, renderSOList, renderSOCard,
   setSOStatus, hdrClk, togSO, expandAll, buildLT, buildLR,
+
+  // views — mod
+  renderMOD, togMODSO,
 
   // views — supplier
   renderSupplierKPIs, renderSuppliers, buildPOTable,

@@ -47,6 +47,7 @@
     <button class="view-tab" id="tab-emp" onclick="setMainView('emp')">📋 מבט עובד</button>
     <button class="view-tab" id="tab-supp" onclick="setMainView('supp')">🏭 ספקים</button>
     <button class="view-tab" id="tab-rfq" onclick="setMainView('rfq')">💬 RFQ</button>
+    <button class="view-tab" id="tab-mod" onclick="setMainView('mod')">🛡 מה"ב</button>
   </div>
   <div class="tb-right">
     <div id="spin">טוען...</div>
@@ -250,6 +251,39 @@
         <label class="chk"><input type="checkbox" id="supp-cross" onchange="renderSuppliers()"> הצלבת SO</label>
       </div>
       <div id="supp-cards" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+
+  <!-- ══ MOD VIEW ══ -->
+  <div id="mod-view" style="display:none;flex-direction:column;gap:8px;padding:12px 20px">
+    <div class="kpi-row">
+      <div class="kpi kr"><div class="kpi-lbl">באיחור ללא כיסוי</div><div class="kpi-val" id="mk1">—</div><div class="kpi-sub" id="mk1s"></div></div>
+      <div class="kpi ko"><div class="kpi-lbl">ממתין לטיפול</div><div class="kpi-val" id="mk2">—</div><div class="kpi-sub" id="mk2s"></div></div>
+      <div class="kpi kg"><div class="kpi-lbl">מכוסה / הוזמן</div><div class="kpi-val" id="mk3">—</div><div class="kpi-sub" id="mk3s"></div></div>
+      <div class="kpi kb"><div class="kpi-lbl">הזמנות מה"ב</div><div class="kpi-val" id="mk4">—</div><div class="kpi-sub" id="mk4s"></div></div>
+    </div>
+    <div class="boss-grid">
+      <div style="display:flex;flex-direction:column;gap:6px;min-height:0">
+        <div class="panel">
+          <div class="phead">תחזית אספקה — מה"ב</div>
+          <div class="chart-wrap">
+            <div class="bar-row" id="mod-chart-bars"></div>
+            <div class="chart-legend">
+              <div class="cl-item"><div class="cl-dot" style="background:var(--red)"></div>עבר</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--ora)"></div>שוטף</div>
+              <div class="cl-item"><div class="cl-dot" style="background:var(--acc)"></div>עתיד</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel" style="flex:1;min-height:0">
+          <div class="phead">לטיפול השבוע <span id="mod-due-count" style="color:var(--ora)"></span></div>
+          <div class="pbody" id="mod-due-list"></div>
+        </div>
+      </div>
+      <div class="panel" style="grid-column:span 2">
+        <div class="phead">הזמנות פתוחות — משרד הביטחון</div>
+        <div id="mod-so-list" style="display:flex;flex-direction:column;gap:6px;padding:8px 0"></div>
+      </div>
     </div>
   </div>
 
