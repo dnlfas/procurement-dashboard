@@ -27,7 +27,7 @@ export function parsePORows(raw) {
     const poNum = s(r[PK.poNum]);
     const mpn = s(r[PK.mpn]);
     if (!poNum && !mpn) return null;
-    const supplier = s(r[PK.supp]);
+    const supplier = s(r[PK.supp]).replace(/^\$-\s*/, '').trim();
     const desc = s(r[PK.desc]);
     const qtyO = parseFloat(r[PK.qtyO]) || 0;
     const qtyS = parseFloat(r[PK.qtyS]) || 0;

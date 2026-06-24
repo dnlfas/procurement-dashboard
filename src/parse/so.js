@@ -35,7 +35,7 @@ export function parseRows(raw) {
     const customer = rawCust || _cust;
     const custPO = rawCustPO || _custPO;
     const poNum = s(r[K.poNum]);
-    const supplier = s(r[K.supp]);
+    const supplier = s(r[K.supp]).replace(/^\$-\s*/, '').trim();
     const statusRaw = s(r[K.status]);
     const qtyR = parseFloat(r[K.qtyR]) || 0;
     const qtyO = parseFloat(r[K.qtyO]) || 0;

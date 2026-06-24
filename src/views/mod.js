@@ -220,10 +220,10 @@ function _renderMODSOList(modGroups) {
     const dates = lines.map(r => r.dd).filter(Boolean).sort((a, b) => a - b);
     const minD = dates[0], maxD = dates[dates.length - 1];
     const dateStr = minD ? (maxD && minD.getTime() !== maxD.getTime() ? fd(minD) + ' – ' + fd(maxD) : fd(minD)) : '—';
-    const ovrCnt = lines.filter(r => r.isOvr && r.cov !== 'green').length;
-    const pndCnt = lines.filter(r => !r.isOvr && r.cov !== 'green').length;
-    const covCnt = lines.filter(r => r.cov === 'green').length;
-    const tlCls = ovrCnt ? 'tl-r' : pndCnt ? 'tl-o' : 'tl-g';
+    const ovrCnt = g.ovr;
+    const pndCnt = g.unc;
+    const covCnt = g.cov;
+    const tlCls = g.tl === 'red' ? 'tl-r' : g.tl === 'orange' ? 'tl-o' : 'tl-g';
 
     const badges = [
       ovrCnt ? `<span class="risk-badge rb-red">${ovrCnt} באיחור</span>` : '',
