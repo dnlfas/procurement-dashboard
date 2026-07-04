@@ -1,5 +1,6 @@
 import { state, NK } from './state.js';
 import { toast, autoH } from './utils.js';
+import { _trackingUrl } from './views/employee.js';
 
 // Callback set by main.js to avoid circular imports
 let _refreshCallback = null;
@@ -87,6 +88,24 @@ export function saveField(inp) {
       row.poNum = val;
       if (val && row.cov !== 'green') row.cov = 'green';
       else if (!val && row.status === 'none') row.cov = row.isOvr ? 'red' : 'grey';
+    }
+    if (inp.dataset.field === 'tracking') {
+      const url = _trackingUrl(val);
+      let a = inp.parentElement.querySelector('a');
+      if (url) {
+        if (!a) {
+          a = document.createElement('a');
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.title = 'עקוב אחר המשלוח';
+          a.style.cssText = 'color:var(--acc);font-size:14px;text-decoration:none;flex-shrink:0;line-height:1';
+          a.textContent = '🔗';
+          inp.parentElement.appendChild(a);
+        }
+        a.href = url;
+      } else if (a) {
+        a.remove();
+      }
     }
     if (inp.dataset.field === 'tracking' && val) {
       state.statusOvr[row.nk] = 'delivery_bts';
