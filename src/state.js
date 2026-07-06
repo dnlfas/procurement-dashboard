@@ -2,6 +2,8 @@ export const TODAY = new Date(new Date().setHours(0, 0, 0, 0));
 export const NK = 'openorders_v5_notes';
 export const SETTINGS_KEY = 'oo_gdrive_settings';
 export const RFQ_KEY = 'oo_rfq';
+export const NOTIF_KEY = 'oo_notif_seen';
+export const NOTIF_ENABLED_KEY = 'oo_notif_enabled';
 
 export const state = {
   allRows: [], soGroups: [], filteredGroups: [], soReg: {},
@@ -15,6 +17,7 @@ export const state = {
   _importFile: null, _importExcelRows: [], _importChanges: [], _importTab: 'text', _importSourceType: null,
   _icsGroup: null, _rfqFilter: 'all', _tt: null,
   wizSOFile: null, wizPOFile: null,
+  notifSeen: {}, notifEnabled: false, _notifTimer: null,
 };
 
 // Load persisted state from localStorage
@@ -25,6 +28,8 @@ try { state.pullOrders = JSON.parse(localStorage.getItem('oo_pull') || '{}'); } 
 try { state.odSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
 try { state.rfqData = JSON.parse(localStorage.getItem(RFQ_KEY) || '[]'); } catch(e) {}
 try { state.pendingCustPOs = JSON.parse(localStorage.getItem('oo_pending_cpo') || '{}'); } catch(e) {}
+try { state.notifSeen = JSON.parse(localStorage.getItem(NOTIF_KEY) || '{}'); } catch(e) {}
+try { state.notifEnabled = localStorage.getItem(NOTIF_ENABLED_KEY) === '1'; } catch(e) {}
 
 // Init default pull orders
 ['4441445613','4441489719','4441512541','4441439631'].forEach(p => {

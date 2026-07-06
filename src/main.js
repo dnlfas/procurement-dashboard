@@ -60,6 +60,11 @@ import {
   startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ
 } from './rfq/engine.js';
 
+// ── Notifications ─────────────────────────────────────────────
+import {
+  initNotifications, toggleNotifications, checkImportantDates
+} from './notifications.js';
+
 // ── Import ────────────────────────────────────────────────────
 import {
   openImportModal, closeImportModal, importSelectTab, handleImportFile,
@@ -99,6 +104,7 @@ function renderAll() {
   renderSupplierKPIs();
   renderSuppliers();
   updateImportBadge();
+  checkImportantDates();
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -119,6 +125,7 @@ setUploadCallbacks(
     renderRFQ();
     renderMOD();
     updateImportBadge();
+    checkImportantDates();
   },
   // onPO: after PO file parsed
   function onPOLoaded() {
@@ -143,6 +150,7 @@ setApiCallbacks(function onDataLoaded(type) {
     renderRFQ();
     renderMOD();
     updateImportBadge();
+    checkImportantDates();
   } else if (type === 'po') {
     renderSupplierKPIs();
     renderSuppliers();
@@ -155,6 +163,7 @@ setApiCallbacks(function onDataLoaded(type) {
 async function initApp() {
   await loadOverridesFromBlob();
   updateImportBadge();
+  initNotifications();
   // If data already loaded (via wizard), render
   if (state.allRows && state.allRows.length) {
     renderAll();
@@ -212,6 +221,9 @@ Object.assign(window, {
 
   // rfq engine
   startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ,
+
+  // notifications
+  toggleNotifications,
 
   // import
   openImportModal, closeImportModal, importSelectTab, handleImportFile,
