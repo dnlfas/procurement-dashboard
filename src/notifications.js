@@ -65,7 +65,7 @@ export function pruneNotifSeen() {
   if (changed) saveSeen();
 }
 
-export function checkImportantDates() {
+export function checkImportantDates(force) {
   if (!isSupported() || !isEnabled() || Notification.permission !== 'granted') return;
   if (!state.allRows.length) return;
 
@@ -80,7 +80,7 @@ export function checkImportantDates() {
     if (state.notifSeen[r.nk] !== bucket) newlySeen[r.nk] = bucket;
   });
 
-  if (Object.keys(newlySeen).length) {
+  if (force ? (ovrCount + soonCount) : Object.keys(newlySeen).length) {
     let body;
     if (ovrCount && soonCount) body = `${ovrCount} פריטים באיחור, ${soonCount} פריטים מתקרבים למועד אספקה`;
     else if (ovrCount) body = `${ovrCount} פריטים באיחור באספקה`;
@@ -98,9 +98,9 @@ export function checkImportantDates() {
   pruneNotifSeen();
 }
 
-export function startNotifTimer() {
+export function startNotifTimer(force) {
   stopNotifTimer();
-  checkImportantDates();
+  checkImportantDates(force);
   state._notifTimer = setInterval(checkImportantDates, CHECK_INTERVAL_MS);
 }
 
@@ -150,6 +150,6 @@ export function toggleNotifications() {
 export function initNotifications() {
   updateBellUI();
   if (isSupported() && isEnabled() && Notification.permission === 'granted') {
-    startNotifTimer();
+    startNotifTimer(true);
   }
 }
