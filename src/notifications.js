@@ -46,9 +46,12 @@ export function updateBellUI() {
 }
 
 function rowBucket(r, today) {
-  if (!r.dd || r.cov === 'green') return null;
+  if (!r.dd) return null;
   if (r.status === 'cancelled' || r.status === 'cancelled_bts' || r.status === 'supplied') return null;
+  // cov==='green' just means a PO/order was placed — most real overdue rows have that and are still late,
+  // so it only makes sense to skip "on track, already ordered" rows for the not-yet-due bucket.
   if (r.isOvr) return 'overdue';
+  if (r.cov === 'green') return null;
   const diff = r.dd - today;
   if (diff >= 0 && diff <= LEAD_MS) return 'duesoon';
   return null;
