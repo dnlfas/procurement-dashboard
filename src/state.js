@@ -13,7 +13,7 @@ export const state = {
   odSettings: {}, _syncTimer: null, _rfqTimer: null,
   isTV: window.innerWidth >= 1920,
   _importFile: null, _importExcelRows: [], _importChanges: [], _importTab: 'text', _importSourceType: null,
-  _icsGroup: null, _rfqFilter: 'all', _tt: null,
+  _icsGroup: null, _rfqFilter: 'all', _tt: null, _notifyPO: null,
   wizSOFile: null, wizPOFile: null,
 };
 

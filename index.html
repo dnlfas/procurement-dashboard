@@ -516,6 +516,38 @@
     </div>
   </div>
 </div>
+<!-- NOTIFY MODAL -->
+<div id="notify-modal" onclick="if(event.target===this)closeNotifyModal()" style="display:none;position:fixed;inset:0;z-index:970;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:14px">
+    <div id="notify-title" style="font-size:16px;font-weight:700;color:var(--txtb)">🔔 תזכורת</div>
+    <div id="notify-latest" style="font-size:12px;color:var(--txt2)"></div>
+
+    <div style="border-top:1px solid var(--bdr);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:11px;color:var(--txt2)">קיצורים מהירים:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="notify-preset-week" class="btn btn-ghost" style="font-size:12px" onclick="notifyPreset(7)">🔔 שבוע לפני האספקה</button>
+        <button id="notify-preset-day" class="btn btn-ghost" style="font-size:12px;color:var(--ora)" onclick="notifyPreset(1)">🔔 יום לפני האספקה</button>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--bdr);padding-top:12px;display:flex;flex-direction:column;gap:5px">
+      <label style="font-size:12px;color:var(--txt2)">תאריך ושעה מותאמים</label>
+      <div style="display:flex;gap:8px">
+        <input id="notify-custom-dt" type="datetime-local" style="flex:1;background:var(--sur3);border:1px solid var(--bdr);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--txt);outline:none">
+        <button class="btn btn-blue" style="font-size:12px;white-space:nowrap" onclick="notifyCustom()">קבע תזכורת</button>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--bdr);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:11px;color:var(--txt2)">תזכורות פעילות ל-PO זה:</div>
+      <div id="notify-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeNotifyModal()">סגור</button>
+    </div>
+  </div>
+</div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

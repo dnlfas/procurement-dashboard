@@ -79,6 +79,11 @@ import {
   _icsPresetOnDay, _icsPreset7Before, _icsTaskToday, submitICSDownload
 } from './export/ics.js';
 
+// ── Notifications ─────────────────────────────────────────────
+import {
+  initNotifications, openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder
+} from './notify.js';
+
 // ── API / GDrive ──────────────────────────────────────────────
 import {
   setApiCallbacks, openSettings, closeSettings,
@@ -226,6 +231,9 @@ Object.assign(window, {
   dlSOICS, closeICSModal, icsUpdateCustomFields,
   _icsPresetOnDay, _icsPreset7Before, _icsTaskToday, submitICSDownload,
 
+  // notifications
+  openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder,
+
   // api / settings
   openSettings, closeSettings, markInputChanged, saveAndFetch, clearSettings, fetchNow,
 });
@@ -235,4 +243,5 @@ Object.assign(window, {
 // ─────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth(); // calls initApp() via _initCallback after auth passes
+  initNotifications();
 });

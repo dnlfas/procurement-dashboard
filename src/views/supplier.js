@@ -92,6 +92,7 @@ export function buildPOTable(rows, soMPNs, crossSO) {
     if (a.isOvr && !b.isOvr) return -1; if (!a.isOvr && b.isOvr) return 1;
     if (!a.dd) return 1; if (!b.dd) return -1; return a.dd - b.dd;
   });
+  const seenPO = new Set();
   return `<table class="lt"><thead><tr>
     <th style="width:12px"></th>
     <th>פריט (MPN)</th>
@@ -109,11 +110,14 @@ export function buildPOTable(rows, soMPNs, crossSO) {
     const dayB = r.isOvr ? `<span class="db db-r">${Math.floor((TODAY - r.dd) / 86400000)}י׳</span>` : '';
     const tl = r.isOvr ? 'r' : r.isPartial ? 'o' : 'g';
     const soMatch = crossSO && soMPNs.has(r.mpn.trim().toUpperCase());
+    const showBell = !seenPO.has(r.poNum);
+    seenPO.add(r.poNum);
+    const bell = showBell ? `<button class="bics" title="הגדר תזכורת" onclick="event.stopPropagation();openNotifyModal('${esc(r.poNum)}')" style="margin-inline-start:6px">🔔</button>` : '';
     return `<tr class="${r.isOvr ? 'lno' : ''}">
       <td style="text-align:center"><span class="lntl tl-${tl}"></span></td>
       <td><div class="mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div></td>
       <td style="font-size:11px;color:var(--txt2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.desc)}">${esc(r.desc)}</td>
-      <td class="ptxt">${esc(r.poNum)}</td>
+      <td class="ptxt">${esc(r.poNum)}${bell}</td>
       <td class="ddate ${dc}">${dayB}${fd(r.dd)}</td>
       <td class="qty">${r.qtyO}</td>
       <td class="qty" style="${r.qtyS > 0 ? 'color:var(--grn)' : ''}">${r.qtyS}</td>
