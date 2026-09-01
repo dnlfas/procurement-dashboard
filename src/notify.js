@@ -1,38 +1,76 @@
 import { state } from './state.js';
 import { esc, fd, toast } from './utils.js';
 
-const REM_KEY = 'oo_po_reminders';
-const CHECK_MS = 30000;
+let _subscribed = false;
 
-let reminders = [];
-try { reminders = JSON.parse(localStorage.getItem(REM_KEY) || '[]'); } catch (e) { reminders = []; }
-
-function persist() {
-  try { localStorage.setItem(REM_KEY, JSON.stringify(reminders)); } catch (e) {}
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
-function checkDue() {
-  const now = Date.now();
-  const due = reminders.filter(r => new Date(r.at).getTime() <= now);
-  if (!due.length) return;
-  reminders = reminders.filter(r => new Date(r.at).getTime() > now);
-  persist();
-  due.forEach(r => {
-    try {
-      if (window.Notification && Notification.permission === 'granted') {
-        new Notification(r.title, { body: r.body });
-      }
-    } catch (e) {}
+async function ensurePushSubscription() {
+  if (_subscribed) return true;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast('הדפדפן אינו תומך בהתראות Push');
+    return false;
+  }
+
+  const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+  if (perm !== 'granted') {
+    toast('התראות לא אושרו — התזכורת תישמר אך לא תוצג');
+    return false;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const r = await fetch('/api/vapid-public-key');
+      if (!r.ok) { toast('שגיאה בהגדרת Push'); return false; }
+      const { publicKey } = await r.json();
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    await fetch('/api/push-subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub),
+    });
+
+    _subscribed = true;
+    return true;
+  } catch (e) {
+    toast('שגיאה בהרשמה להתראות: ' + e.message);
+    return false;
+  }
+}
+
+async function getReminders() {
+  const r = await fetch('/api/po-reminders');
+  if (!r.ok) return [];
+  return r.json();
+}
+
+async function saveReminders(list) {
+  await fetch('/api/po-reminders', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(list),
   });
-  if (state._notifyPO && due.some(r => r.poNum === state._notifyPO.poNum)) renderNotifyList();
 }
 
 export function initNotifications() {
-  setInterval(checkDue, CHECK_MS);
-  checkDue();
+  // Push delivery is server-triggered (Vercel cron -> service worker) — nothing to poll client-side.
 }
 
-export function openNotifyModal(poNum) {
+export async function openNotifyModal(poNum) {
   const rows = state.poRows.filter(r => r.poNum === poNum);
   if (!rows.length) { toast('שגיאה'); return; }
   const latest = rows.reduce((mx, r) => r.dd && (!mx || r.dd > mx) ? r.dd : mx, null);
@@ -44,7 +82,7 @@ export function openNotifyModal(poNum) {
   document.getElementById('notify-preset-week').disabled = !latest;
   document.getElementById('notify-preset-day').disabled = !latest;
   document.getElementById('notify-custom-dt').value = '';
-  renderNotifyList();
+  await renderNotifyList();
   document.getElementById('notify-modal').style.display = 'flex';
 }
 
@@ -52,10 +90,11 @@ export function closeNotifyModal() {
   document.getElementById('notify-modal').style.display = 'none';
 }
 
-function renderNotifyList() {
+async function renderNotifyList() {
   if (!state._notifyPO) return;
   const el = document.getElementById('notify-list');
-  const mine = reminders.filter(r => r.poNum === state._notifyPO.poNum)
+  const all = await getReminders();
+  const mine = all.filter(r => r.poNum === state._notifyPO.poNum)
     .sort((a, b) => new Date(a.at) - new Date(b.at));
   if (!mine.length) { el.innerHTML = '<div style="font-size:11px;color:var(--txt2)">אין תזכורות פעילות</div>'; return; }
   el.innerHTML = mine.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 8px;background:var(--sur3);border-radius:6px">
@@ -64,26 +103,19 @@ function renderNotifyList() {
   </div>`).join('');
 }
 
-function requestPermissionThen(fn) {
-  if (!window.Notification) { toast('הדפדפן אינו תומך בהתראות'); fn(false); return; }
-  if (Notification.permission === 'granted') { fn(true); return; }
-  if (Notification.permission === 'denied') { toast('התראות חסומות בדפדפן — התזכורת תישמר אך לא תוצג'); fn(false); return; }
-  Notification.requestPermission().then(p => fn(p === 'granted'));
-}
-
-function scheduleReminder(poNum, whenDate, label) {
-  requestPermissionThen(granted => {
-    if (!granted) toast('התראות לא אושרו — התזכורת נשמרה אך לא תוצג');
-    reminders.push({
-      id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
-      poNum, label, at: whenDate.toISOString(),
-      title: `🔔 תזכורת אספקה — PO ${poNum}`,
-      body: `${label} · תאריך אספקה אחרון: ${fd(state._notifyPO && state._notifyPO.latest)}`,
-    });
-    persist();
-    renderNotifyList();
-    toast('התזכורת נקבעה');
+async function scheduleReminder(poNum, whenDate, label) {
+  // Persist the reminder even if the push subscription failed — it just won't be deliverable.
+  await ensurePushSubscription();
+  const reminders = await getReminders();
+  reminders.push({
+    id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+    poNum, label, at: whenDate.toISOString(),
+    title: `🔔 תזכורת אספקה — PO ${poNum}`,
+    body: `${label} · תאריך אספקה אחרון: ${fd(state._notifyPO && state._notifyPO.latest)}`,
   });
+  await saveReminders(reminders);
+  await renderNotifyList();
+  toast('התזכורת נקבעה');
 }
 
 export function notifyPreset(daysBefore) {
@@ -106,8 +138,8 @@ export function notifyCustom() {
   scheduleReminder(ctx.poNum, when, 'מותאם אישית');
 }
 
-export function cancelReminder(id) {
-  reminders = reminders.filter(r => r.id !== id);
-  persist();
-  renderNotifyList();
+export async function cancelReminder(id) {
+  const reminders = await getReminders();
+  await saveReminders(reminders.filter(r => r.id !== id));
+  await renderNotifyList();
 }

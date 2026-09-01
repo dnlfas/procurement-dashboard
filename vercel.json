@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "crons": [
+    { "path": "/api/send-reminders", "schedule": "*/10 * * * *" }
+  ],
   "headers": [
     {
       "source": "/src/(.*)\\.js",
