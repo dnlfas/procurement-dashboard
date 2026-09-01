@@ -84,6 +84,9 @@ import {
   initNotifications, openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder
 } from './notify.js';
 
+// ── Data status ───────────────────────────────────────────────
+import { refreshDataStatus } from './dataStatus.js';
+
 // ── API / GDrive ──────────────────────────────────────────────
 import {
   setApiCallbacks, openSettings, closeSettings,
@@ -124,11 +127,13 @@ setUploadCallbacks(
     renderRFQ();
     renderMOD();
     updateImportBadge();
+    refreshDataStatus();
   },
   // onPO: after PO file parsed
   function onPOLoaded() {
     renderSupplierKPIs();
     renderSuppliers();
+    refreshDataStatus();
   }
 );
 
@@ -148,9 +153,11 @@ setApiCallbacks(function onDataLoaded(type) {
     renderRFQ();
     renderMOD();
     updateImportBadge();
+    refreshDataStatus();
   } else if (type === 'po') {
     renderSupplierKPIs();
     renderSuppliers();
+    refreshDataStatus();
   }
 });
 
@@ -160,6 +167,7 @@ setApiCallbacks(function onDataLoaded(type) {
 async function initApp() {
   await loadOverridesFromBlob();
   updateImportBadge();
+  refreshDataStatus();
   // If data already loaded (via wizard), render
   if (state.allRows && state.allRows.length) {
     renderAll();
