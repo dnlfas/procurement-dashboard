@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { esc, fd, toast } from './utils.js';
+import { esc, fd, p2, toast } from './utils.js';
 
 let _subscribed = false;
 
@@ -99,8 +99,39 @@ async function renderNotifyList() {
   if (!mine.length) { el.innerHTML = '<div style="font-size:11px;color:var(--txt2)">אין תזכורות פעילות</div>'; return; }
   el.innerHTML = mine.map(r => `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 8px;background:var(--sur3);border-radius:6px">
     <span>${esc(r.label)} — ${new Date(r.at).toLocaleString('he-IL')}</span>
-    <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px" onclick="cancelReminder('${r.id}')">בטל</button>
+    <span style="display:flex;gap:4px">
+      <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px" title="הוסף ליומן" onclick="downloadReminderICS('${esc(r.poNum)}','${esc(r.label)}','${r.at}')">📅</button>
+      <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px" onclick="cancelReminder('${r.id}')">בטל</button>
+    </span>
   </div>`).join('');
+}
+
+export function downloadReminderICS(poNum, label, atISO) {
+  const when = new Date(atISO);
+  const dtStart = when.getFullYear() + p2(when.getMonth() + 1) + p2(when.getDate()) + 'T' + p2(when.getHours()) + p2(when.getMinutes()) + '00';
+  const end = new Date(when.getTime() + 30 * 60000);
+  const dtEnd = end.getFullYear() + p2(end.getMonth() + 1) + p2(end.getDate()) + 'T' + p2(end.getHours()) + p2(end.getMinutes()) + '00';
+  const now = new Date();
+  const stamp = now.getFullYear() + p2(now.getMonth() + 1) + p2(now.getDate()) + 'T' + p2(now.getHours()) + p2(now.getMinutes()) + p2(now.getSeconds()) + 'Z';
+  const uid = `po-reminder-${poNum}-${Date.now()}@bts`.replace(/[^a-zA-Z0-9@\-]/g, '_');
+  const summary = `🔔 תזכורת אספקה — PO ${poNum}`;
+  const desc = `${label} — הזמנת רכש ${poNum}`;
+  const lines = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//BTS//ProcurementDashboard//HE', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT', 'UID:' + uid, 'DTSTAMP:' + stamp,
+    'DTSTART:' + dtStart, 'DTEND:' + dtEnd,
+    'SUMMARY:' + summary, 'DESCRIPTION:' + desc,
+    'STATUS:CONFIRMED', 'TRANSP:TRANSPARENT',
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-PT0M', 'DESCRIPTION:' + summary, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'
+  ];
+  const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `po_reminder_${poNum.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('📅 קובץ יומן הורד');
 }
 
 async function scheduleReminder(poNum, whenDate, label) {

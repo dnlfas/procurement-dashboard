@@ -81,7 +81,7 @@ import {
 
 // ── Notifications ─────────────────────────────────────────────
 import {
-  initNotifications, openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder
+  initNotifications, openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder, downloadReminderICS
 } from './notify.js';
 
 // ── Data status ───────────────────────────────────────────────
@@ -240,7 +240,7 @@ Object.assign(window, {
   _icsPresetOnDay, _icsPreset7Before, _icsTaskToday, submitICSDownload,
 
   // notifications
-  openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder,
+  openNotifyModal, closeNotifyModal, notifyPreset, notifyCustom, cancelReminder, downloadReminderICS,
 
   // api / settings
   openSettings, closeSettings, markInputChanged, saveAndFetch, clearSettings, fetchNow,
