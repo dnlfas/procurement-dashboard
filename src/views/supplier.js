@@ -36,7 +36,9 @@ export function renderSuppliers() {
   });
 
   let groups = Object.values(byS).sort((a, b) => b.ovrVal - a.ovrVal || b.totalVal - a.totalVal);
-  if (q) groups = groups.filter(g => g.supplier.toLowerCase().includes(q));
+  if (q) {
+    groups = groups.filter(g => g.supplier.toLowerCase().includes(q) || g.rows.some(r => r.mpn.toLowerCase().includes(q)));
+  }
   if (ovrOnly) groups = groups.filter(g => g.rows.some(r => r.isOvr));
 
   const el = document.getElementById('supp-cards');
@@ -50,6 +52,7 @@ export function renderSuppliers() {
     const tlActual = ovrRows.length === g.rows.length ? 'r' : ovrRows.length > 0 ? 'o' : 'g';
     const cc = tlActual === 'r' ? 'cr' : tlActual === 'o' ? 'co' : 'cg';
     const sid = 'sp_' + g.supplier.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+    const mpnMatch = !!q && g.rows.some(r => r.mpn.toLowerCase().includes(q));
 
     const badges = [];
     if (ovrRows.length) badges.push(`<span class="badge b-r">🔴 ${ovrRows.length} באיחור</span>`);
@@ -69,7 +72,7 @@ export function renderSuppliers() {
             </div>
           </div>
           <div class="sobadges">${badges.join('')}</div>
-          <div class="sochev" id="chev_${sid}">▼</div>
+          <div class="sochev${mpnMatch ? ' open' : ''}" id="chev_${sid}">▼</div>
         </div>
         <div class="ssp-cov">
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt2);font-family:var(--mono)">
@@ -80,7 +83,7 @@ export function renderSuppliers() {
           </div>
         </div>
       </div>
-      <div class="sodet" id="det_${sid}">
+      <div class="sodet${mpnMatch ? ' open' : ''}" id="det_${sid}">
         <div class="dtwrap">${buildPOTable(g.rows, soMPNs, crossSO)}</div>
       </div>
     </div>`;
