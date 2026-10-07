@@ -1,0 +1,6 @@
+#!/bin/sh
+# Stamp version.json with this commit's number and date; shown in the dashboard topbar.
+# Enable once per clone: git config core.hooksPath .githooks
+n=$(( $(git rev-list --count HEAD 2>/dev/null || echo 0) + 1 ))
+printf '{"version":%s,"date":"%s"}\n' "$n" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
+git add version.json

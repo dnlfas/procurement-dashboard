@@ -85,7 +85,7 @@ import {
 } from './notify.js';
 
 // ── Data status ───────────────────────────────────────────────
-import { refreshDataStatus } from './dataStatus.js';
+import { refreshDataStatus, showVersion } from './dataStatus.js';
 
 // ── API / GDrive ──────────────────────────────────────────────
 import {
@@ -165,6 +165,7 @@ setApiCallbacks(function onDataLoaded(type) {
 // initApp — called after auth succeeds
 // ─────────────────────────────────────────────────────────────
 async function initApp() {
+  showVersion();
   await Promise.all([loadOverridesFromBlob(), loadRFQFromServer()]);
   updateImportBadge();
   refreshDataStatus();
