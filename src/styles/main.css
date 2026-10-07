@@ -130,6 +130,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .db-b{background:var(--acc-d);color:var(--acc)}.db-p{background:var(--pur-d);color:var(--pur)}.db-g{background:var(--grn-d);color:var(--grn)}
 .aging-hdr{font-size:12px;font-family:var(--mono);color:var(--txt2);padding:8px 2px 2px;cursor:default}
 .aging-old>summary{cursor:pointer}
+.aging-split{display:grid;grid-template-columns:1fr;gap:10px;padding:8px 10px}
+.aging-sub{border:1px solid var(--bdr);border-radius:7px;padding:4px 8px 8px;min-width:0}
+.aging-sub-hdr{font-size:13px;font-weight:700;color:var(--txtb);padding:4px 2px;border-bottom:1px solid var(--bdr)}
+@media (min-width:1300px){.aging-split{grid-template-columns:1fr 1fr}}
 .ti-note{font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .inbox-acts{display:flex;gap:4px;align-items:center}
 .inbox-acts .btn{padding:2px 9px;font-size:13px;color:var(--grn)}

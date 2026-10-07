@@ -3,7 +3,7 @@ import { esc, fd, p2 } from '../utils.js';
 import { calcG } from '../parse/so.js';
 
 const MOD_KEY = 'משרד הביטחון';
-const isMOD = r => (r.customer || '').includes(MOD_KEY);
+export const isMOD = r => (r.customer || '').includes(MOD_KEY);
 const notCanc = r => r.status !== 'cancelled' && r.status !== 'cancelled_bts';
 
 export function renderMOD() {

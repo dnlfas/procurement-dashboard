@@ -3,6 +3,7 @@ import { esc, fd, p2, autoH, expandNotes, toast } from '../utils.js';
 import { calcG, isShortCovered } from '../parse/so.js';
 import { saveField, saveStatus, saveNote } from '../persistence.js';
 import { trackSeen, inboxReason, ageDays, needsPO, ackLine, snoozeLine, ddFromKey } from '../tracker.js';
+import { isMOD } from './mod.js';
 import { pk, poLabel, isDue, effDate, reason, lastContact, markContacted, snoozeFollowup, setPromised, pruneFollowups, emailText, scheduleDigest, setDigest } from '../followup.js';
 
 const shortCust = c => (c || '').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 18);
@@ -20,6 +21,23 @@ export function renderToday() {
     : `<div class="empty" style="padding:18px">✓ אין פריטים חדשים לטיפול</div>`;
 
   const waiting = open.filter(r => needsPO(r) && !inboxNks.has(r.nk)).map(r => ({ r, age: ageDays(r) }));
+  const mod = waiting.filter(x => isMOD(x.r)), other = waiting.filter(x => !isMOD(x.r));
+  document.getElementById('aging-count').textContent = '(' + waiting.length + ')';
+  document.getElementById('aging-mod-count').textContent = '(' + mod.length + ')';
+  document.getElementById('aging-other-count').textContent = '(' + other.length + ')';
+  document.getElementById('aging-mod-list').innerHTML = agingList(mod);
+  document.getElementById('aging-other-list').innerHTML = agingList(other);
+
+  renderFollowups();
+  scheduleDigest({ inbox: inbox.length, waiting5: waiting.filter(x => x.age >= 5).length });
+
+  const et1 = document.getElementById('et1');
+  if (et1) et1.textContent = '🔴 לטיפול היום' + (inbox.length ? ' (' + inbox.length + ')' : '');
+  document.getElementById('emp-stat').textContent = `${inbox.length} חדשים · ${waiting.length} ממתינים ל-PO · ${state.allRows.length} פריטים סה"כ`;
+}
+
+// Waiting-for-PO lines grouped by age, oldest first; lines of unknown age in a collapsed group
+function agingList(waiting) {
   const byOldest = (a, b) => b.age - a.age || (a.r.dd || 0) - (b.r.dd || 0);
   const byDue = (a, b) => (a.r.dd || Infinity) - (b.r.dd || Infinity);
   const groups = [
@@ -28,9 +46,7 @@ export function renderToday() {
     { title: 'חדשים (0–1 ימים)', cls: 'ti-grey', items: waiting.filter(x => x.age !== null && x.age < 2).sort(byOldest) },
   ];
   const old = waiting.filter(x => x.age === null).sort(byDue);
-  document.getElementById('aging-count').textContent = '(' + waiting.length + ')';
-  document.getElementById('aging-list').innerHTML =
-    groups.filter(g => g.items.length).map(g =>
+  return groups.filter(g => g.items.length).map(g =>
       `<div class="aging-hdr">${g.title} · ${g.items.length}</div>` + g.items.slice(0, 40).map(x => agingItem(x.r, x.age, g.cls)).join('')
       + (g.items.length > 40 ? `<div class="more-hint">+ ${g.items.length - 40} נוספים — ראה "כל ההזמנות" עם סינון "לא מכוסים"</div>` : '')
     ).join('')
@@ -39,13 +55,6 @@ export function renderToday() {
         + (old.length > 50 ? `<div class="more-hint">+ ${old.length - 50} פריטים נוספים — ראה "כל ההזמנות" עם סינון "לא מכוסים"</div>` : '')
         + '</details>' : '')
     || `<div class="empty" style="padding:18px">✓ כל הפריטים מכוסים בהזמנות רכש</div>`;
-
-  renderFollowups();
-  scheduleDigest({ inbox: inbox.length, waiting5: waiting.filter(x => x.age >= 5).length });
-
-  const et1 = document.getElementById('et1');
-  if (et1) et1.textContent = '🔴 לטיפול היום' + (inbox.length ? ' (' + inbox.length + ')' : '');
-  document.getElementById('emp-stat').textContent = `${inbox.length} חדשים · ${waiting.length} ממתינים ל-PO · ${state.allRows.length} פריטים סה"כ`;
 }
 
 function lineMeta(r) {

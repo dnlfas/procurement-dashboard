@@ -216,7 +216,16 @@
         </div>
         <div class="panel">
           <div class="phead">⏳ ממתינים ל-PO <span id="aging-count" style="color:var(--ora)"></span></div>
-          <div class="today-list" style="padding:8px 10px" id="aging-list"></div>
+          <div class="aging-split">
+            <div class="aging-sub">
+              <div class="aging-sub-hdr">🛡️ משרד הביטחון <span id="aging-mod-count" style="color:var(--ora)"></span></div>
+              <div class="today-list" id="aging-mod-list"></div>
+            </div>
+            <div class="aging-sub">
+              <div class="aging-sub-hdr">🏢 לקוחות אחרים <span id="aging-other-count" style="color:var(--ora)"></span></div>
+              <div class="today-list" id="aging-other-list"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
