@@ -97,8 +97,11 @@ function agingItem(r, age, cls) {
     </div>`;
 }
 
-// ── Supplier follow-ups due today, one card per supplier ─────
+// ── Supplier follow-ups due today, one card per customer SO ─────
+// Each card lists the SO's lines whose allocated PO lines are due for a supplier follow-up.
+// Due PO lines not allocated to any customer SO (stock orders) go in a last card.
 let _fuGroups = [];
+const NO_SO = '— ללא הזמנת לקוח';
 
 export function renderFollowups() {
   const el = document.getElementById('fu-list');
@@ -109,51 +112,65 @@ export function renderFollowups() {
   if (!state.poLoaded) { el.innerHTML = '<div class="empty" style="padding:18px">טען קובץ PO כדי לראות מעקבים</div>'; document.getElementById('fu-count').textContent = ''; return; }
   pruneFollowups();
 
-  // Which customer orders wait on each PO line (from the PO→SO allocation)
-  const forSO = {};
-  state.allRows.forEach(r => (r.alloc || []).forEach(a => { (forSO[pk(a.po)] = forSO[pk(a.po)] || new Set()).add(r.so + (r.customer ? ' · ' + shortCust(r.customer) : '')); }));
-
-  const byS = {};
-  state.poRows.filter(p => isDue(p)).forEach(p => { const s = p.supplier || '— ללא ספק'; (byS[s] = byS[s] || []).push(p); });
+  const due = new Set(state.poRows.filter(p => isDue(p)));
+  const bySO = {}, used = new Set();
+  state.allRows.filter(r => !['supplied', 'cancelled', 'cancelled_bts'].includes(r.status)).forEach(r => (r.alloc || []).forEach(a => {
+    if (!due.has(a.po)) return;
+    const g = bySO[r.so] = bySO[r.so] || { so: r.so, customer: r.customer, dd: null, lines: [] };
+    if (r.dd && (!g.dd || r.dd < g.dd)) g.dd = r.dd;
+    g.lines.push({ r, p: a.po, qty: a.qty });
+    used.add(a.po);
+  }));
   const lateness = p => { const d = effDate(p); return d ? TODAY - d : Infinity; };
-  _fuGroups = Object.entries(byS).map(([supplier, lines]) => ({ supplier, lines: lines.sort((a, b) => lateness(b) - lateness(a)) }))
-    .sort((a, b) => b.lines.filter(p => lateness(p) > 0).length - a.lines.filter(p => lateness(p) > 0).length || b.lines.length - a.lines.length);
+  const lateCount = g => g.lines.filter(x => lateness(x.p) > 0).length;
+  _fuGroups = Object.values(bySO)
+    .map(g => ({ ...g, lines: g.lines.sort((a, b) => lateness(b.p) - lateness(a.p)) }))
+    .sort((a, b) => lateCount(b) - lateCount(a) || (a.dd || Infinity) - (b.dd || Infinity));
+  const stock = [...due].filter(p => !used.has(p)).sort((a, b) => lateness(b) - lateness(a));
+  if (stock.length) _fuGroups.push({ so: null, customer: '', dd: null, lines: stock.map(p => ({ r: null, p, qty: p.qtyR })) });
 
-  const total = _fuGroups.reduce((s, g) => s + g.lines.length, 0);
-  document.getElementById('fu-count').textContent = total ? `(${total} שורות · ${_fuGroups.length} ספקים)` : '';
-  if (!total) { el.innerHTML = '<div class="empty" style="padding:18px">✓ אין מעקבי ספקים להיום</div>'; return; }
+  const poCount = due.size;
+  const soCount = _fuGroups.filter(g => g.so).length;
+  document.getElementById('fu-count').textContent = poCount ? `(${soCount} הזמנות · ${poCount} שורות PO)` : '';
+  if (!poCount) { el.innerHTML = '<div class="empty" style="padding:18px">✓ אין מעקבים להיום</div>'; return; }
 
   el.innerHTML = _fuGroups.map((g, gi) => {
-    const late = g.lines.filter(p => lateness(p) > 0).length;
-    return `<details class="fu-card"${gi < 3 ? ' open' : ''}>
+    const late = lateCount(g);
+    const supps = new Set(g.lines.map(x => x.p.supplier || '—')).size;
+    const head = g.so
+      ? `<span class="fu-supp badge-link" onclick="event.preventDefault();event.stopPropagation();openSOInEmp('${esc(g.so)}')" title="פתח הזמנה">${esc(g.so)}</span>
+        <span class="ti-cust" title="${esc(g.customer)}">${esc(shortCust(g.customer))}</span>
+        ${g.dd ? `<span class="ti-so" title="תאריך אספקה ללקוח (המוקדם בהזמנה)">${fd(g.dd)}</span>` : ''}`
+      : `<span class="fu-supp" title="שורות PO שלא משויכות להזמנת לקוח פתוחה">${NO_SO}</span>`;
+    return `<details class="fu-card"${gi < 3 && g.so ? ' open' : ''}>
       <summary class="fu-hdr">
-        <span class="fu-supp">${esc(g.supplier)}</span>
-        <span class="badge b-x" title="שורות PO לטיפול היום">${g.lines.length}</span>
-        ${late ? `<span class="badge b-r" title="שורות שתאריך האספקה שלהן עבר">🔴 ${late} באיחור</span>` : ''}
+        ${head}
+        <span class="badge b-x" title="שורות לטיפול היום">${g.lines.length}</span>
+        ${late ? `<span class="badge b-r" title="שורות PO שתאריך האספקה שלהן עבר">🔴 ${late} באיחור</span>` : ''}
         <span class="fu-acts" onclick="event.preventDefault();event.stopPropagation()">
-          <button class="btn btn-ghost" onclick="fuCopy(${gi})" title="העתק מייל מוכן לספק עם כל השורות">📋 העתק מייל</button>
-          <button class="btn btn-ghost fu-ok" onclick="fuContacted(${gi})" title="נוצר קשר עם הספק על כל השורות — המעקב הבא נקבע אוטומטית">✓ נוצר קשר</button>
+          <button class="btn btn-ghost" onclick="fuCopy(${gi})" title="העתק מייל מוכן לספק${supps > 1 ? ' — מייל נפרד לכל אחד מ-' + supps + ' הספקים' : ''}">📋 העתק מייל</button>
+          <button class="btn btn-ghost fu-ok" onclick="fuContacted(${gi})" title="נוצר קשר עם הספקים על כל השורות — המעקב הבא נקבע אוטומטית">✓ נוצר קשר</button>
           <button class="btn btn-ghost" onclick="openImportModal()" title="הדבק את תשובת הספק לעדכון תאריכים">📥 הדבק תשובה</button>
         </span>
       </summary>
-      ${g.lines.map(p => fuLine(p, forSO[pk(p)])).join('')}
+      ${g.lines.map(fuLine).join('')}
     </details>`;
   }).join('');
 }
 
-function fuLine(p, sos) {
+function fuLine({ r, p, qty }) {
   const k = esc(pk(p)).replace(/'/g, "\\'");
   const dd = effDate(p), late = dd && dd < TODAY;
   const last = lastContact(p);
   const promised = dd && p.dd && dd.getTime() !== p.dd.getTime();
   const iso = dd ? `${dd.getFullYear()}-${p2(dd.getMonth() + 1)}-${p2(dd.getDate())}` : '';
-  const soList = sos ? [...sos] : [];
+  const mpn = r ? r.mpn : p.mpn;
   return `<div class="today-item fu-item ${late ? 'ti-red' : 'ti-grey'}">
-      <div class="ti-mpn" title="${esc(p.desc || p.mpn)}">${esc(p.mpn)}</div>
+      <div class="ti-mpn" title="${esc((r && r.desc) || p.desc || mpn)}">${esc(mpn)}</div>
+      <span class="ti-so" title="${r ? 'כמות בהזמנת הלקוח שמכוסה בשורת PO זו' : 'יתרה לאספקה'}">×${qty}</span>
       <span class="ti-so" title="הזמנת רכש">${esc(poLabel(p.poNum))}</span>
-      <span class="ti-so" title="יתרה לאספקה">×${p.qtyR}</span>
+      <span class="ti-cust" title="${esc(p.supplier || '')}">${esc(shortCust(p.supplier) || '—')}</span>
       <span class="fu-reason">${esc(reason(p))}</span>
-      <span class="ti-note" title="${soList.length ? 'הזמנות לקוח שממתינות לשורה זו: ' + esc(soList.join(', ')) : ''}">${soList.length ? '🔗 ' + esc(soList.slice(0, 2).join(', ')) + (soList.length > 2 ? ' +' + (soList.length - 2) : '') : ''}</span>
       <span class="ti-so" title="קשר אחרון עם הספק על שורה זו">${last ? '📞 ' + fd(new Date(last)) : ''}</span>
       <span class="inbox-acts">
         <input type="date" class="fu-date${promised ? ' has-ovr' : ''}" value="${iso}" onchange="fuPromise('${k}', this.value)"
@@ -166,15 +183,20 @@ function fuLine(p, sos) {
     </div>`;
 }
 
+// One email per supplier involved in the card
 export async function fuCopy(gi) {
   const g = _fuGroups[gi]; if (!g) return;
-  try { await navigator.clipboard.writeText(emailText(g.supplier, g.lines)); toast('📋 המייל הועתק — הדבק בתוכנת הדואר'); }
+  const bySupp = {};
+  g.lines.forEach(({ p }) => { const s = p.supplier || ''; (bySupp[s] = bySupp[s] || new Set()).add(p); });
+  const parts = Object.entries(bySupp).map(([s, ps]) => emailText(s, [...ps]));
+  const text = parts.length > 1 ? Object.keys(bySupp).map((s, i) => `── ${s || 'ללא ספק'} ──\n${parts[i]}`).join('\n\n') : parts[0];
+  try { await navigator.clipboard.writeText(text); toast(parts.length > 1 ? `📋 ${parts.length} מיילים הועתקו (אחד לכל ספק)` : '📋 המייל הועתק — הדבק בתוכנת הדואר'); }
   catch (e) { toast('ההעתקה נכשלה'); }
 }
 export function fuContacted(gi) {
   const g = _fuGroups[gi]; if (!g) return;
-  markContacted([...new Set(g.lines.map(pk))]);
-  toast('✓ ' + g.supplier + ' — המעקב הבא נקבע');
+  markContacted([...new Set(g.lines.map(x => pk(x.p)))]);
+  toast('✓ ' + (g.so || NO_SO) + ' — המעקב הבא נקבע');
   renderToday();
 }
 export function fuLineContacted(k) { markContacted([k]); renderToday(); }

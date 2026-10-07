@@ -142,7 +142,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .fu-acts .btn{font-size:12px;padding:3px 10px}
 .fu-ok{color:var(--grn)}
 .fu-card .today-item{margin:4px 8px;border-radius:5px}
-.fu-item{grid-template-columns:minmax(90px,1fr) auto auto auto minmax(0,1fr) auto auto}
+.fu-item{grid-template-columns:minmax(90px,1fr) auto auto minmax(0,1fr) auto auto auto}
 .fu-reason{font-size:12px;color:var(--txt);white-space:nowrap}
 .fu-date{background:var(--sur2);color:var(--txt);border:1px solid var(--bdr);border-radius:5px;font-size:12px;padding:1px 4px;font-family:var(--mono)}
 .fu-date.has-ovr{border-color:var(--acc);color:var(--acc)}
