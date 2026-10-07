@@ -3,6 +3,7 @@ import { esc, fd, p2, autoH, expandNotes, toast } from '../utils.js';
 import { calcG, isShortCovered } from '../parse/so.js';
 import { saveField, saveStatus, saveNote } from '../persistence.js';
 import { trackSeen, inboxReason, ageDays, needsPO, ackLine, snoozeLine, ddFromKey } from '../tracker.js';
+import { pk, poLabel, isDue, effDate, reason, lastContact, markContacted, snoozeFollowup, setPromised, pruneFollowups, emailText, scheduleDigest, setDigest } from '../followup.js';
 
 const shortCust = c => (c || '').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 18);
 
@@ -38,6 +39,9 @@ export function renderToday() {
         + (old.length > 50 ? `<div class="more-hint">+ ${old.length - 50} פריטים נוספים — ראה "כל ההזמנות" עם סינון "לא מכוסים"</div>` : '')
         + '</details>' : '')
     || `<div class="empty" style="padding:18px">✓ כל הפריטים מכוסים בהזמנות רכש</div>`;
+
+  renderFollowups();
+  scheduleDigest({ inbox: inbox.length, waiting5: waiting.filter(x => x.age >= 5).length });
 
   const et1 = document.getElementById('et1');
   if (et1) et1.textContent = '🔴 לטיפול היום' + (inbox.length ? ' (' + inbox.length + ')' : '');
@@ -91,6 +95,105 @@ function agingItem(r, age, cls) {
       ${lineMeta(r)}
       <span class="ti-note" title="${esc(note || '')}">${note ? '📝 ' + esc(note.split('\n').pop().slice(0, 40)) : ''}</span>
     </div>`;
+}
+
+// ── Supplier follow-ups due today, one card per supplier ─────
+let _fuGroups = [];
+
+export function renderFollowups() {
+  const el = document.getElementById('fu-list');
+  if (!el) return;
+  const btn = document.getElementById('fu-digest');
+  btn.textContent = state.followups.digest ? '🔔 סיכום בוקר פעיל' : '🔕 הפעל סיכום בוקר';
+  btn.classList.toggle('on', !!state.followups.digest);
+  if (!state.poLoaded) { el.innerHTML = '<div class="empty" style="padding:18px">טען קובץ PO כדי לראות מעקבים</div>'; document.getElementById('fu-count').textContent = ''; return; }
+  pruneFollowups();
+
+  // Which customer orders wait on each PO line (from the PO→SO allocation)
+  const forSO = {};
+  state.allRows.forEach(r => (r.alloc || []).forEach(a => { (forSO[pk(a.po)] = forSO[pk(a.po)] || new Set()).add(r.so + (r.customer ? ' · ' + shortCust(r.customer) : '')); }));
+
+  const byS = {};
+  state.poRows.filter(p => isDue(p)).forEach(p => { const s = p.supplier || '— ללא ספק'; (byS[s] = byS[s] || []).push(p); });
+  const lateness = p => { const d = effDate(p); return d ? TODAY - d : Infinity; };
+  _fuGroups = Object.entries(byS).map(([supplier, lines]) => ({ supplier, lines: lines.sort((a, b) => lateness(b) - lateness(a)) }))
+    .sort((a, b) => b.lines.filter(p => lateness(p) > 0).length - a.lines.filter(p => lateness(p) > 0).length || b.lines.length - a.lines.length);
+
+  const total = _fuGroups.reduce((s, g) => s + g.lines.length, 0);
+  document.getElementById('fu-count').textContent = total ? `(${total} שורות · ${_fuGroups.length} ספקים)` : '';
+  if (!total) { el.innerHTML = '<div class="empty" style="padding:18px">✓ אין מעקבי ספקים להיום</div>'; return; }
+
+  el.innerHTML = _fuGroups.map((g, gi) => {
+    const late = g.lines.filter(p => lateness(p) > 0).length;
+    return `<details class="fu-card"${gi < 3 ? ' open' : ''}>
+      <summary class="fu-hdr">
+        <span class="fu-supp">${esc(g.supplier)}</span>
+        <span class="badge b-x" title="שורות PO לטיפול היום">${g.lines.length}</span>
+        ${late ? `<span class="badge b-r" title="שורות שתאריך האספקה שלהן עבר">🔴 ${late} באיחור</span>` : ''}
+        <span class="fu-acts" onclick="event.preventDefault();event.stopPropagation()">
+          <button class="btn btn-ghost" onclick="fuCopy(${gi})" title="העתק מייל מוכן לספק עם כל השורות">📋 העתק מייל</button>
+          <button class="btn btn-ghost fu-ok" onclick="fuContacted(${gi})" title="נוצר קשר עם הספק על כל השורות — המעקב הבא נקבע אוטומטית">✓ נוצר קשר</button>
+          <button class="btn btn-ghost" onclick="openImportModal()" title="הדבק את תשובת הספק לעדכון תאריכים">📥 הדבק תשובה</button>
+        </span>
+      </summary>
+      ${g.lines.map(p => fuLine(p, forSO[pk(p)])).join('')}
+    </details>`;
+  }).join('');
+}
+
+function fuLine(p, sos) {
+  const k = esc(pk(p)).replace(/'/g, "\\'");
+  const dd = effDate(p), late = dd && dd < TODAY;
+  const last = lastContact(p);
+  const promised = dd && p.dd && dd.getTime() !== p.dd.getTime();
+  const iso = dd ? `${dd.getFullYear()}-${p2(dd.getMonth() + 1)}-${p2(dd.getDate())}` : '';
+  const soList = sos ? [...sos] : [];
+  return `<div class="today-item fu-item ${late ? 'ti-red' : 'ti-grey'}">
+      <div class="ti-mpn" title="${esc(p.desc || p.mpn)}">${esc(p.mpn)}</div>
+      <span class="ti-so" title="הזמנת רכש">${esc(poLabel(p.poNum))}</span>
+      <span class="ti-so" title="יתרה לאספקה">×${p.qtyR}</span>
+      <span class="fu-reason">${esc(reason(p))}</span>
+      <span class="ti-note" title="${soList.length ? 'הזמנות לקוח שממתינות לשורה זו: ' + esc(soList.join(', ')) : ''}">${soList.length ? '🔗 ' + esc(soList.slice(0, 2).join(', ')) + (soList.length > 2 ? ' +' + (soList.length - 2) : '') : ''}</span>
+      <span class="ti-so" title="קשר אחרון עם הספק על שורה זו">${last ? '📞 ' + fd(new Date(last)) : ''}</span>
+      <span class="inbox-acts">
+        <input type="date" class="fu-date${promised ? ' has-ovr' : ''}" value="${iso}" onchange="fuPromise('${k}', this.value)"
+          title="${promised ? 'תאריך שהספק מסר (בדוח PO: ' + fd(p.dd) + '). ' : ''}תאריך אספקה חדש מהספק — המעקב הבא יקבע לפיו">
+        <button class="btn btn-ghost" onclick="fuLineContacted('${k}')" title="נוצר קשר על שורה זו">✓</button>
+        <select class="snooze-sel" onchange="fuSnooze('${k}', this.value)" title="דחה מעקב">
+          <option value="">⏰</option><option value="1">מחר</option><option value="3">בעוד 3 ימים</option><option value="7">בעוד שבוע</option>
+        </select>
+      </span>
+    </div>`;
+}
+
+export async function fuCopy(gi) {
+  const g = _fuGroups[gi]; if (!g) return;
+  try { await navigator.clipboard.writeText(emailText(g.supplier, g.lines)); toast('📋 המייל הועתק — הדבק בתוכנת הדואר'); }
+  catch (e) { toast('ההעתקה נכשלה'); }
+}
+export function fuContacted(gi) {
+  const g = _fuGroups[gi]; if (!g) return;
+  markContacted([...new Set(g.lines.map(pk))]);
+  toast('✓ ' + g.supplier + ' — המעקב הבא נקבע');
+  renderToday();
+}
+export function fuLineContacted(k) { markContacted([k]); renderToday(); }
+export function fuSnooze(k, days) { if (!days) return; snoozeFollowup(k, +days); renderToday(); }
+export function fuPromise(k, value) {
+  const p = state.poRows.find(x => pk(x) === k); if (!p) return;
+  setPromised(p, value);
+  toast(value ? '✓ תאריך חדש נשמר — המעקב הבא יקבע לפיו' : 'התאריך מהספק הוסר');
+  renderToday();
+}
+export async function fuDigest() {
+  const on = !state.followups.digest;
+  if (on) {
+    const { enablePush } = await import('../notify.js');
+    if (!(await enablePush())) return;
+  }
+  setDigest(on);
+  toast(on ? '🔔 סיכום בוקר יישלח בימים א׳–ה׳ ב-08:00' : 'סיכום הבוקר כובה');
+  renderToday();
 }
 
 export function ackInbox(nk) { ackLine(nk); renderToday(); }

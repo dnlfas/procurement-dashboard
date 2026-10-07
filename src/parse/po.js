@@ -27,7 +27,8 @@ export function parsePORows(raw) {
     const poNum = s(r[PK.poNum]);
     const mpn = s(r[PK.mpn]);
     if (!poNum && !mpn) return null;
-    const supplier = s(r[PK.supp]).replace(/^\$-\s*/, '').trim();
+    // ERP marks currency on the name: "$- Name" or "Name -$" (sometimes with a stray Hebrew vowel mark)
+    const supplier = s(r[PK.supp]).replace(/^\$-\s*/, '').replace(/[\s\u0591-\u05C7]*-?\s*\$\s*$/, '').trim();
     const desc = s(r[PK.desc]);
     const qtyO = parseFloat(r[PK.qtyO]) || 0;
     const qtyS = parseFloat(r[PK.qtyS]) || 0;

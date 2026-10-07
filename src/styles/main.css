@@ -134,8 +134,22 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inbox-acts{display:flex;gap:4px;align-items:center}
 .inbox-acts .btn{padding:2px 9px;font-size:13px;color:var(--grn)}
 .snooze-sel{background:var(--sur2);color:var(--txt);border:1px solid var(--bdr);border-radius:5px;font-size:12px;padding:2px 4px}
+.fu-card{border:1px solid var(--bdr);border-radius:7px;margin-bottom:8px;overflow:hidden}
+.fu-card>summary{list-style:none}
+.fu-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--sur2);cursor:pointer;flex-wrap:wrap}
+.fu-supp{font-size:14px;font-weight:700;color:var(--txtb)}
+.fu-acts{display:flex;gap:6px;margin-inline-start:auto;flex-wrap:wrap}
+.fu-acts .btn{font-size:12px;padding:3px 10px}
+.fu-ok{color:var(--grn)}
+.fu-card .today-item{margin:4px 8px;border-radius:5px}
+.fu-item{grid-template-columns:minmax(90px,1fr) auto auto auto minmax(0,1fr) auto auto}
+.fu-reason{font-size:12px;color:var(--txt);white-space:nowrap}
+.fu-date{background:var(--sur2);color:var(--txt);border:1px solid var(--bdr);border-radius:5px;font-size:12px;padding:1px 4px;font-family:var(--mono)}
+.fu-date.has-ovr{border-color:var(--acc);color:var(--acc)}
+.fu-digest{margin-inline-start:auto;font-size:11px;padding:2px 10px;text-transform:none;letter-spacing:0}
+.fu-digest.on{color:var(--grn)}
 @media (max-width:900px){
-  .inbox-item,.aging-item{grid-template-columns:1fr auto auto;row-gap:4px}
+  .inbox-item,.aging-item,.fu-item{grid-template-columns:1fr auto auto;row-gap:4px}
   .ti-note{grid-column:1 / -1}
 }
 

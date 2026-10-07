@@ -36,7 +36,8 @@ import {
 
 // ── Views: Employee ───────────────────────────────────────────
 import {
-  renderToday, ackInbox, snoozeInbox, fillSelects, fillSel, applyFilters,
+  renderToday, ackInbox, snoozeInbox, fuCopy, fuContacted, fuLineContacted, fuSnooze, fuPromise, fuDigest,
+  fillSelects, fillSel, applyFilters,
   renderSOList, renderSOCard, setSOStatus, hdrClk, togSO, expandAll, buildLT, buildLR
 } from './views/employee.js';
 
@@ -208,7 +209,8 @@ Object.assign(window, {
   renderBoss, renderChart, renderDueThisWeek, renderCustRisk, renderSuppList, renderCoverage,
 
   // views — employee
-  renderToday, ackInbox, snoozeInbox, fillSelects, applyFilters, renderSOList, renderSOCard,
+  renderToday, ackInbox, snoozeInbox, fuCopy, fuContacted, fuLineContacted, fuSnooze, fuPromise, fuDigest,
+  fillSelects, applyFilters, renderSOList, renderSOCard,
   setSOStatus, hdrClk, togSO, expandAll, buildLT, buildLR,
 
   // views — mod

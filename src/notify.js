@@ -52,6 +52,8 @@ async function ensurePushSubscription() {
   }
 }
 
+export const enablePush = ensurePushSubscription;
+
 async function getReminders() {
   const r = await fetch('/api/po-reminders');
   if (!r.ok) return [];
