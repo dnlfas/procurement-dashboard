@@ -13,7 +13,7 @@ export async function showVersion() {
     if (!r.ok) return;
     const { version, date } = await r.json();
     const d = new Date(date);
-    el.textContent = `v${version} · ${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`;
+    el.textContent = `v${version} · ${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
     el.title = `גרסה ${version} · ${fmt(d)}`;
   } catch (e) {}
 }
