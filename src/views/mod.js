@@ -123,7 +123,7 @@ function _renderMODDue(modRows) {
     const days = Math.floor((r.dd - TODAY) / 86400000);
     const cls = days <= 2 ? 'rb-red' : days <= 4 ? 'rb-ora' : 'rb-grn';
     return `<div class="risk-row">
-      <span class="risk-badge ${cls}" style="min-width:28px;text-align:center">${days}י׳</span>
+      <span class="risk-badge ${cls}" style="min-width:28px;text-align:center" title="${days} ימים עד תאריך האספקה ללקוח">${days}י׳</span>
       <div class="risk-name" style="font-size:13px;font-family:var(--mono)">${esc(r.mpn)}</div>
       <div style="font-size:12px;color:var(--txt2);flex-shrink:0">${esc(r.custPO || r.so || '')}</div>
     </div>`;
@@ -161,7 +161,7 @@ function _renderMODUpcoming(modRows) {
       ? '<span style="color:var(--grn);font-size:13px" title="מכוסה">●</span>'
       : '<span style="color:var(--txt2);font-size:13px" title="לא מכוסה">○</span>';
     return `<div class="risk-row" style="padding-right:28px">
-      <span class="risk-badge ${cls}" style="min-width:32px;text-align:center">${days}י׳</span>
+      <span class="risk-badge ${cls}" style="min-width:32px;text-align:center" title="${days} ימים עד תאריך האספקה ללקוח">${days}י׳</span>
       <div class="risk-name" style="font-size:12px;font-family:var(--mono)">${esc(r.mpn)}</div>
       <div style="font-size:12px;color:var(--txt2);flex-shrink:0;font-family:var(--mono)">${fd(r.dd)}</div>
       ${covDot}
@@ -225,9 +225,9 @@ function _renderMODSOList(modGroups) {
     const tlCls = g.tl === 'red' ? 'tl-r' : g.tl === 'orange' ? 'tl-o' : 'tl-g';
 
     const badges = [
-      ovrCnt ? `<span class="risk-badge rb-red">${ovrCnt} באיחור</span>` : '',
-      pndCnt ? `<span class="risk-badge rb-ora">${pndCnt} ממתין</span>` : '',
-      covCnt ? `<span class="risk-badge rb-grn">✓ ${covCnt}</span>` : '',
+      ovrCnt ? `<span class="risk-badge rb-red" title="שורות שתאריך האספקה ללקוח עבר וטרם סופקו">${ovrCnt} באיחור</span>` : '',
+      pndCnt ? `<span class="risk-badge rb-ora" title="שורות ללא כיסוי הזמנת רכש (טרם הוזמנו מספק)">${pndCnt} ממתין</span>` : '',
+      covCnt ? `<span class="risk-badge rb-grn" title="שורות מכוסות בהזמנת רכש">✓ ${covCnt}</span>` : '',
       g.isPull ? '<span class="pull-badge">תיק משיכה</span>' : '',
     ].filter(Boolean).join('');
 

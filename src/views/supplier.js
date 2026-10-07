@@ -55,9 +55,9 @@ export function renderSuppliers() {
     const mpnMatch = !!q && g.rows.some(r => r.mpn.toLowerCase().includes(q));
 
     const badges = [];
-    if (ovrRows.length) badges.push(`<span class="badge b-r">🔴 ${ovrRows.length} באיחור</span>`);
-    if (partialRows.length) badges.push(`<span class="badge b-o">◑ ${partialRows.length} חלקי</span>`);
-    if (crossSO && matched.length) badges.push(`<span class="badge b-a">🔗 ${matched.length} מחובר SO</span>`);
+    if (ovrRows.length) badges.push(`<span class="badge b-r" title="שורות PO שתאריך האספקה של הספק עבר">🔴 ${ovrRows.length} באיחור</span>`);
+    if (partialRows.length) badges.push(`<span class="badge b-o" title="שורות PO שסופקו חלקית — יש יתרה לאספקה">◑ ${partialRows.length} חלקי</span>`);
+    if (crossSO && matched.length) badges.push(`<span class="badge b-a" title="שורות PO שהפריט שלהן מופיע בהזמנת לקוח פתוחה">🔗 ${matched.length} מחובר SO</span>`);
 
     const ovrValFmt = ovrRows.length ? ` · ₪${Math.round(g.ovrVal / 1000)}K באיחור` : '';
 
@@ -110,7 +110,7 @@ export function buildPOTable(rows, soMPNs, crossSO) {
   </tr></thead><tbody>
   ${sorted.map(r => {
     const dc = r.isOvr ? 'past' : (r.dd && r.dd - TODAY < 30 * 86400000 ? 'curr' : '');
-    const dayB = r.isOvr ? `<span class="db db-r">${Math.floor((TODAY - r.dd) / 86400000)}י׳</span>` : '';
+    const dayB = r.isOvr ? `<span class="db db-r" title="ימים מאז תאריך האספקה של הספק">${Math.floor((TODAY - r.dd) / 86400000)}י׳</span>` : '';
     const tl = r.isOvr ? 'r' : r.isPartial ? 'o' : 'g';
     const soMatch = crossSO && soMPNs.has(r.mpn.trim().toUpperCase());
     const showBell = !seenPO.has(r.poNum);
@@ -126,7 +126,7 @@ export function buildPOTable(rows, soMPNs, crossSO) {
       <td class="qty" style="${r.qtyS > 0 ? 'color:var(--grn)' : ''}">${r.qtyS}</td>
       <td class="qty" style="${r.isOvr ? 'color:var(--red)' : ''}">${r.qtyR}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--txt2);white-space:nowrap">₪${Math.round(r.valILS).toLocaleString()}</td>
-      ${crossSO ? `<td>${soMatch ? '<span class="badge b-a" style="font-size:10px">✓</span>' : '<span style="color:var(--txt2);font-size:11px">—</span>'}</td>` : ''}
+      ${crossSO ? `<td>${soMatch ? '<span class="badge b-a" style="font-size:10px" title="הפריט מופיע בהזמנת לקוח פתוחה">✓</span>' : '<span style="color:var(--txt2);font-size:11px">—</span>'}</td>` : ''}
     </tr>`;
   }).join('')}
   </tbody></table>`;

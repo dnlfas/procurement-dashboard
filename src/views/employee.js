@@ -17,7 +17,7 @@ export function renderToday() {
       <div class="ti-dot ${dc}"></div>
       <div class="ti-mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div>
       <span class="ti-cust" title="${esc(r.customer)}">${esc((r.customer || '').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 18))}</span>
-      <span class="db ${bc}">${r.daysOvr}י׳</span>
+      <span class="db ${bc}" title="${r.daysOvr} ימים מאז תאריך האספקה ללקוח">${r.daysOvr}י׳</span>
       <span class="ti-so">${esc(r.so)}</span>
     </div>`;
   }).join('') + (urgent.length > 20 ? `<div class="more-hint">+ ${urgent.length - 20} פריטים נוספים</div>` : '');
@@ -85,11 +85,11 @@ export function renderSOCard(g) {
   const ds = g.mn ? (same ? fd(g.mn) : fd(g.mn) + '–' + fd(g.mx)) : '—';
   const dc = g.mn && g.mn < TODAY ? 'past' : (g.mn && g.mn - TODAY < 30 * 86400000 ? 'curr' : '');
   const bs = [];
-  if (g.ovr) bs.push(`<span class="badge b-r">🔴 ${g.ovr}</span>`);
-  if (g.unc) bs.push(`<span class="badge b-o">⚠ ${g.unc}</span>`);
-  if (g.cov) bs.push(`<span class="badge b-g">✓ ${g.cov}</span>`);
+  if (g.ovr) bs.push(`<span class="badge b-r" title="שורות שתאריך האספקה ללקוח עבר וטרם סופקו">🔴 ${g.ovr}</span>`);
+  if (g.unc) bs.push(`<span class="badge b-o" title="שורות ללא כיסוי הזמנת רכש (טרם הוזמנו מספק)">⚠ ${g.unc}</span>`);
+  if (g.cov) bs.push(`<span class="badge b-g" title="שורות מכוסות בהזמנת רכש">✓ ${g.cov}</span>`);
   if (g.short) bs.push(`<span class="badge b-o" title="שורות ללא כיסוי PO מלא">חסר ${g.short}</span>`);
-  bs.push(`<span class="badge b-x">${g.lines.length}</span>`);
+  bs.push(`<span class="badge b-x" title="סה״כ שורות בהזמנה">${g.lines.length}</span>`);
   const ss = g.supps.length ? `<div class="suppstrip">${g.supps.slice(0, 4).map(sv => `<span class="badge b-a">${esc(sv)}</span>`).join('')}</div>` : '';
   const snk = 'SO__' + g.so;
   const sn = esc(state.notes[snk] || '');
@@ -169,7 +169,7 @@ export function buildLT(lines) {
 
 export function buildLR(r) {
   const dc = r.isOvr ? 'past' : (r.dd && r.dd - TODAY < 30 * 86400000 ? 'curr' : '');
-  const db = r.daysOvr > 0 ? `<span class="db ${r.daysOvr > 30 ? 'db-r' : 'db-o'}">${r.daysOvr}י׳</span>` : '';
+  const db = r.daysOvr > 0 ? `<span class="db ${r.daysOvr > 30 ? 'db-r' : 'db-o'}" title="${r.daysOvr} ימים מאז תאריך האספקה ללקוח">${r.daysOvr}י׳</span>` : '';
   const suppOvr = state.fieldOvr[r.nk + '__supp'];
   const poOvr = state.fieldOvr[r.nk + '__po'];
   const suppVal = suppOvr !== undefined ? suppOvr : r.supplier;

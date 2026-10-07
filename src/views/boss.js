@@ -84,7 +84,7 @@ export function renderDueThisWeek() {
     const days = Math.floor((r.dd - TODAY) / 86400000);
     const cls = days <= 2 ? 'rb-red' : days <= 4 ? 'rb-ora' : 'rb-grn';
     return `<div class="risk-row">
-      <span class="risk-badge ${cls}" style="min-width:28px;text-align:center">${days}י׳</span>
+      <span class="risk-badge ${cls}" style="min-width:28px;text-align:center" title="${days} ימים עד תאריך האספקה ללקוח">${days}י׳</span>
       <div class="risk-name" style="font-size:13px;font-family:var(--mono)">${esc(r.mpn)}</div>
       <div style="font-size:12px;color:var(--txt2);flex-shrink:0;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.customer || '')}</div>
     </div>`;
@@ -119,9 +119,9 @@ export function renderCustRisk() {
   let seenNonOvr = false;
   el.innerHTML = alertHTML + sorted.map(([k, v]) => {
     const badges = [];
-    if (v.ovr > 0) badges.push(`<span class="risk-badge rb-red">🔴 ${v.ovr} באיחור</span>`);
-    if (v.unc > 0) badges.push(`<span class="risk-badge rb-ora">⚠ ${v.unc} ממתין</span>`);
-    if (v.cov > 0) badges.push(`<span class="risk-badge rb-grn">✓ ${v.cov}</span>`);
+    if (v.ovr > 0) badges.push(`<span class="risk-badge rb-red" title="שורות שתאריך האספקה ללקוח עבר וטרם סופקו">🔴 ${v.ovr} באיחור</span>`);
+    if (v.unc > 0) badges.push(`<span class="risk-badge rb-ora" title="שורות ללא כיסוי הזמנת רכש (עוד לא באיחור)">⚠ ${v.unc} ממתין</span>`);
+    if (v.cov > 0) badges.push(`<span class="risk-badge rb-grn" title="שורות מכוסות בהזמנת רכש">✓ ${v.cov}</span>`);
     let divider = '';
     if (!seenNonOvr && v.ovr === 0) { seenNonOvr = true; divider = '<div class="risk-divider">ממתין בלבד</div>'; }
     return divider + `<div class="risk-row" style="flex-wrap:wrap;gap:6px">
@@ -144,9 +144,10 @@ export function renderSuppList() {
   el.innerHTML = sorted.map(([k, v]) => {
     const badgeCls = v.ovr > 0 ? 'rb-red' : v.qc > 0 ? 'rb-pur' : 'rb-grn';
     const badgeTxt = v.ovr > 0 ? v.ovr + ' באיחור' : v.qc > 0 ? v.qc + ' QC' : v.total + ' פריטים';
+    const badgeTip = v.ovr > 0 ? 'שורות באיחור וללא כיסוי הזמנת רכש' : v.qc > 0 ? 'שורות בבקרת איכות' : 'סה״כ שורות פתוחות מול הספק';
     return `<div class="risk-row">
       <div class="risk-name">${esc(k)}</div>
-      <span class="risk-badge ${badgeCls}">${badgeTxt}</span>
+      <span class="risk-badge ${badgeCls}" title="${badgeTip}">${badgeTxt}</span>
     </div>`;
   }).join('');
 }

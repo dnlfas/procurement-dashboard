@@ -41,10 +41,10 @@ export function renderSSP() {
     const sname = c.customer.replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 28);
     const tlC = 'tl-' + c.tl;
     var bs = '';
-    if (c.totOvr) bs += '<span class="badge b-r">🔴 ' + c.totOvr + '</span>';
-    if (c.totUnc) bs += '<span class="badge b-o">⚠ ' + c.totUnc + '</span>';
-    if (c.totCov) bs += '<span class="badge b-g">✓ ' + c.totCov + '</span>';
-    bs += '<span class="badge b-x">' + c.sos.length + ' הזמנות</span>';
+    if (c.totOvr) bs += '<span class="badge b-r" title="שורות באיחור וללא כיסוי הזמנת רכש">🔴 ' + c.totOvr + '</span>';
+    if (c.totUnc) bs += '<span class="badge b-o" title="שורות ללא כיסוי הזמנת רכש (עוד לא באיחור)">⚠ ' + c.totUnc + '</span>';
+    if (c.totCov) bs += '<span class="badge b-g" title="שורות מכוסות בהזמנת רכש">✓ ' + c.totCov + '</span>';
+    bs += '<span class="badge b-x" title="הזמנות פתוחות של הלקוח">' + c.sos.length + ' הזמנות</span>';
 
     var soHtml = '';
     var sortedSos = c.sos.slice().sort(function(a, b) {
@@ -59,10 +59,10 @@ export function renderSSP() {
       const ds = g.minDate ? fd(g.minDate) + (g.maxDate && g.maxDate.getTime() !== g.minDate.getTime() ? '–' + fd(g.maxDate) : '') : '—';
       const dc = g.minDate && g.minDate < TODAY ? 'past' : (g.minDate && g.minDate - TODAY < 30 * 86400000 ? 'curr' : '');
       var gbs = '';
-      if (g.ovr) gbs += '<span class="badge b-r">🔴 ' + g.ovr + '</span>';
-      if (g.unc) gbs += '<span class="badge b-o">⚠ ' + g.unc + '</span>';
-      if (g.cov) gbs += '<span class="badge b-g">✓ ' + g.cov + '</span>';
-      gbs += '<span class="badge b-x">' + g.lines.length + '</span>';
+      if (g.ovr) gbs += '<span class="badge b-r" title="שורות באיחור וללא כיסוי הזמנת רכש">🔴 ' + g.ovr + '</span>';
+      if (g.unc) gbs += '<span class="badge b-o" title="שורות ללא כיסוי הזמנת רכש (עוד לא באיחור)">⚠ ' + g.unc + '</span>';
+      if (g.cov) gbs += '<span class="badge b-g" title="שורות מכוסות בהזמנת רכש">✓ ' + g.cov + '</span>';
+      gbs += '<span class="badge b-x" title="סה״כ שורות בהזמנה">' + g.lines.length + '</span>';
       const matchedPO = g.lines.filter(function(r) { return r.allocQty > 0; }).length;
       const supps = [...new Set(g.lines.map(function(r) { return r.supplier; }).filter(Boolean))];
       const suppTxt = supps.length ? supps.slice(0, 2).join(', ') : '—';
