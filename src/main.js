@@ -57,7 +57,7 @@ import {
 
 // ── RFQ Engine ────────────────────────────────────────────────
 import {
-  startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ
+  startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ, loadRFQFromServer
 } from './rfq/engine.js';
 
 // ── Import ────────────────────────────────────────────────────
@@ -165,7 +165,7 @@ setApiCallbacks(function onDataLoaded(type) {
 // initApp — called after auth succeeds
 // ─────────────────────────────────────────────────────────────
 async function initApp() {
-  await loadOverridesFromBlob();
+  await Promise.all([loadOverridesFromBlob(), loadRFQFromServer()]);
   updateImportBadge();
   refreshDataStatus();
   // If data already loaded (via wizard), render

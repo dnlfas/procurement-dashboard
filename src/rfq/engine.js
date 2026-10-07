@@ -57,9 +57,60 @@ export function rfqSortKey(rec) {
   return diff < 0 ? diff - 1e12 : diff;
 }
 
-export function saveRFQ() { localStorage.setItem(RFQ_KEY, JSON.stringify(state.rfqData)); }
+// RFQs live in localStorage and are mirrored to the server (/api/overrides?doc=rfq).
+// Each record carries updatedAt; deleted ids are kept as tombstones so a delete on one device sticks on others.
+const RFQ_DEL_KEY = 'oo_rfq_deleted';
+let _rfqSyncTimer = null;
+
+function loadDeleted() {
+  try { return JSON.parse(localStorage.getItem(RFQ_DEL_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function pushRFQ() {
+  clearTimeout(_rfqSyncTimer);
+  _rfqSyncTimer = setTimeout(() => {
+    const payload = JSON.stringify({ items: state.rfqData, deleted: loadDeleted() });
+    fetch('/api/overrides?doc=rfq', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+  }, 1200);
+}
+
+export function saveRFQ() {
+  try { localStorage.setItem(RFQ_KEY, JSON.stringify(state.rfqData)); } catch(e) {}
+  pushRFQ();
+}
+
+function touch(rec) { rec.updatedAt = Date.now(); }
+
+export async function loadRFQFromServer() {
+  try {
+    const res = await fetch('/api/overrides?doc=rfq');
+    if (!res.ok) return;
+    const d = await res.json();
+    const deleted = new Set([...loadDeleted(), ...(d.deleted || [])]);
+    const byId = new Map();
+    const ver = r => r.updatedAt || r.receivedAt || 0;
+    [...(d.items || []), ...state.rfqData].forEach(r => {
+      if (deleted.has(r.id)) return;
+      const cur = byId.get(r.id);
+      if (!cur || ver(r) > ver(cur)) byId.set(r.id, r);
+    });
+    const merged = [...byId.values()].sort((a, b) => b.receivedAt - a.receivedAt);
+    const serverIds = (d.items || []).map(r => r.id + ':' + ver(r)).sort().join();
+    const mergedIds = merged.map(r => r.id + ':' + ver(r)).sort().join();
+    state.rfqData = merged;
+    try {
+      localStorage.setItem(RFQ_KEY, JSON.stringify(merged));
+      localStorage.setItem(RFQ_DEL_KEY, JSON.stringify([...deleted]));
+    } catch(e) {}
+    // Local had RFQs the server didn't (e.g. created before server sync existed) — upload them
+    if (serverIds !== mergedIds || deleted.size !== (d.deleted || []).length) pushRFQ();
+    const view = document.getElementById('rfq-view');
+    if (view && view.style.display !== 'none') import('../views/rfq.js').then(({ renderRFQ }) => renderRFQ());
+  } catch(e) {}
+}
 
 export function addRFQ(rec) {
+  touch(rec);
   state.rfqData.unshift(rec);
   saveRFQ();
   import('../views/rfq.js').then(({ renderRFQ }) => renderRFQ());
@@ -71,6 +122,7 @@ export function setRFQStatus(id, status) {
   rec.status = status;
   if (status === 'sent' && !rec.responseAt) rec.responseAt = Date.now();
   if (status === 'new' || status === 'in_progress') rec.responseAt = null;
+  touch(rec);
   saveRFQ();
   import('../views/rfq.js').then(({ renderRFQ }) => renderRFQ());
 }
@@ -79,12 +131,14 @@ export function saveRFQNote(id, val) {
   const rec = state.rfqData.find(r => r.id === id);
   if (!rec) return;
   rec.notes = val;
+  touch(rec);
   saveRFQ();
 }
 
 export function deleteRFQ(id) {
   if (!confirm('למחוק בקשה זו?')) return;
   state.rfqData = state.rfqData.filter(r => r.id !== id);
+  try { localStorage.setItem(RFQ_DEL_KEY, JSON.stringify([...loadDeleted(), id])); } catch(e) {}
   saveRFQ();
   import('../views/rfq.js').then(({ renderRFQ }) => renderRFQ());
 }

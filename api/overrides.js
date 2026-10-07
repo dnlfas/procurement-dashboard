@@ -1,11 +1,18 @@
 const { put, list } = require('@vercel/blob');
 const { isAuthed } = require('./_auth');
 
-const PATHNAME = 'procurement/overrides.json';
+// ?doc=rfq stores the RFQ list in its own blob (kept in this function to stay under Vercel's function limit)
+const PATHNAMES = {
+  overrides: 'procurement/overrides.json',
+  rfq: 'procurement/rfq.json',
+};
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-cache, no-store');
   if (!isAuthed(req)) return res.status(401).json({ error: 'unauthenticated' });
+  const doc = (req.query && req.query.doc) || 'overrides';
+  const PATHNAME = PATHNAMES[doc];
+  if (!PATHNAME) return res.status(400).json({ error: 'unknown doc' });
 
   if (req.method === 'GET') {
     try {
