@@ -31,8 +31,7 @@ export function renderMOD() {
     return;
   }
 
-  const poMPNs = new Set(state.poRows.map(p => p.mpn.trim().toUpperCase()));
-  const covFn = r => r.cov === 'green' || (state.poLoaded && poMPNs.has(r.mpn.trim().toUpperCase()));
+  const covFn = r => r.cov === 'green';
 
   const ovr = modRows.filter(r => r.isOvr && r.status !== 'supplied').length;
   const pnd = modRows.filter(r => !r.isOvr && !covFn(r) && r.status !== 'supplied').length;

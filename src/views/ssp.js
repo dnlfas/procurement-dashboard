@@ -34,7 +34,6 @@ export function renderSSP() {
   const SHOW = 5;
   const el = document.getElementById('ssp-list');
   const visible = state.sspAllOpen ? custArr : custArr.slice(0, SHOW);
-  const poMPNs = new Set(state.poRows.map(function(r) { return r.mpn.trim().toUpperCase(); }));
 
   var html2 = '';
   visible.forEach(function(c) {
@@ -64,7 +63,7 @@ export function renderSSP() {
       if (g.unc) gbs += '<span class="badge b-o">⚠ ' + g.unc + '</span>';
       if (g.cov) gbs += '<span class="badge b-g">✓ ' + g.cov + '</span>';
       gbs += '<span class="badge b-x">' + g.lines.length + '</span>';
-      const matchedPO = g.lines.filter(function(r) { return poMPNs.has(r.mpn.trim().toUpperCase()); }).length;
+      const matchedPO = g.lines.filter(function(r) { return r.allocQty > 0; }).length;
       const supps = [...new Set(g.lines.map(function(r) { return r.supplier; }).filter(Boolean))];
       const suppTxt = supps.length ? supps.slice(0, 2).join(', ') : '—';
       const soKey = g.so.replace(/'/g, "\\'");

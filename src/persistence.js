@@ -1,4 +1,4 @@
-import { state, NK } from './state.js';
+import { state, NK, TODAY } from './state.js';
 import { toast, autoH } from './utils.js';
 
 // Callback set by main.js to avoid circular imports
@@ -58,7 +58,7 @@ export function applyOverridesToRows(rows) {
     if (custPOOvr !== undefined) row.custPO = custPOOvr;
     if (ddOvr) {
       const d = new Date(ddOvr);
-      if (!isNaN(d)) { row.dd = d; row.isOvr = d < TODAY_REF(); row.daysOvr = row.isOvr ? Math.floor((TODAY_REF() - d) / 86400000) : 0; }
+      if (!isNaN(d)) { row.dd = d; row.isOvr = d < TODAY; row.daysOvr = row.isOvr ? Math.floor((TODAY - d) / 86400000) : 0; }
     }
     row.isPull = !!(row.custPO && state.pullOrders[row.custPO]);
     if (stOvr !== undefined) {
@@ -68,11 +68,6 @@ export function applyOverridesToRows(rows) {
       else row.cov = 'orange';
     }
   });
-}
-
-// Lazy TODAY ref to avoid importing from state (state imports nothing)
-function TODAY_REF() {
-  return new Date(2026, 4, 19);
 }
 
 export function saveField(inp) {

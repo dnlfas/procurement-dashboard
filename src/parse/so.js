@@ -88,6 +88,9 @@ export function parseRows(raw) {
   }).filter(Boolean);
 }
 
+// Line that has some PO cover, or is marked covered, but the open PO quantity doesn't reach its remaining qty
+export const isShortCovered = x => x.short > 0 && (x.allocQty > 0 || x.cov === 'green');
+
 export function _dbgSO(rows) {
   const custs = [...new Set(rows.map(r => r.customer))];
   console.log('[SO parsed]', rows.length, 'rows,', custs.length, 'unique customers:', custs);
@@ -122,6 +125,7 @@ export function calcG(g) {
   g.ovr = l.filter(x => x.isOvr && x.status !== 'supplied').length;
   g.unc = l.filter(x => x.cov !== 'green' && x.status !== 'supplied').length;
   g.cov = l.filter(x => x.cov === 'green').length;
+  g.short = l.filter(isShortCovered).length;
   if (g.ovr > 0) g.tl = 'red'; else if (g.unc > 0) g.tl = 'orange'; else g.tl = 'green';
   g.supps = [...new Set(l.map(x => x.supplier).filter(Boolean))];
   g.isPull = l.some(x => x.isPull);

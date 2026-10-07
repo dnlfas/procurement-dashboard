@@ -4,8 +4,7 @@ import { renderSSP } from './ssp.js';
 
 export function renderBoss() {
   const all = state.allRows.filter(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts');
-  const poMPNs = new Set(state.poRows.map(r => r.mpn.trim().toUpperCase()));
-  const covFn = l => l.cov === 'green' || (state.poLoaded && poMPNs.has(l.mpn.trim().toUpperCase()));
+  const covFn = l => l.cov === 'green';
   const ovr = all.filter(l => l.isOvr && l.status !== 'supplied').length;
   const pnd = all.filter(l => !l.isOvr && !covFn(l) && l.status !== 'supplied').length;
   const ord = all.filter(l => covFn(l)).length;
@@ -154,13 +153,12 @@ export function renderSuppList() {
 
 export function renderCoverage() {
   const byC = {};
-  const poMPNs = new Set(state.poRows.map(r => r.mpn.trim().toUpperCase()));
   state.allRows.filter(r => r.status !== 'cancelled' && r.status !== 'cancelled_bts').forEach(r => {
     const k = (r.customer || 'לא ידוע').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 20);
     if (!byC[k]) byC[k] = { tot: 0, cov: 0, poCov: 0 };
     byC[k].tot++;
     if (r.cov === 'green') byC[k].cov++;
-    if (state.poLoaded && poMPNs.has(r.mpn.trim().toUpperCase())) byC[k].poCov++;
+    if (state.poLoaded && r.allocQty > 0 && !r.short) byC[k].poCov++;
   });
   const el = document.getElementById('cov-list');
   el.innerHTML = Object.entries(byC).sort((a, b) => b[1].tot - a[1].tot).slice(0, 5).map(function([k, v]) {

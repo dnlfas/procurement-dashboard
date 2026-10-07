@@ -187,7 +187,7 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .qty{font-family:var(--mono);font-size:14px;text-align:center;color:var(--txtb);font-weight:600}
 .ddate{font-family:var(--mono);font-size:13px;white-space:nowrap}
 .ddate.past{color:var(--red);font-weight:700}.ddate.curr{color:var(--ora);font-weight:700}
-.db{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:3px}
+.db{font-family:var(--mono);font-size:10px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:3px;white-space:nowrap;display:inline-block}
 .db-r{background:var(--red-d);color:var(--red)}.db-o{background:var(--ora-d);color:var(--ora)}
 .stag{background:var(--acc-d);color:var(--acc);padding:2px 8px;border-radius:8px;font-size:10px;white-space:nowrap;display:inline-block;font-family:var(--mono)}
 .ptxt{font-family:var(--mono);font-size:10px;color:var(--txt2)}

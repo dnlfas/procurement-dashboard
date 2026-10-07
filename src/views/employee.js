@@ -1,8 +1,7 @@
 import { state, TODAY, NK } from '../state.js';
 import { esc, fd, p2, autoH, expandNotes } from '../utils.js';
-import { calcG } from '../parse/so.js';
+import { calcG, isShortCovered } from '../parse/so.js';
 import { saveField, saveStatus, saveNote } from '../persistence.js';
-import { bestPOMatch } from '../parse/po.js';
 
 export function renderToday() {
   const urgent = state.allRows
@@ -49,7 +48,7 @@ export function applyFilters() {
     if (!l.length) return null;
     if (fc) l = l.filter(x => x.customer === fc);
     if (fs) l = l.filter(x => x.supplier === fs);
-    if (fu) l = l.filter(x => x.cov !== 'green');
+    if (fu) l = l.filter(x => x.cov !== 'green' || isShortCovered(x));
     if (fo) l = l.filter(x => x.isOvr);
     if (fq) {
       const soMatch = g.so.toUpperCase().includes(fq) || (g.custPO || '').toUpperCase().includes(fq);
@@ -89,6 +88,7 @@ export function renderSOCard(g) {
   if (g.ovr) bs.push(`<span class="badge b-r">🔴 ${g.ovr}</span>`);
   if (g.unc) bs.push(`<span class="badge b-o">⚠ ${g.unc}</span>`);
   if (g.cov) bs.push(`<span class="badge b-g">✓ ${g.cov}</span>`);
+  if (g.short) bs.push(`<span class="badge b-o" title="שורות ללא כיסוי PO מלא">חסר ${g.short}</span>`);
   bs.push(`<span class="badge b-x">${g.lines.length}</span>`);
   const ss = g.supps.length ? `<div class="suppstrip">${g.supps.slice(0, 4).map(sv => `<span class="badge b-a">${esc(sv)}</span>`).join('')}</div>` : '';
   const snk = 'SO__' + g.so;
@@ -192,17 +192,12 @@ export function buildLR(r) {
       onchange="saveField(this)" title="מספר מעקב">
     ${trackUrl ? `<a href="${trackUrl}" target="_blank" rel="noopener" title="עקוב אחר המשלוח" style="color:var(--acc);font-size:14px;text-decoration:none;flex-shrink:0;line-height:1">🔗</a>` : ''}
   </div>`;
-  let poAutoStatus = null;
-  if (state.poLoaded) {
-    const mpnUp = r.mpn.trim().toUpperCase();
-    const poMatch = bestPOMatch(r, state.poRows.filter(p => p.mpn.trim().toUpperCase() === mpnUp));
-    if (poMatch) {
-      if (poMatch.qtyS > 0 && poMatch.qtyR > 0) poAutoStatus = 'partial';
-      else if (poMatch.qtyS > 0 && poMatch.qtyR === 0) poAutoStatus = 'supplied';
-      else if (poMatch.qtyR > 0 && r.status === 'none') poAutoStatus = 'ordered';
-    }
-  }
-  const effStatus = state.statusOvr[r.nk] || (poAutoStatus) || r.status;
+  // PO-based status inference happens in linkPOtoSO, which only uses POs actually tied to this line
+  const effStatus = state.statusOvr[r.nk] || r.status;
+  const covBadges = (isShortCovered(r)
+      ? `<span class="db db-r" title="${r.allocQty ? 'כמות בהזמנות רכש פתוחות: ' + r.allocQty : 'אין כמות פתוחה בהזמנות רכש'}">חסר ${r.short}</span>` : '')
+    + (r.allocLate
+      ? `<span class="db db-o" title="${esc(r.alloc.filter(a => a.po.dd && a.po.dd > r.dd).map(a => 'PO ' + a.po.poNum + ' צפוי ' + fd(a.po.dd)).join(' · '))}">PO מאחר</span>` : '');
   const selCls = ({ 'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-ord','qc_supp':'s-qc','qc':'s-qc','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can' })[effStatus] || 's-non';
   const STATUSES = [
     ['none','— ללא סטטוס','s-non'],['pending','טרם הוזמן','s-pnd'],['sourcing','איתור ספק','s-pnd'],
@@ -220,7 +215,7 @@ export function buildLR(r) {
     <td style="text-align:center"><span class="lntl tl-${r.cov === 'green' ? 'g' : r.cov === 'orange' ? 'o' : r.cov === 'red' ? 'r' : 'x'}"></span></td>
     <td><div class="mpn" title="${esc(r.desc || r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
-    <td class="qty">${r.qtyR || r.qtyO}</td>
+    <td class="qty">${r.qtyR || r.qtyO}${covBadges}</td>
     <td class="qty">${r.price ? (({ 'ILS': '₪', 'USD': '$', 'EUR': '€', 'GBP': '£' })[r.currency] || r.currency || '₪') + r.price.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}</td>
     <td>${sh}</td><td>${ph}</td><td>${th}</td><td>${sbh}</td>
     <td><textarea class="note-ta ${nv ? 'hn' : ''}" rows="1" data-key="${esc(r.nk)}"

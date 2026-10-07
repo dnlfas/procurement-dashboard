@@ -70,22 +70,65 @@ export function bestPOMatch(soRow, candidates) {
   }, null) || candidates[0];
 }
 
+// SO lines that no longer need PO quantity: closed, or goods already received from the supplier
+const NO_DEMAND = ['supplied', 'cancelled', 'cancelled_bts', 'qc', 'delivery_bts', 'waiting_cust'];
+const byDate = (a, b) => (a.dd ? a.dd.getTime() : Infinity) - (b.dd ? b.dd.getTime() : Infinity);
+
+// Split each PO's open quantity (qtyR) across the SO lines that need the same MPN.
+// Lines explicitly linked to a PO draw from it first; the rest is handed out by earliest SO due date.
+// Sets on each row: alloc [{po, qty}], allocQty, short (units with no PO), allocLate (a PO arrives after the SO due date).
+export function allocatePOs(byMPNList) {
+  const left = new Map();
+  state.poRows.forEach(p => left.set(p, p.qtyR));
+  const take = (r, p) => {
+    const q = Math.min(left.get(p), r.qtyR - r.allocQty);
+    if (q <= 0) return;
+    left.set(p, left.get(p) - q);
+    r.allocQty += q;
+    const a = r.alloc.find(x => x.po === p);
+    if (a) a.qty += q; else r.alloc.push({ po: p, qty: q });
+  };
+  const demandByMPN = {};
+  state.allRows.forEach(r => {
+    r.alloc = []; r.allocQty = 0; r.short = 0; r.allocLate = false;
+    if (r.qtyR > 0 && !NO_DEMAND.includes(r.status)) {
+      const k = r.mpn.trim().toUpperCase();
+      (demandByMPN[k] = demandByMPN[k] || []).push(r);
+    }
+  });
+  Object.entries(demandByMPN).forEach(([k, lines]) => {
+    const pos = (byMPNList[k] || []).filter(p => p.qtyR > 0).sort(byDate);
+    lines.sort(byDate);
+    lines.forEach(r => { if (r.poNum) pos.filter(p => p.poNum === r.poNum).forEach(p => take(r, p)); });
+    lines.forEach(r => pos.forEach(p => take(r, p)));
+    lines.forEach(r => {
+      // A line linked to a PO that isn't in the open-PO report (e.g. already fully received) — can't judge, don't flag
+      const linkedClosed = r.poNum && !pos.some(p => p.poNum === r.poNum);
+      r.short = linkedClosed ? 0 : r.qtyR - r.allocQty;
+      r.allocLate = !!(r.dd && r.alloc.some(a => a.po.dd && a.po.dd > r.dd));
+    });
+  });
+}
+
 export function linkPOtoSO() {
   if (!state.poLoaded || !state.allRows.length) return;
   const byMPNList = {};
   state.poRows.forEach(p => { const k = p.mpn.trim().toUpperCase(); if (!byMPNList[k]) byMPNList[k] = []; byMPNList[k].push(p); });
+  allocatePOs(byMPNList);
   let statusChanged = false;
   state.allRows.forEach(r => {
     const k = r.mpn.trim().toUpperCase();
     const all = byMPNList[k] || [];
-    const withQty = all.filter(p => p.qtyR > 0);
-    if ((r.cov === 'orange' || r.cov === 'red') && withQty.length) r.cov = 'green';
-    const bestWithQty = bestPOMatch(r, withQty);
-    if (!r.supplier && bestWithQty) r.supplier = bestWithQty.supplier;
-    const bestAll = bestPOMatch(r, all);
-    if (!r.poNum && !state.fieldOvr[r.nk + '__po'] && bestAll?.poNum) r.poNum = bestAll.poNum;
+    const fullyCovered = r.allocQty > 0 && r.short === 0;
+    if (r.cov !== 'green' && fullyCovered) r.cov = 'green';
+    const allocPO = r.alloc[0]?.po;
+    const supplierHint = allocPO || bestPOMatch(r, all.filter(p => p.qtyR > 0));
+    if (!r.supplier && supplierHint) r.supplier = supplierHint.supplier;
+    if (!r.poNum && !state.fieldOvr[r.nk + '__po'] && fullyCovered) r.poNum = allocPO.poNum;
     if (state.statusOvr[r.nk] === undefined) {
-      const p = bestAll;
+      // Infer status only from a PO this line is actually tied to, never from another customer's PO for the same MPN
+      const linked = r.poNum ? all.find(p => p.poNum === r.poNum) : null;
+      const p = linked || (fullyCovered ? allocPO : null);
       if (p) {
         let inferred = null;
         if (p.qtyS > 0 && p.qtyR > 0) inferred = 'partial';
