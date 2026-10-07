@@ -195,7 +195,9 @@ export function buildLR(r) {
   // PO-based status inference happens in linkPOtoSO, which only uses POs actually tied to this line
   const effStatus = state.statusOvr[r.nk] || r.status;
   const covBadges = (isShortCovered(r)
-      ? `<span class="db db-r" title="${r.allocQty ? 'כמות בהזמנות רכש פתוחות: ' + r.allocQty : 'אין כמות פתוחה בהזמנות רכש'}">חסר ${r.short}</span>` : '')
+      ? (r.allocQty
+        ? `<span class="db db-r" title="רק ${r.allocQty} יחידות מכוסות בהזמנות רכש פתוחות — חסרות ${r.short}">חסר ${r.short}</span>`
+        : `<span class="db db-r" title="מסומן כהוזמן, אך בדוח הזמנות הרכש אין כמות פתוחה לפריט זה. בדוק שההזמנה אכן בוצעה (או שהתקבלה כבר) ועדכן סטטוס / מספר PO">אין PO</span>`) : '')
     + (r.allocLate
       ? `<span class="db db-o" title="${esc(r.alloc.filter(a => a.po.dd && a.po.dd > r.dd).map(a => 'PO ' + a.po.poNum + ' צפוי ' + fd(a.po.dd)).join(' · '))}">PO מאחר</span>` : '');
   const selCls = ({ 'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-ord','qc_supp':'s-qc','qc':'s-qc','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can' })[effStatus] || 's-non';
