@@ -1,5 +1,6 @@
 import { state, NK, TODAY } from './state.js';
 import { toast, autoH } from './utils.js';
+import { mergeTracker, TRACKER_KEY } from './tracker.js';
 
 // Callback set by main.js to avoid circular imports
 let _refreshCallback = null;
@@ -17,7 +18,8 @@ export function syncOverrides() {
       statusOvr: state.statusOvr,
       notes: state.notes,
       pullOrders: state.pullOrders,
-      tempOrders, soImports, pendingCPO
+      tempOrders, soImports, pendingCPO,
+      tracker: state.tracker
     });
     fetch('/api/overrides', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' } }).catch(function() {});
   }, 1200);
@@ -35,6 +37,8 @@ export async function loadOverridesFromBlob() {
     if (d.tempOrders && Object.keys(d.tempOrders).length) { localStorage.setItem('oo_temp_orders', JSON.stringify(d.tempOrders)); }
     if (d.soImports && Object.keys(d.soImports).length) { localStorage.setItem('oo_so_imports', JSON.stringify(d.soImports)); }
     if (d.pendingCPO && d.pendingCPO.length) { localStorage.setItem('oo_pending_cpo', JSON.stringify(d.pendingCPO)); }
+    if (d.tracker) { state.tracker = mergeTracker(d.tracker, state.tracker); try { localStorage.setItem(TRACKER_KEY, JSON.stringify(state.tracker)); } catch(e) {} }
+    state.ovrLoaded = true;
     cleanupNotes();
     if (state.allRows.length && _refreshCallback) _refreshCallback();
   } catch(e) {}

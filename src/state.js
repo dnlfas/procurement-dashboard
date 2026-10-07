@@ -8,6 +8,7 @@ export const state = {
   poRows: [], poLoaded: false, poData: [],
   notes: {}, statusOvr: {}, fieldOvr: {}, pullOrders: {},
   rfqData: [], pendingCustPOs: {},
+  tracker: { since: 0, lines: {}, inbox: {} }, ovrLoaded: false,
   sspOpen: true, sspAllOpen: false,
   xlsxReady: false, xlsxQ: [],
   odSettings: {}, _syncTimer: null, _rfqTimer: null,
@@ -25,6 +26,7 @@ try { state.pullOrders = JSON.parse(localStorage.getItem('oo_pull') || '{}'); } 
 try { state.odSettings = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch(e) {}
 try { state.rfqData = JSON.parse(localStorage.getItem(RFQ_KEY) || '[]'); } catch(e) {}
 try { state.pendingCustPOs = JSON.parse(localStorage.getItem('oo_pending_cpo') || '{}'); } catch(e) {}
+try { const t = JSON.parse(localStorage.getItem('oo_tracker') || 'null'); if (t) state.tracker = t; } catch(e) {}
 
 // Init default pull orders
 ['4441445613','4441489719','4441512541','4441439631'].forEach(p => {

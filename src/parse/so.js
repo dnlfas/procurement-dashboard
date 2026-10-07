@@ -5,6 +5,14 @@ export function _findKey(keys, needles) {
   return keys.find(k => needles.some(n => k.includes(n))) || needles[0];
 }
 
+// Excel date cell (Date, serial number or string) → local midnight Date, or null
+function toDate(rd) {
+  if (rd instanceof Date && !isNaN(rd)) return new Date(rd.getFullYear(), rd.getMonth(), rd.getDate());
+  if (typeof rd === 'number' && rd > 1) { const d = new Date(Math.round((rd - 25569) * 86400000)); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  if (typeof rd === 'string' && rd) { const d = new Date(rd); if (!isNaN(d)) return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  return null;
+}
+
 export function parseRows(raw) {
   if (!raw.length) return [];
   const keys = Object.keys(raw[0]);
@@ -20,16 +28,18 @@ export function parseRows(raw) {
     qtyR:   _findKey(keys, ['יתרה לאספקה']),
     qtyO:   _findKey(keys, ['כמות בהזמנה']),
     date:   _findKey(keys, ['ת. אספקה', 'תאריך אספקה']),
+    soDate: keys.find(k => k.trim() === 'תאריך') || keys.find(k => /תאריך (הזמנה|פתיחה)/.test(k)),
     price:  _findKey(keys, ['מחיר ליחידה', 'מחיר יחידה']),
     curr:   _findKey(keys, ['יחידת מטבע', 'מטבע']),
   };
   console.log('[SO keys used]', K);
-  let _so = '', _cust = '', _custPO = '';
+  let _so = '', _cust = '', _custPO = '', _soDate = null;
   return raw.map(r => {
     const rawSO = s(r[K.so]), mpn = s(r[K.mpn]);
     const rawCust = s(r[K.cust]);
     const rawCustPO = s(r[K.custPO]);
-    if (rawSO) { _so = rawSO; _cust = rawCust; _custPO = rawCustPO; }
+    if (rawSO) { _so = rawSO; _cust = rawCust; _custPO = rawCustPO; _soDate = K.soDate ? toDate(r[K.soDate]) : null; }
+    const soDate = _soDate;
     const so = rawSO || _so;
     if (!so && !mpn) return null;
     const customer = rawCust || _cust;
@@ -54,11 +64,7 @@ export function parseRows(raw) {
     const currColRaw = s(r[K.curr]).trim();
     const currFromCol = currColRaw === '$' || currColRaw === 'USD' ? '$' : currColRaw === 'ILS' ? 'ILS' : currColRaw === 'EUR' ? 'EUR' : currColRaw === 'GBP' ? 'GBP' : '';
     const currency = currFromPrice || currFromAdj || currFromCol || 'ILS';
-    let dd = null;
-    const rd = r[K.date];
-    if (rd instanceof Date && !isNaN(rd)) dd = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate());
-    else if (typeof rd === 'number' && rd > 1) { const d = new Date(Math.round((rd - 25569) * 86400000)); dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-    else if (typeof rd === 'string' && rd) { const d = new Date(rd); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    const dd = toDate(r[K.date]);
     let status = 'none';
     const sl = statusRaw.trim();
     if (sl === 'הוזמן מהספק') status = 'ordered';
@@ -84,7 +90,7 @@ export function parseRows(raw) {
     else if (status !== 'none' && status !== 'cancelled') cov = 'orange';
     else if (isOvr) cov = 'red';
     const daysOvr = (isOvr && dd) ? Math.floor((TODAY - dd) / 86400000) : 0;
-    return { so, mpn, customer, custPO, poNum, supplier, statusRaw, status, qtyO, qtyR, price, currency, dd, cov, daysOvr, isOvr, nk: so + '__' + mpn };
+    return { so, mpn, customer, custPO, poNum, supplier, statusRaw, status, qtyO, qtyR, price, currency, dd, soDate, cov, daysOvr, isOvr, nk: so + '__' + mpn };
   }).filter(Boolean);
 }
 

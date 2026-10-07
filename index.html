@@ -196,7 +196,7 @@
   <!-- ══ EMPLOYEE VIEW ══ -->
   <div id="emp-view">
     <div class="emp-tabs">
-      <button class="etab on" id="et1" onclick="setEmpTab('today')">🔴 לטיפול היום</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">רשימת פריטים דחופים: תאריך אספקה עבר + אין PO + לא בוטל. ממוינים לפי גיל האיחור.</span></span>
+      <button class="etab on" id="et1" onclick="setEmpTab('today')">🔴 לטיפול היום</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">תיבת נכנסים: פריטים חדשים או שהשתנו מאז הטעינה הקודמת — סמן ✓ טופל או דחה לתאריך. מימין: כל הפריטים שעדיין ממתינים ל-PO, הוותיקים ראשונים.</span></span>
       <button class="etab" id="et2" onclick="setEmpTab('so')">📋 כל ההזמנות</button><span class="tip" style="margin-right:4px"><span class="tip-icon">?</span><span class="tip-box">כל הזמנות המכירה הפתוחות. לחץ על שורה לפתיחת פירוט הפריטים. אדום = יש איחורים, כתום = ממתין לטיפול, ירוק = הכל מכוסה.</span></span>
       <div class="cspc"></div>
       <div style="font-size:11px;font-family:var(--mono);color:var(--txt2)" id="emp-stat"></div>
@@ -205,9 +205,13 @@
     <!-- TODAY sub-view -->
     <div class="emp-body" id="tab-today">
       <div class="today-grid">
-        <div class="panel" style="grid-column:1 / -1">
-          <div class="phead">פריטים דחופים — ללא PO + תאריך עבר <span id="today-count" style="color:var(--red)"></span></div>
-          <div style="padding:8px 10px;display:flex;flex-direction:column;gap:4px" id="today-list"></div>
+        <div class="panel">
+          <div class="phead">📥 חדש / השתנה <span id="inbox-count" style="color:var(--acc)"></span></div>
+          <div class="today-list" style="padding:8px 10px" id="inbox-list"></div>
+        </div>
+        <div class="panel">
+          <div class="phead">⏳ ממתינים ל-PO <span id="aging-count" style="color:var(--ora)"></span></div>
+          <div class="today-list" style="padding:8px 10px" id="aging-list"></div>
         </div>
       </div>
     </div>

@@ -1,29 +1,100 @@
 import { state, TODAY, NK } from '../state.js';
-import { esc, fd, p2, autoH, expandNotes } from '../utils.js';
+import { esc, fd, p2, autoH, expandNotes, toast } from '../utils.js';
 import { calcG, isShortCovered } from '../parse/so.js';
 import { saveField, saveStatus, saveNote } from '../persistence.js';
+import { trackSeen, inboxReason, ageDays, needsPO, ackLine, snoozeLine, ddFromKey } from '../tracker.js';
 
+const shortCust = c => (c || '').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 18);
+
+// Today tab: inbox (new / changed lines to acknowledge) + lines still waiting for a PO, oldest first
 export function renderToday() {
-  const urgent = state.allRows
-    .filter(r => r.isOvr && r.status !== 'supplied' && r.status !== 'cancelled' && r.status !== 'cancelled_bts')
-    .sort((a, b) => b.daysOvr - a.daysOvr);
-  document.getElementById('today-count').textContent = '(' + urgent.length + ')';
-  const el = document.getElementById('today-list');
-  el.innerHTML = urgent.slice(0, 20).map(r => {
-    const cls = r.daysOvr > 30 ? 'ti-red' : 'ti-ora';
-    const dc = r.daysOvr > 30 ? 'td-red' : 'td-ora';
-    const bc = r.daysOvr > 30 ? 'db-r' : 'db-o';
-    return `<div class="today-item ${cls}">
-      <div class="ti-dot ${dc}"></div>
-      <div class="ti-mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div>
-      <span class="ti-cust" title="${esc(r.customer)}">${esc((r.customer || '').replace(/\(.*?\)/g, '').replace(/בע"מ/g, '').trim().slice(0, 18))}</span>
-      <span class="db ${bc}" title="${r.daysOvr} ימים מאז תאריך האספקה ללקוח">${r.daysOvr}י׳</span>
-      <span class="ti-so">${esc(r.so)}</span>
-    </div>`;
-  }).join('') + (urgent.length > 20 ? `<div class="more-hint">+ ${urgent.length - 20} פריטים נוספים</div>` : '');
-  const stat = `${urgent.length} פריטים דחופים · ${state.soGroups.length} הזמנות · ${state.allRows.length} פריטים סה"כ`;
-  document.getElementById('emp-stat').textContent = stat;
+  trackSeen();
+  const open = state.allRows.filter(r => !['supplied', 'cancelled', 'cancelled_bts'].includes(r.status) && !r.isTemp);
+
+  const inbox = open.map(r => ({ r, why: inboxReason(r) })).filter(x => x.why).sort((a, b) => b.why.at - a.why.at);
+  const inboxNks = new Set(inbox.map(x => x.r.nk));
+  document.getElementById('inbox-count').textContent = inbox.length ? '(' + inbox.length + ')' : '';
+  document.getElementById('inbox-list').innerHTML = inbox.length
+    ? inbox.map(({ r, why }) => inboxItem(r, why)).join('')
+    : `<div class="empty" style="padding:18px">✓ אין פריטים חדשים לטיפול</div>`;
+
+  const waiting = open.filter(r => needsPO(r) && !inboxNks.has(r.nk)).map(r => ({ r, age: ageDays(r) }));
+  const byOldest = (a, b) => b.age - a.age || (a.r.dd || 0) - (b.r.dd || 0);
+  const byDue = (a, b) => (a.r.dd || Infinity) - (b.r.dd || Infinity);
+  const groups = [
+    { title: '5+ ימים ללא PO', cls: 'ti-red', items: waiting.filter(x => x.age >= 5).sort(byOldest) },
+    { title: '2–4 ימים', cls: 'ti-ora', items: waiting.filter(x => x.age >= 2 && x.age < 5).sort(byOldest) },
+    { title: 'חדשים (0–1 ימים)', cls: 'ti-grey', items: waiting.filter(x => x.age !== null && x.age < 2).sort(byOldest) },
+  ];
+  const old = waiting.filter(x => x.age === null).sort(byDue);
+  document.getElementById('aging-count').textContent = '(' + waiting.length + ')';
+  document.getElementById('aging-list').innerHTML =
+    groups.filter(g => g.items.length).map(g =>
+      `<div class="aging-hdr">${g.title} · ${g.items.length}</div>` + g.items.slice(0, 40).map(x => agingItem(x.r, x.age, g.cls)).join('')
+      + (g.items.length > 40 ? `<div class="more-hint">+ ${g.items.length - 40} נוספים — ראה "כל ההזמנות" עם סינון "לא מכוסים"</div>` : '')
+    ).join('')
+    + (old.length ? `<details class="aging-old"><summary class="aging-hdr" title="פריטים ללא תאריך הזמנה בקובץ ה-SO, שהיו פתוחים כבר כשהמעקב התחיל (${fd(new Date(state.tracker.since))})">גיל לא ידוע · ${old.length}</summary>`
+        + old.slice(0, 50).map(x => agingItem(x.r, null, 'ti-grey')).join('')
+        + (old.length > 50 ? `<div class="more-hint">+ ${old.length - 50} פריטים נוספים — ראה "כל ההזמנות" עם סינון "לא מכוסים"</div>` : '')
+        + '</details>' : '')
+    || `<div class="empty" style="padding:18px">✓ כל הפריטים מכוסים בהזמנות רכש</div>`;
+
+  const et1 = document.getElementById('et1');
+  if (et1) et1.textContent = '🔴 לטיפול היום' + (inbox.length ? ' (' + inbox.length + ')' : '');
+  document.getElementById('emp-stat').textContent = `${inbox.length} חדשים · ${waiting.length} ממתינים ל-PO · ${state.allRows.length} פריטים סה"כ`;
 }
+
+function lineMeta(r) {
+  return `<span class="ti-cust" title="${esc(r.customer)}">${esc(shortCust(r.customer))}</span>
+      <span class="ti-so badge-link" onclick="openSOInEmp('${esc(r.so)}')" title="פתח הזמנה">${esc(r.so)}</span>`;
+}
+
+function dueBadge(r) {
+  if (!r.dd) return '<span></span>';
+  if (r.isOvr) return `<span class="db ${r.daysOvr > 30 ? 'db-r' : 'db-o'}" title="תאריך אספקה ללקוח ${fd(r.dd)} — ${r.daysOvr} ימים באיחור">${r.daysOvr}י׳ איחור</span>`;
+  return `<span class="ti-so" title="תאריך אספקה ללקוח">${fd(r.dd)}</span>`;
+}
+
+function inboxItem(r, why) {
+  let reason;
+  if (why.type === 'new') reason = `<span class="db db-b" title="הופיע לראשונה ${fd(new Date(why.at))}">חדש</span>`;
+  else {
+    const parts = [];
+    if (why.chg.qtyO) parts.push(`כמות ${why.chg.qtyO[0]}→${why.chg.qtyO[1]}`);
+    if (why.chg.dd) parts.push(`תאריך ${fd(ddFromKey(why.chg.dd[0]))}→${fd(ddFromKey(why.chg.dd[1]))}`);
+    reason = `<span class="db db-p" title="השתנה בנתוני ה-SO ב-${fd(new Date(why.at))}">${parts.join(' · ')}</span>`;
+  }
+  const nk = esc(r.nk).replace(/'/g, "\'");
+  return `<div class="today-item inbox-item ${why.type === 'new' ? 'ti-new' : 'ti-chg'}">
+      <div class="ti-mpn" title="${esc(r.desc || r.mpn)}">${esc(r.mpn)}</div>
+      ${reason}
+      <span class="ti-so" title="יתרה לאספקה">×${r.qtyR || r.qtyO}</span>
+      ${dueBadge(r)}
+      ${lineMeta(r)}
+      <span class="inbox-acts">
+        <button class="btn btn-ghost" onclick="ackInbox('${nk}')" title="טופל — הסר מהתיבה. אם עדיין אין PO, הפריט יעבור לרשימת 'ממתינים ל-PO'">✓</button>
+        <select class="snooze-sel" onchange="snoozeInbox('${nk}', this.value)" title="הזכר לי מאוחר יותר">
+          <option value="">⏰</option><option value="1">מחר</option><option value="3">בעוד 3 ימים</option><option value="7">בעוד שבוע</option>
+        </select>
+      </span>
+    </div>`;
+}
+
+function agingItem(r, age, cls) {
+  const note = state.notes[r.nk];
+  const ageTxt = age === null ? '' : `<span class="db ${age >= 5 ? 'db-r' : age >= 2 ? 'db-o' : 'db-g'}" title="ימים מאז שהפריט הופיע לראשונה ועדיין אין לו כיסוי PO מלא">${age}י׳ ללא PO</span>`;
+  const shortTxt = isShortCovered(r) ? `<span class="db db-r" title="מכוסה חלקית בהזמנות רכש">${r.allocQty ? 'חסר ' + r.short : 'אין PO'}</span>` : '';
+  return `<div class="today-item aging-item ${cls}">
+      <div class="ti-mpn" title="${esc(r.desc || r.mpn)}">${esc(r.mpn)}</div>
+      <span>${ageTxt}${shortTxt}</span>
+      ${dueBadge(r)}
+      ${lineMeta(r)}
+      <span class="ti-note" title="${esc(note || '')}">${note ? '📝 ' + esc(note.split('\n').pop().slice(0, 40)) : ''}</span>
+    </div>`;
+}
+
+export function ackInbox(nk) { ackLine(nk); renderToday(); }
+export function snoozeInbox(nk, days) { if (!days) return; snoozeLine(nk, +days); renderToday(); toast('⏰ יוזכר שוב בעוד ' + (days === '1' ? 'יום' : days + ' ימים')); }
 
 export function fillSelects() {
   fillSel('fc', [...new Set(state.allRows.map(r => r.customer).filter(Boolean))].sort());

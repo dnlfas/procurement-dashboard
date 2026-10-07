@@ -110,7 +110,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .emp-body{padding:14px 20px}
 
 /* TODAY panel */
-.today-grid{display:grid;grid-template-columns:1fr 2fr;gap:12px;margin-bottom:12px}
+.today-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
 .today-list{display:flex;flex-direction:column;gap:4px}
 .today-item{display:grid;grid-template-columns:10px 1fr auto auto auto;gap:8px;align-items:center;padding:7px 10px;border-radius:5px}
 .ti-red{background:var(--red-d);border:1px solid rgba(192,57,43,.15)}.ti-ora{background:var(--ora-d);border:1px solid rgba(217,119,6,.15)}.ti-grey{background:var(--sur2);border:1px solid var(--bdr)}
@@ -122,6 +122,22 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .ti-so{font-family:var(--mono);font-size:12px;color:var(--txt2)}
 .ti-cust{font-size:13px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
 .more-hint{font-size:11px;color:var(--txt2);text-align:center;padding:6px;font-family:var(--mono)}
+/* Today tab: inbox + waiting-for-PO */
+.inbox-item{grid-template-columns:minmax(90px,1fr) auto auto auto auto auto auto}
+.aging-item{grid-template-columns:minmax(90px,1fr) auto auto auto auto minmax(0,1fr)}
+.ti-new{background:var(--acc-d);border:1px solid rgba(74,143,255,.25)}.ti-chg{background:var(--pur-d);border:1px solid rgba(167,139,250,.25)}
+.ti-new .ti-mpn{color:var(--acc)}.ti-chg .ti-mpn{color:var(--pur)}
+.db-b{background:var(--acc-d);color:var(--acc)}.db-p{background:var(--pur-d);color:var(--pur)}.db-g{background:var(--grn-d);color:var(--grn)}
+.aging-hdr{font-size:12px;font-family:var(--mono);color:var(--txt2);padding:8px 2px 2px;cursor:default}
+.aging-old>summary{cursor:pointer}
+.ti-note{font-size:12px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.inbox-acts{display:flex;gap:4px;align-items:center}
+.inbox-acts .btn{padding:2px 9px;font-size:13px;color:var(--grn)}
+.snooze-sel{background:var(--sur2);color:var(--txt);border:1px solid var(--bdr);border-radius:5px;font-size:12px;padding:2px 4px}
+@media (max-width:900px){
+  .inbox-item,.aging-item{grid-template-columns:1fr auto auto;row-gap:4px}
+  .ti-note{grid-column:1 / -1}
+}
 
 /* SO list (employee) */
 .so-controls{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--r);padding:9px 14px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:10px}
