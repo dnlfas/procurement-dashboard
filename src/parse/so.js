@@ -124,9 +124,9 @@ export function calcG(g) {
   g.mx = ds.length ? new Date(Math.max(...ds.map(d => d.getTime()))) : null;
   g.ovr = l.filter(x => x.isOvr && x.status !== 'supplied').length;
   g.unc = l.filter(x => x.cov !== 'green' && x.status !== 'supplied').length;
-  g.cov = l.filter(x => x.cov === 'green').length;
   g.short = l.filter(isShortCovered).length;
-  if (g.ovr > 0) g.tl = 'red'; else if (g.unc > 0) g.tl = 'orange'; else g.tl = 'green';
+  g.cov = l.filter(x => x.cov === 'green' && !isShortCovered(x)).length;
+  if (g.ovr > 0) g.tl = 'red'; else if (g.unc > 0 || g.short > 0) g.tl = 'orange'; else g.tl = 'green';
   g.supps = [...new Set(l.map(x => x.supplier).filter(Boolean))];
   g.isPull = l.some(x => x.isPull);
   return g;

@@ -87,7 +87,7 @@ export function renderSOCard(g) {
   const bs = [];
   if (g.ovr) bs.push(`<span class="badge b-r" title="שורות שתאריך האספקה ללקוח עבר וטרם סופקו">🔴 ${g.ovr}</span>`);
   if (g.unc) bs.push(`<span class="badge b-o" title="שורות ללא כיסוי הזמנת רכש (טרם הוזמנו מספק)">⚠ ${g.unc}</span>`);
-  if (g.cov) bs.push(`<span class="badge b-g" title="שורות מכוסות בהזמנת רכש">✓ ${g.cov}</span>`);
+  if (g.cov) bs.push(`<span class="badge b-g" title="שורות מכוסות במלואן בהזמנת רכש">✓ ${g.cov}</span>`);
   if (g.short) bs.push(`<span class="badge b-o" title="שורות ללא כיסוי PO מלא">חסר ${g.short}</span>`);
   bs.push(`<span class="badge b-x" title="סה״כ שורות בהזמנה">${g.lines.length}</span>`);
   const ss = g.supps.length ? `<div class="suppstrip">${g.supps.slice(0, 4).map(sv => `<span class="badge b-a">${esc(sv)}</span>`).join('')}</div>` : '';
@@ -97,9 +97,9 @@ export function renderSOCard(g) {
     <div class="sohdr" onclick="hdrClk(event,'${id}')">
       <div class="soid">
         <span class="stl ${tc}"></span>
-        <div><div class="${g.lines.some(r => r.isTemp) ? 'sonum-temp' : g.lines.some(r => r.isSOImport) ? 'sonum-soimp' : 'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull ? ' <span class="pull-badge">תיק משיכה</span>' : ''}${g.lines.some(r => r.isTemp) ? ' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>' : ''}${g.lines.some(r => r.isSOImport) ? ' <span class="pull-badge" style="background:rgba(0,140,255,.12);color:var(--acc);border-color:rgba(0,140,255,.3)">PDF</span>' : ''}</div>${g.customer ? `<div class="socust-sub">${esc(g.customer)}</div>` : ''}</div>
+        <div><div class="${g.lines.some(r => r.isTemp) ? 'sonum-temp' : g.lines.some(r => r.isSOImport) ? 'sonum-soimp' : 'sonum'}">${esc(g.so)}</div><div class="socpo">${esc(g.custPO)}${g.isPull ? ' <span class="pull-badge">תיק משיכה</span>' : ''}${g.lines.some(r => r.isTemp) ? ' <span class="pull-badge" style="background:rgba(255,165,0,.15);color:var(--ora);border-color:rgba(255,165,0,.35)">טמפ\'</span>' : ''}${g.lines.some(r => r.isSOImport) ? ' <span class="pull-badge" style="background:rgba(0,140,255,.12);color:var(--acc);border-color:rgba(0,140,255,.3)">PDF</span>' : ''}</div></div>
       </div>
-      <div class="socust">${esc(g.customer)}</div>
+      <div class="socust" title="${esc(g.customer)}">${esc(g.customer)}</div>
       <div class="sodate ${dc}">${ds}</div>
       <div class="sobadges">${bs.join('')}</div>
       <div onclick="event.stopPropagation();dlSOICS(state.soReg['${esc(g.so)}'])">
@@ -213,8 +213,11 @@ export function buildLR(r) {
     ${STATUSES.map(([v, l]) => `<option value="${v}" ${effStatus === v ? 'selected' : ''}>${l}</option>`).join('')}
   </select>`;
   const nv = esc(state.notes[r.nk] || '');
-  return `<tr class="${(r.isOvr && r.status !== 'supplied') ? 'lno' : ''}">
-    <td style="text-align:center"><span class="lntl tl-${r.cov === 'green' ? 'g' : r.cov === 'orange' ? 'o' : r.cov === 'red' ? 'r' : 'x'}"></span></td>
+  // Dot and row highlight answer "do I need to act?": a green line that's short on PO quantity counts as needing action
+  const needsPO = r.cov !== 'green' || isShortCovered(r);
+  const dot = isShortCovered(r) ? 'o' : r.cov === 'green' ? 'g' : r.cov === 'orange' ? 'o' : r.cov === 'red' ? 'r' : 'x';
+  return `<tr class="${(r.isOvr && r.status !== 'supplied' && needsPO) ? 'lno' : ''}">
+    <td style="text-align:center"><span class="lntl tl-${dot}"></span></td>
     <td><div class="mpn" title="${esc(r.desc || r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
     <td class="qty">${r.qtyR || r.qtyO}${covBadges}</td>
