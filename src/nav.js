@@ -31,6 +31,7 @@ export function setEmpTab(t) {
   document.getElementById('et1').classList.toggle('on', t === 'today');
   document.getElementById('et2').classList.toggle('on', t === 'so');
   if (t === 'today' && window.renderToday) window.renderToday();
+  window.scrollTo(0, 0); // don't carry the other tab's scroll position over
 }
 
 export function openSOInEmp(so) {

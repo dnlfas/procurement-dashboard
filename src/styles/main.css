@@ -140,6 +140,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .inbox-acts{display:flex;gap:4px;align-items:center}
 .inbox-acts .btn{padding:2px 9px;font-size:13px;color:var(--grn)}
 .snooze-sel{background:var(--sur2);color:var(--txt);border:1px solid var(--bdr);border-radius:5px;font-size:12px;padding:2px 4px}
+#fu-list{max-height:45vh;overflow-y:auto} /* keep the waiting-for-PO panel below in view */
+#fu-list>*{flex-shrink:0}
 .fu-card{border:1px solid var(--bdr);border-radius:7px;margin-bottom:8px;overflow:hidden}
 .fu-card>summary{list-style:none}
 .fu-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--sur2);cursor:pointer;flex-wrap:wrap}
