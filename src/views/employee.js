@@ -256,8 +256,8 @@ export function applyFilters() {
     if (fu) l = l.filter(x => x.cov !== 'green' || isShortCovered(x));
     if (fo) l = l.filter(x => x.isOvr);
     if (fq) {
-      const soMatch = g.so.toUpperCase().includes(fq) || (g.custPO || '').toUpperCase().includes(fq);
-      if (!soMatch) l = l.filter(x => x.mpn.toUpperCase().includes(fq));
+      const soMatch = [g.so, g.custPO, g.customer].some(v => (v || '').toUpperCase().includes(fq));
+      if (!soMatch) l = l.filter(x => [x.mpn, x.supplier, x.poNum].some(v => (v || '').toUpperCase().includes(fq)));
       if (!l.length) return null;
     }
     if (!l.length) return null;

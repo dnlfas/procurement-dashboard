@@ -37,7 +37,7 @@ export function renderSuppliers() {
 
   let groups = Object.values(byS).sort((a, b) => b.ovrVal - a.ovrVal || b.totalVal - a.totalVal);
   if (q) {
-    groups = groups.filter(g => g.supplier.toLowerCase().includes(q) || g.rows.some(r => r.mpn.toLowerCase().includes(q)));
+    groups = groups.filter(g => g.supplier.toLowerCase().includes(q) || g.rows.some(r => r.mpn.toLowerCase().includes(q) || r.poNum.toLowerCase().includes(q)));
   }
   if (ovrOnly) groups = groups.filter(g => g.rows.some(r => r.isOvr));
 
@@ -52,7 +52,7 @@ export function renderSuppliers() {
     const tlActual = ovrRows.length === g.rows.length ? 'r' : ovrRows.length > 0 ? 'o' : 'g';
     const cc = tlActual === 'r' ? 'cr' : tlActual === 'o' ? 'co' : 'cg';
     const sid = 'sp_' + g.supplier.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
-    const mpnMatch = !!q && g.rows.some(r => r.mpn.toLowerCase().includes(q));
+    const mpnMatch = !!q && g.rows.some(r => r.mpn.toLowerCase().includes(q) || r.poNum.toLowerCase().includes(q));
 
     const badges = [];
     if (ovrRows.length) badges.push(`<span class="badge b-r" title="שורות PO שתאריך האספקה של הספק עבר">🔴 ${ovrRows.length} באיחור</span>`);

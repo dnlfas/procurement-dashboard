@@ -43,6 +43,11 @@
     <div id="last-update-badge" style="font-size:11px;color:var(--txt2);font-family:var(--mono);margin-inline-start:12px" title=""></div>
     <div id="version-badge" style="font-size:11px;color:var(--txt2);font-family:var(--mono);margin-inline-start:12px;opacity:.7" title="גרסת האפליקציה"></div>
   </div>
+  <div class="tb-search">
+    <input id="gs-input" type="text" placeholder="🔍 חיפוש: SO, MPN, לקוח, ספק, PO, RFQ" autocomplete="off" title="חיפוש כללי (Ctrl+K או /) — Enter מסנן את כל המסכים">
+    <button id="gs-clear" onclick="clearGlobalSearch()" title="נקה חיפוש" style="display:none">✕</button>
+    <div id="gs-results"></div>
+  </div>
   <div class="tb-mid">
     <button class="view-tab import-mobile-btn" onclick="openImportModal()">📥 ייבוא</button>
     <button class="view-tab on" id="tab-boss" onclick="setMainView('boss')">📊 מבט ניהולי</button>

@@ -88,6 +88,9 @@ import {
 // ── Data status ───────────────────────────────────────────────
 import { refreshDataStatus, showVersion } from './dataStatus.js';
 
+// ── Global search ─────────────────────────────────────────────
+import { initGlobalSearch, clearGlobalSearch } from './search.js';
+
 // ── API / GDrive ──────────────────────────────────────────────
 import {
   setApiCallbacks, openSettings, closeSettings,
@@ -247,6 +250,9 @@ Object.assign(window, {
 
   // api / settings
   openSettings, closeSettings, markInputChanged, saveAndFetch, clearSettings, fetchNow,
+
+  // global search
+  clearGlobalSearch,
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -255,4 +261,5 @@ Object.assign(window, {
 document.addEventListener('DOMContentLoaded', () => {
   checkAuth(); // calls initApp() via _initCallback after auth passes
   initNotifications();
+  initGlobalSearch();
 });
