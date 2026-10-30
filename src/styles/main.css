@@ -6,6 +6,7 @@
   --ora:#ffaa00;--ora-d:#2a1f00;
   --grn:#22c55e;--grn-d:#0d2518;
   --pur:#a78bfa;--pur-d:#1e1040;
+  --cyn:#22d3ee;--pnk:#f472b6;
   --txt:#c8d0e0;--txt2:#5a6480;--txtb:#eef1fa;
   --mono:'IBM Plex Mono',monospace;--sans:'Heebo',sans-serif;
   --r:8px;--rp:10px;--rph:12px;
@@ -262,6 +263,11 @@ table.lt tbody tr:last-child td{border-bottom:none}
 .stat-sel.s-ord{border-color:rgba(34,197,94,.4);color:var(--grn)}
 .stat-sel.s-pnd{border-color:rgba(255,170,0,.4);color:var(--ora)}
 .stat-sel.s-qc{border-color:rgba(167,139,250,.4);color:var(--pur)}
+.stat-sel.s-dlv{border-color:rgba(34,211,238,.4);color:var(--cyn)}
+.stat-sel.s-rcv{border-color:rgba(244,114,182,.4);color:var(--pnk)}
+/* in delivery to BTS / receiving inspection: own text color on the part number and status */
+.st-dlv .mpn,.st-dlv .mso-mpn,.st-dlv .st-txt{color:var(--cyn)!important}
+.st-rcv .mpn,.st-rcv .mso-mpn,.st-rcv .st-txt{color:var(--pnk)!important}
 .stat-sel.s-can{border-color:rgba(255,77,77,.2);color:var(--txt2)}
 .stat-sel.s-non{color:var(--txt2)}
 .stat-sel.s-grn{border-color:rgba(34,197,94,.4);color:var(--grn)}

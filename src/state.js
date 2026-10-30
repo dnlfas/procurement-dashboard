@@ -3,6 +3,11 @@ export const NK = 'openorders_v5_notes';
 export const SETTINGS_KEY = 'oo_gdrive_settings';
 export const RFQ_KEY = 'oo_rfq';
 
+// Status dropdown color class per line status
+export const STATUS_CLS = { 'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-dlv','qc_supp':'s-qc','qc':'s-rcv','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can' };
+// Lines on their way to BTS / in receiving inspection get their own text color across views
+export const rowStCls = st => ({ delivery_bts: 'st-dlv', qc: 'st-rcv' })[st] || '';
+
 export const state = {
   allRows: [], soGroups: [], filteredGroups: [], soReg: {},
   poRows: [], poLoaded: false, poData: [],

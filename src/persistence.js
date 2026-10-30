@@ -1,4 +1,4 @@
-import { state, NK, TODAY } from './state.js';
+import { state, NK, TODAY, STATUS_CLS, rowStCls } from './state.js';
 import { toast, autoH } from './utils.js';
 import { mergeTracker, TRACKER_KEY } from './tracker.js';
 import { mergeFollowups, FU_KEY } from './followup.js';
@@ -96,7 +96,7 @@ export function saveField(inp) {
       row.cov = 'green';
       localStorage.setItem('oo_status', JSON.stringify(state.statusOvr));
       const sel = inp.closest('tr')?.querySelector('.stat-sel');
-      if (sel) { sel.value = 'delivery_bts'; sel.className = 'stat-sel s-ord'; }
+      if (sel) { sel.value = 'delivery_bts'; sel.className = 'stat-sel ' + STATUS_CLS.delivery_bts; setRowStCls(sel, 'delivery_bts'); }
     }
   }
   try { localStorage.setItem('oo_fields', JSON.stringify(state.fieldOvr)); } catch(e) {}
@@ -105,10 +105,18 @@ export function saveField(inp) {
   toast('✓ ' + (labels[inp.dataset.field] || inp.dataset.field) + ' עודכן' + (inp.dataset.field === 'tracking' && val ? ' — סטטוס עודכן לבשליחות ל-BTS' : ''));
 }
 
+// Keep the line's row color in step with its status dropdown
+function setRowStCls(sel, st) {
+  const tr = sel.closest('tr');
+  if (!tr) return;
+  tr.classList.remove('st-dlv', 'st-rcv');
+  if (rowStCls(st)) tr.classList.add(rowStCls(st));
+}
+
 export function saveStatus(sel) {
   const key = sel.dataset.key, val = sel.value;
-  const CM = { 'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-ord','qc_supp':'s-qc','qc':'s-qc','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can' };
-  sel.className = 'stat-sel ' + (CM[val] || 's-non');
+  sel.className = 'stat-sel ' + (STATUS_CLS[val] || 's-non');
+  setRowStCls(sel, val);
   if (val === 'none') delete state.statusOvr[key]; else state.statusOvr[key] = val;
   try { localStorage.setItem('oo_status', JSON.stringify(state.statusOvr)); } catch(e) {}
   syncOverrides();

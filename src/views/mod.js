@@ -1,4 +1,4 @@
-import { state, TODAY } from '../state.js';
+import { state, TODAY, rowStCls } from '../state.js';
 import { esc, fd, p2 } from '../utils.js';
 import { calcG } from '../parse/so.js';
 
@@ -232,14 +232,15 @@ function _renderMODSOList(modGroups) {
     ].filter(Boolean).join('');
 
     const lineRows = lines.map(r => {
-      const stLbl = STATUS_LBL[state.statusOvr[r.nk] || r.status] || r.status;
+      const st = state.statusOvr[r.nk] || r.status;
+      const stLbl = STATUS_LBL[st] || st;
       const dc = r.isOvr ? 'color:var(--red)' : r.dd && (r.dd - TODAY) < 7 * 86400000 ? 'color:var(--ora)' : '';
-      return `<tr>
-        <td style="font-family:var(--mono);font-size:12px">${esc(r.mpn)}</td>
+      return `<tr class="${rowStCls(st)}">
+        <td class="mso-mpn" style="font-family:var(--mono);font-size:12px">${esc(r.mpn)}</td>
         <td style="text-align:center;font-size:12px">${r.qtyR || r.qtyO}</td>
         <td style="font-size:12px;${dc}">${fd(r.dd)}</td>
         <td style="font-size:11px;color:var(--txt2)">${esc(r.supplier || '')}</td>
-        <td style="font-size:11px;color:var(--txt2)">${esc(stLbl)}</td>
+        <td class="st-txt" style="font-size:11px;color:var(--txt2)">${esc(stLbl)}</td>
       </tr>`;
     }).join('');
 

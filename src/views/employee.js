@@ -1,4 +1,4 @@
-import { state, TODAY, NK } from '../state.js';
+import { state, TODAY, NK, STATUS_CLS, rowStCls } from '../state.js';
 import { esc, fd, p2, autoH, expandNotes, toast } from '../utils.js';
 import { calcG, isShortCovered } from '../parse/so.js';
 import { saveField, saveStatus, saveNote } from '../persistence.js';
@@ -405,12 +405,12 @@ export function buildLR(r) {
         : `<span class="db db-r" title="מסומן כהוזמן, אך בדוח הזמנות הרכש אין כמות פתוחה לפריט זה. בדוק שההזמנה אכן בוצעה (או שהתקבלה כבר) ועדכן סטטוס / מספר PO">אין PO</span>`) : '')
     + (r.allocLate
       ? `<span class="db db-o" title="${esc(r.alloc.filter(a => a.po.dd && a.po.dd > r.dd).map(a => 'PO ' + a.po.poNum + ' צפוי ' + fd(a.po.dd)).join(' · '))}">PO מאחר</span>` : '');
-  const selCls = ({ 'none':'s-non','pending':'s-pnd','sourcing':'s-pnd','ordered':'s-ord','waiting_wh':'s-ord','in_transit':'s-ord','customs_sub':'s-pnd','customs_rel':'s-ord','delivery_bts':'s-ord','qc_supp':'s-qc','qc':'s-qc','supplied':'s-grn','partial':'s-pnd','waiting_cust':'s-pnd','cancelled':'s-can','cancelled_bts':'s-can' })[effStatus] || 's-non';
+  const selCls = STATUS_CLS[effStatus] || 's-non';
   const STATUSES = [
     ['none','— ללא סטטוס','s-non'],['pending','טרם הוזמן','s-pnd'],['sourcing','איתור ספק','s-pnd'],
     ['ordered','הוזמן מהספק','s-ord'],['waiting_wh','ממתין במחסן המוצא','s-ord'],['in_transit','נחת בארץ','s-ord'],
-    ['customs_sub','הגשות למכס','s-pnd'],['customs_rel','שוחרר ממכס','s-ord'],['delivery_bts','בשליחות ל-BTS','s-ord'],
-    ['qc_supp','בקרת איכות ספק / מעבדה','s-qc'],['qc','בבקרת איכות','s-qc'],['supplied','סופק ללקוח','s-grn'],
+    ['customs_sub','הגשות למכס','s-pnd'],['customs_rel','שוחרר ממכס','s-ord'],['delivery_bts','בשליחות ל-BTS','s-dlv'],
+    ['qc_supp','בקרת איכות ספק / מעבדה','s-qc'],['qc','בבקרת איכות','s-rcv'],['supplied','סופק ללקוח','s-grn'],
     ['partial','סופק חלקי','s-pnd'],['waiting_cust','ממתין לאספקה ללקוח','s-pnd'],
     ['cancelled','בוטל ע"י הלקוח','s-can'],['cancelled_bts','בוטל ע"י BTS','s-can'],
   ];
@@ -421,7 +421,7 @@ export function buildLR(r) {
   // Dot and row highlight answer "do I need to act?": a green line that's short on PO quantity counts as needing action
   const needsPO = r.cov !== 'green' || isShortCovered(r);
   const dot = isShortCovered(r) ? 'o' : r.cov === 'green' ? 'g' : r.cov === 'orange' ? 'o' : r.cov === 'red' ? 'r' : 'x';
-  return `<tr class="${(r.isOvr && r.status !== 'supplied' && needsPO) ? 'lno' : ''}">
+  return `<tr class="${(r.isOvr && r.status !== 'supplied' && needsPO) ? 'lno' : ''} ${rowStCls(effStatus)}">
     <td style="text-align:center"><span class="lntl tl-${dot}"></span></td>
     <td><div class="mpn" title="${esc(r.desc || r.mpn)}">${esc(r.mpn)}</div></td>
     <td class="ddate ${dc}">${db}${fd(r.dd)}</td>
