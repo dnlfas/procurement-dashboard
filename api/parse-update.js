@@ -138,7 +138,7 @@ module.exports = async function handler(req, res) {
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: 16000,
       system: SYSTEM,
       messages: [{ role: 'user', content: userContent }],
     });
@@ -148,6 +148,9 @@ module.exports = async function handler(req, res) {
     // Strip ALL raw control characters illegal inside JSON strings (0x00-0x1F, 0x7F)
     // Structural whitespace between tokens becomes spaces — JSON.parse handles that fine.
     raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ');
+    // Reply cut off at max_tokens (long invoices): keep only the complete line items
+    const truncated = message.stop_reason === 'max_tokens';
+    if (truncated) raw = closeTruncated(raw);
     // Extract outermost {...} in case the model added surrounding text
     const objMatch = raw.match(/\{[\s\S]*\}/);
     if (objMatch) raw = objMatch[0];
@@ -184,8 +187,28 @@ module.exports = async function handler(req, res) {
         parsed = JSON.parse(fixed);
       }
     }
-    res.json({ ok: true, sourceType: parsed.sourceType || 'other', updates: parsed.updates || [] });
+    res.json({ ok: true, sourceType: parsed.sourceType || 'other', updates: parsed.updates || [], truncated });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 };
+
+// Cut a truncated reply after the last complete object in the "updates" array and close it.
+function closeTruncated(raw) {
+  const start = raw.indexOf('[', raw.indexOf('"updates"'));
+  if (start < 0) return raw;
+  let depth = 0, inStr = false, esc = false, lastEnd = -1;
+  for (let i = start + 1; i < raw.length; i++) {
+    const c = raw[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) lastEnd = i;
+  }
+  return lastEnd < 0 ? raw.slice(0, start + 1) + ']}' : raw.slice(0, lastEnd + 1) + ']}';
+}

@@ -89,6 +89,7 @@ export async function submitImportParse() {
     if (!res.ok || !json.ok) throw new Error(json.error || 'שגיאה לא ידועה');
     closeImportModal();
     openImportPreview(json.updates || [], json.sourceType || 'other');
+    if (json.truncated) toast('⚠ המסמך ארוך — ייתכן שחלק מהשורות האחרונות חסרות. בדוק מול המסמך');
   } catch(e) {
     document.getElementById('import-err').textContent = 'שגיאה: ' + e.message;
     document.getElementById('import-err').style.display = 'block';
