@@ -268,6 +268,11 @@ table.lt tbody tr:last-child td{border-bottom:none}
 /* in delivery to BTS / receiving inspection: own text color on the part number and status */
 .st-dlv .mpn,.st-dlv .mso-mpn,.st-dlv .st-txt{color:var(--cyn)!important}
 .st-rcv .mpn,.st-rcv .mso-mpn,.st-rcv .st-txt{color:var(--pnk)!important}
+/* row tint wins over the red overdue row (tr.lno) */
+tr.st-dlv,table.lt tbody tr.st-dlv.st-dlv{background:#0d2a33;box-shadow:inset -3px 0 0 var(--cyn)}
+tr.st-dlv:hover,table.lt tbody tr.st-dlv.st-dlv:hover{background:#123a46}
+tr.st-rcv,table.lt tbody tr.st-rcv.st-rcv{background:#331526;box-shadow:inset -3px 0 0 var(--pnk)}
+tr.st-rcv:hover,table.lt tbody tr.st-rcv.st-rcv:hover{background:#461c34}
 .stat-sel.s-can{border-color:rgba(255,77,77,.2);color:var(--txt2)}
 .stat-sel.s-non{color:var(--txt2)}
 .stat-sel.s-grn{border-color:rgba(34,197,94,.4);color:var(--grn)}
