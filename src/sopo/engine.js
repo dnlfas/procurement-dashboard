@@ -215,6 +215,35 @@ export function onlineMedian(online, toCur, rates) {
   return vals.length % 2 ? vals[m] : (vals[m - 1] + vals[m]) / 2;
 }
 
+// Distributor display names, so one distributor seen via several sites groups into one Priority table
+const DIST_NAMES = [
+  [/digi\s*-?\s*key/i, 'Digi-Key'], [/mouser/i, 'Mouser'], [/arrow/i, 'Arrow'], [/farnell|element\s*14|newark/i, 'Farnell'],
+  [/^rs\b|rs\s*(components|online|pro)/i, 'RS'], [/\btme\b/i, 'TME'], [/avnet/i, 'Avnet'], [/future/i, 'Future'], [/tti\b/i, 'TTI'],
+];
+const SOURCE_NAMES = { digikey: 'Digi-Key', mouser: 'Mouser', octopart: 'Octopart', findchips: 'FindChips' };
+export function distName(o) {
+  const d = String(o.distributor || '').trim();
+  for (const [rx, n] of DIST_NAMES) if (rx.test(d)) return n;
+  return d || SOURCE_NAMES[String(o.source || '').toLowerCase()] || String(o.source || 'Online');
+}
+
+// Verified online prices → offers in the quote shape, cheapest per distributor
+export const ONLINE_SHIP_DAYS = 7; // distributor stock → Israel
+export function onlineOffers(online, need) {
+  const best = {};
+  ((online && online.offers) || []).filter(o => o.verified && +o.unitPrice > 0).forEach(o => {
+    const off = {
+      mpn: '', mfg: '', supplier: distName(o), unitPrice: +o.unitPrice, currency: cur3(o.currency) || 'USD',
+      qty: 0, moq: 0, mult: 0, stock: +o.stock || 0,
+      leadDays: +o.stock >= need ? ONLINE_SHIP_DAYS : null,
+      online: true, url: String(o.url || ''),
+    };
+    const cur = best[off.supplier];
+    if (!cur || fxConvert(off.unitPrice, off.currency, 'USD') < fxConvert(cur.unitPrice, cur.currency, 'USD')) best[off.supplier] = off;
+  });
+  return Object.values(best);
+}
+
 // line: { mpn, need, price, currency (3-letter), dd: Date|null }
 // ctx:  { rates, today, online: {offers:[...]} | undefined }
 // → [{ key, level: 'ok'|'warn'|'block'|'info', text }]
@@ -240,6 +269,7 @@ export function runChecks(line, offer, ctx) {
   } else if (ctx.online) out.push({ key: 'online', level: 'info', text: 'אין מחיר אונליין מאומת' });
 
   if (offer.qty > 0 && offer.qty < line.need) out.push({ key: 'qty', level: 'warn', text: `צוטט ל-${offer.qty} בלבד (נדרש ${line.need})` });
+  if (offer.online && offer.stock < line.need) out.push({ key: 'qty', level: 'warn', text: offer.stock ? `מלאי ${offer.stock} בלבד אצל המפיץ` : 'מלאי לא ידוע אצל המפיץ' });
   const q = orderQty(line.need, offer);
   if (q > line.need) out.push({ key: 'qty', level: 'warn', text: `MOQ/אריזה: קנייה של ${q} (+${q - line.need}, ${((q - line.need) * cost).toFixed(2)} ${lineCur})` });
 

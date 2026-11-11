@@ -4,7 +4,7 @@ import { esc, fd, toast } from '../utils.js';
 import { withXLSX } from '../upload.js';
 import {
   DEFAULT_RATES, cur3, parseQuoteSheet, matchQuotes, orderQty, arrivalDate,
-  onlineMedian, runChecks, worstLevel, pickBest, toPriorityTSV,
+  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV,
 } from '../sopo/engine.js';
 
 const SOPO_KEY = 'oo_sopo', FX_KEY = 'oo_fx', PRICE_KEY = 'oo_pricecache';
@@ -33,7 +33,7 @@ export function openSOPO(so) {
     }));
   S = {
     so, lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
-    override: saved.override || {}, online: {}, openOnline: {},
+    override: saved.override || {}, online: {}, openOnline: {}, ready: false,
     rates: { ...DEFAULT_RATES }, fxNote: 'ברירת מחדל',
   };
   _files = [];
@@ -41,7 +41,7 @@ export function openSOPO(so) {
   const fx = load(FX_KEY, null);
   if (fx && fx.day === new Date().toDateString()) { S.rates = fx.rates; S.fxNote = fx.note; }
   else loadFX();
-  loadPriceCache().then(() => { applyCachedPrices(); render(); });
+  loadPriceCache().then(() => { if (!S) return; applyCachedPrices(); S.ready = true; rematch(); render(); });
   document.getElementById('sopo-title').textContent = `🧾 SO → PO · ${so}` + (lines[0] ? ' · ' + (state.allRows.find(r => r.so === so)?.customer || '') : '');
   document.getElementById('sopo-modal').style.display = 'flex';
   render();
@@ -81,8 +81,9 @@ export function sopoRate(cur, v) {
 function rematch() {
   const m = matchQuotes(S.lines, S.offers);
   S.lines.forEach(l => {
-    l.offers = m[l.nk] || [];
-    if (S.chosen[l.nk] === 'manual') return;
+    l.offers = (m[l.nk] || []).concat(onlineOffers(S.online[l.nk], l.need));
+    // online offers are part of the choice, so wait for the price cache before changing picks
+    if (!S.ready || S.chosen[l.nk] === 'manual') return;
     // keep the user's pick if that offer still exists, else take the best one
     if (!l.offers.some(o => offerKey(o) === S.chosen[l.nk])) {
       const bi = pickBest(lineCtx(l), l.offers, ctxFor(l));
@@ -193,7 +194,7 @@ export async function sopoOnline() {
     } catch (e) { failed += batch.length; }
     done += batch.length;
     btn.textContent = `🌐 בודק ${done}/${todo.length}...`;
-    render();
+    if (S) { rematch(); persist(); render(); }
   };
   // three requests at a time
   const queue = [...batches];
@@ -204,7 +205,7 @@ export async function sopoOnline() {
   fetch('/api/overrides?doc=pricecache', { method: 'POST', body: JSON.stringify(_priceCache), headers: { 'Content-Type': 'application/json' } }).catch(() => {});
   btn.disabled = false; btn.textContent = '🌐 בדיקת מחיר אונליין';
   if (failed) toast(`⚠ ${failed} פריטים לא נבדקו — נסה שוב`);
-  if (S) { rematch(); render(); }
+  if (S) { rematch(); persist(); render(); }
 }
 
 export function sopoShowOnline(i) { const l = S.lines[i]; S.openOnline[l.nk] = !S.openOnline[l.nk]; render(); }
@@ -251,7 +252,8 @@ function render() {
       const k = offerKey(o);
       const lt = o.leadDays == null ? '' : ` · ${o.leadDays}י׳`;
       const moq = o.moq ? ` · MOQ ${o.moq}` : '';
-      return `<option value="${esc(k)}" ${S.chosen[l.nk] === k ? 'selected' : ''}>${esc(o.supplier)} — ${money(o.unitPrice, o.currency)}${moq}${lt}</option>`;
+      const stk = o.online ? ` · מלאי ${o.stock || '?'}` : '';
+      return `<option value="${esc(k)}" ${S.chosen[l.nk] === k ? 'selected' : ''}>${o.online ? '🌐 ' : ''}${esc(o.supplier)} — ${money(o.unitPrice, o.currency)}${moq}${stk}${lt}</option>`;
     }).join('');
     const pick = `<select class="sopo-sel" onchange="sopoPick(${i},this.value)">
       <option value="" ${!S.chosen[l.nk] ? 'selected' : ''}>${l.offers && l.offers.length ? '— בחר ספק —' : '— אין הצעה —'}</option>${opts}
@@ -295,6 +297,7 @@ function exportRows() {
     (groups[off.supplier] = groups[off.supplier] || []).push({
       mpn: l.mpn, qty: orderQty(l.need, off), date: arrivalDate(off, TODAY) || l.dd,
       unitPrice: off.unitPrice, currency: off.currency || 'USD', overridden: !!S.override[l.nk],
+      online: !!off.online, url: off.url || '',
     });
   });
   return { groups, skipped };
@@ -307,11 +310,12 @@ function renderGroups() {
     const rows = groups[n];
     const tot = {};
     rows.forEach(r => { tot[r.currency] = (tot[r.currency] || 0) + r.qty * r.unitPrice; });
+    const online = rows.some(r => r.online);
     return `<div class="sopo-grp">
-      <div class="sopo-grp-h"><b>${esc(n)}</b><span class="sopo-muted">${rows.length} שורות · ${Object.entries(tot).map(([c, v]) => money(v.toFixed(2), c)).join(' + ')}</span>
+      <div class="sopo-grp-h"><b>${online ? '🌐 ' : ''}${esc(n)}</b><span class="sopo-muted">${rows.length} שורות · ${Object.entries(tot).map(([c, v]) => money(v.toFixed(2), c)).join(' + ')}</span>
         <button class="btn btn-blue" onclick="sopoCopy(${gi})">📋 העתק ל-Priority</button></div>
       <table class="import-tbl sopo-tsv"><tbody>${rows.map(r => `<tr${r.overridden ? ' class="sopo-l-block"' : ''}>
-        <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${r.currency}</td></tr>`).join('')}</tbody></table>
+        <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${r.currency}</td>${online ? `<td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">🔗</a>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table>
     </div>`;
   }).join('');
   document.getElementById('sopo-groups').innerHTML = (html || '<div class="sopo-muted">בחר ספק לשורות כדי לבנות טבלאות</div>')
