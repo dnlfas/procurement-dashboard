@@ -3,7 +3,7 @@ import { state, TODAY } from '../state.js';
 import { esc, fd, toast } from '../utils.js';
 import { withXLSX } from '../upload.js';
 import {
-  DEFAULT_RATES, cur3, parseQuoteSheet, matchQuotes, orderQty, arrivalDate,
+  DEFAULT_RATES, cur3, fmtCur, parseQuoteSheet, matchQuotes, orderQty, arrivalDate,
   onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV,
 } from '../sopo/engine.js';
 
@@ -99,16 +99,18 @@ export function sopoQuoteFiles(e) {
     let added = 0;
     for (const file of files) {
       const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+      const wb = XLSX.read(buf, { type: 'array', cellDates: false, cellNF: true });
       const base = file.name.replace(/\.[^.]+$/, '');
       const sheets = {};
       let offers = [];
       wb.SheetNames.forEach(n => {
-        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
-        sheets[n] = aoa;
+        const aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true, blankrows: true });
+        const curs = cellCurrencies(wb.Sheets[n], aoa);
+        // for the AI: numbers whose cell format shows a currency get it spelled out ("5" → "5 USD")
+        sheets[n] = aoa.map((row, r) => row.map((v, c) => typeof v === 'number' && curs[r][c] ? `${v} ${curs[r][c]}` : v));
         // generic sheet names fall back to the file name as the supplier
         const label = /^(sheet|גיליון)\s*\d*$/i.test(n.trim()) ? base : n;
-        offers = offers.concat(parseQuoteSheet(aoa, label));
+        offers = offers.concat(parseQuoteSheet(aoa, label, curs));
       });
       _files.push({ name: file.name, sheets });
       if (offers.length) { S.offers = S.offers.concat(offers); added += offers.length; }
@@ -117,6 +119,12 @@ export function sopoQuoteFiles(e) {
     rematch(); persist(); render();
     toast(`📊 ${added} הצעות נטענו`);
   });
+}
+
+// Grid aligned with sheet_to_json(header:1) rows: the currency each cell's number format displays, '' when none
+function cellCurrencies(ws, aoa) {
+  const s = XLSX.utils.decode_range(ws['!ref'] || 'A1').s;
+  return aoa.map((row, r) => row.map((_, c) => { const cell = ws[XLSX.utils.encode_cell({ r: r + s.r, c: c + s.c })]; return cell && cell.t === 'n' ? fmtCur(cell.z) : ''; }));
 }
 
 async function aiParse(f) {

@@ -21,6 +21,17 @@ export function cur3(v) {
   return '';
 }
 
+// Currency shown by an Excel number format: '[$$-409]#,##0.00' / '"US$"#,##0' → USD, '"₪"\ #,##0.00' → ILS; '' when none
+export function fmtCur(z) {
+  const f = String(z || '');
+  if (!f || f === 'General') return '';
+  const br = f.match(/\[\$([^\]-]+)-?[^\]]*\]/); // [$SYM-locale]; [$-409] alone carries no symbol
+  if (br) { const c = cur3(br[1]); if (c) return c; }
+  for (const q of f.match(/"[^"]*"/g) || []) { const c = cur3(q.slice(1, -1)); if (c) return c; }
+  const bare = f.replace(/"[^"]*"|\[[^\]]*\]/g, '').match(/[$€£₪]/);
+  return bare ? cur3(bare[0]) : '';
+}
+
 export function fxConvert(amount, from, to, rates) {
   const r = rates || DEFAULT_RATES;
   const f = r[from || 'USD'], t = r[to || 'USD'];
@@ -99,7 +110,8 @@ function findHeaderRow(aoa) {
 
 // One sheet as array-of-arrays → offers [{mpn, mfg, supplier, unitPrice, currency, qty, moq, mult, leadDays, stock}]
 // Handles a long layout (one row per offer) and a wide QuoteLens-style layout (one block of columns per supplier).
-export function parseQuoteSheet(aoa, sheetName) {
+// curs: optional grid aligned with aoa holding each cell's number-format currency (prices are often plain numbers shown as $)
+export function parseQuoteSheet(aoa, sheetName, curs) {
   const hr = findHeaderRow(aoa);
   if (hr < 0) return [];
   const head = aoa[hr].map(h => String(h || '').trim());
@@ -163,7 +175,7 @@ export function parseQuoteSheet(aoa, sheetName) {
         mfg: String(cell(b, 'mfg') || '').trim() || lastMfg,
         supplier: lbl || String(cell(b, 'supplier') || '').trim() || sheetName || '',
         unitPrice: p.value,
-        currency: cur3(cell(b, 'currency')) || p.cur || cur3(head[pc]) || '',
+        currency: cur3(cell(b, 'currency')) || p.cur || ((curs && curs[r]) || [])[pc] || cur3(head[pc]) || '',
         qty: num(cell(b, 'qty')) || 0,
         moq: num(cell(b, 'moq')) || 0,
         mult: num(cell(b, 'mult')) || 0,
