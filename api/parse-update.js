@@ -237,7 +237,7 @@ Output only the JSON object. No explanation, no markdown, no code fences.`,
 }
 
 // ── SO → PO: online market price via Claude web search / fetch ──────
-const PRICE_MODEL = 'claude-opus-5-5';
+const PRICE_MODEL = 'claude-sonnet-5-5';
 const PRICE_DOMAINS = ['octopart.com', 'findchips.com', 'digikey.com', 'mouser.com'];
 const PRICE_SYSTEM = `You check current market prices for electronic components on distributor and aggregator websites.
 For each part you are given (MPN, optional manufacturer, quantity):
