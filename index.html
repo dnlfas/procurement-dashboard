@@ -493,6 +493,36 @@
     </div>
   </div>
 </div>
+<!-- SO → PO MODAL -->
+<div id="sopo-modal" onclick="if(event.target===this)closeSOPO()" style="display:none;position:fixed;inset:0;z-index:960;background:rgba(0,0,0,.85);align-items:center;justify-content:center">
+  <div onclick="event.stopPropagation()" class="sopo-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:16px;font-weight:700;color:var(--txtb)" id="sopo-title">🧾 SO → PO</div>
+      <div id="sopo-fx" class="sopo-fx"></div>
+    </div>
+    <div class="sopo-bar">
+      <span class="sopo-step">1 · שורות</span>
+      <button class="btn btn-ghost" onclick="sopoToggleAll(true)">סמן הכל</button>
+      <button class="btn btn-ghost" onclick="sopoToggleAll(false)">נקה</button>
+      <span class="sopo-step">2 · הצעות</span>
+      <button class="btn btn-blue" onclick="document.getElementById('fi-sopo').click()">📊 העלה הצעות (Excel)</button>
+      <input type="file" id="fi-sopo" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="sopoQuoteFiles(event)">
+      <button class="btn btn-ghost" id="sopo-ai" onclick="sopoAIParse()" title="קרא מחדש את הקבצים עם AI אם העמודות לא זוהו נכון">✨ נתח עם AI</button>
+      <button class="btn btn-ghost" onclick="sopoClearQuotes()">נקה הצעות</button>
+      <span id="sopo-quote-info" class="sopo-muted"></span>
+      <button class="btn btn-ghost" id="sopo-online" onclick="sopoOnline()" title="Octopart / FindChips / Digi-Key / Mouser דרך חיפוש AI — רק מחירים שנקראו מדף שנפתח נחשבים מאומתים">🌐 בדיקת מחיר אונליין</button>
+    </div>
+    <div style="overflow:auto;flex:1;min-height:120px">
+      <table class="import-tbl sopo-tbl">
+        <thead><tr><th></th><th>פריט</th><th>כמות</th><th>מחיר מכירה</th><th>ת. ללקוח</th><th>ספק / הצעה</th><th>אונליין</th><th>בדיקות</th></tr></thead>
+        <tbody id="sopo-lines"></tbody>
+      </table>
+    </div>
+    <div class="sopo-step">3 · טבלאות ל-Priority <span class="sopo-muted">(פריט ⇥ — ⇥ כמות ⇥ ת. אספקה ⇥ — ⇥ — ⇥ מחיר ⇥ מטבע)</span></div>
+    <div id="sopo-groups" style="overflow:auto;max-height:32vh"></div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn btn-ghost" onclick="closeSOPO()">סגור</button></div>
+  </div>
+</div>
 <!-- ICS MODAL -->
 <div id="ics-modal" onclick="if(event.target===this)closeICSModal()" style="display:none;position:fixed;inset:0;z-index:970;background:rgba(0,0,0,.8);align-items:center;justify-content:center">
   <div onclick="event.stopPropagation()" style="background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:24px;width:min(460px,95vw);display:flex;flex-direction:column;gap:14px">

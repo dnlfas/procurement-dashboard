@@ -5,6 +5,7 @@ const { isAuthed } = require('./_auth');
 const PATHNAMES = {
   overrides: 'procurement/overrides.json',
   rfq: 'procurement/rfq.json',
+  pricecache: 'procurement/pricecache.json', // SO → PO online price checks, keyed by MPN|qty
 };
 
 module.exports = async function handler(req, res) {

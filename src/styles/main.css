@@ -494,6 +494,32 @@ tr.st-rcv:hover,table.lt tbody tr.st-rcv.st-rcv:hover{background:#461c34}
 .import-tab.on{border-bottom-color:var(--acc);color:var(--txtb)}
 .import-dropzone{border:2px dashed var(--bdr);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--txt2);font-size:13px;transition:border-color .15s}
 .import-dropzone:hover{border-color:var(--acc);color:var(--txtb)}
+/* ── SO → PO ── */
+.sopo-box{background:var(--sur);border:1px solid var(--bdr);border-radius:12px;padding:20px;width:min(1280px,97vw);display:flex;flex-direction:column;gap:12px;max-height:94vh}
+.sopo-fx{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11px;font-family:var(--mono);color:var(--txt2)}
+.sopo-fx input{width:70px;background:var(--sur3);border:1px solid var(--bdr);border-radius:4px;color:var(--txt);font-family:var(--mono);font-size:11px;padding:2px 4px}
+.sopo-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sopo-step{font-size:12px;font-weight:700;color:var(--acc)}
+.sopo-muted{font-size:11px;color:var(--txt2);font-family:var(--mono)}
+.sopo-tbl td{vertical-align:top}
+.sopo-tbl .db{margin:1px 2px;white-space:normal}
+.db-x{background:var(--sur3);color:var(--txt2)}
+.sopo-sel{background:var(--sur3);border:1px solid var(--bdr);border-radius:4px;color:var(--txt);font-family:var(--mono);font-size:11px;padding:3px;max-width:330px}
+.sopo-manual{display:flex;gap:4px;margin-top:4px}
+.sopo-manual input{width:90px;background:var(--sur3);border:1px solid var(--bdr);border-radius:4px;color:var(--txt);font-family:var(--mono);font-size:11px;padding:2px 4px}
+.sopo-link{background:none;border:none;color:var(--acc);cursor:pointer;font-family:var(--mono);font-size:11px;white-space:nowrap}
+.sopo-det td{background:var(--sur2);font-size:11px;line-height:1.7}
+.sopo-det a{color:var(--acc)}
+.sopo-unver{color:var(--txt2);opacity:.7}
+.sopo-ovr{display:inline-flex;gap:3px;align-items:center;font-size:10px;color:var(--red);font-family:var(--sans);margin-right:4px}
+.sopo-l-block td{background:rgba(255,77,77,.05)}
+.sopo-off td{opacity:.45}
+.sopo-grp{border:1px solid var(--bdr);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--sur2)}
+.sopo-grp-h{display:flex;gap:10px;align-items:center;margin-bottom:4px}
+.sopo-grp-h .btn{margin-right:auto}
+.sopo-tsv{direction:ltr}
+.sopo-tsv td{text-align:left;padding:2px 8px}
+.sopo-skip{font-size:11px;color:var(--ora);font-family:var(--mono)}
 .pull-badge{background:rgba(255,165,0,.15);color:var(--ora);border:1px solid rgba(255,165,0,.35);border-radius:4px;font-size:10px;padding:2px 6px;font-family:var(--mono);font-weight:600;white-space:nowrap}
 /* ── MOD SO accordion ── */
 .mso-card{background:var(--sur2);border:1px solid var(--bdr);border-radius:8px;overflow:hidden}

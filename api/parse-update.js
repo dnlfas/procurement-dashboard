@@ -43,7 +43,11 @@ module.exports = async function handler(req, res) {
     let body = '';
     for await (const chunk of req) body += chunk;
     const { type, content, mimeType, context } = JSON.parse(body);
+    // SO → PO helpers live here to stay under Vercel's function limit
+    if (type === 'fx') return res.json(await boiRates());
     if (!content || !content.trim()) return res.status(400).json({ error: 'empty' });
+    if (type === 'pricecheck') return res.json(await priceCheck(JSON.parse(content)));
+    if (type === 'quote') return res.json(await parseQuote(content));
 
     // --- Server-side pre-detection for BTS Sales Order Excel files ---
     // The AI cannot reliably distinguish SO Excel from customer PO, so we detect
@@ -143,59 +147,167 @@ module.exports = async function handler(req, res) {
       messages: [{ role: 'user', content: userContent }],
     });
 
-    let raw = message.content[0].text.trim()
-      .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-    // Strip ALL raw control characters illegal inside JSON strings (0x00-0x1F, 0x7F)
-    // Structural whitespace between tokens becomes spaces — JSON.parse handles that fine.
-    raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ');
     // Reply cut off at max_tokens (long invoices): keep only the complete line items
     const truncated = message.stop_reason === 'max_tokens';
-    if (truncated) raw = closeTruncated(raw);
-    // Extract outermost {...} in case the model added surrounding text
-    const objMatch = raw.match(/\{[\s\S]*\}/);
-    if (objMatch) raw = objMatch[0];
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (_) {
-      // Repair unquoted property names (e.g. {key: val} → {"key": val})
-      let repaired = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
-      try {
-        parsed = JSON.parse(repaired);
-      } catch (__) {
-        // Repair unescaped double-quotes inside string values (e.g. בע"מ in Hebrew company names).
-        // Walk char-by-char: when inside a string, a '"' not followed by :,}] is unescaped.
-        let fixed = '', inStr = false, esc = false;
-        for (let i = 0; i < repaired.length; i++) {
-          const c = repaired[i];
-          if (esc) { fixed += c; esc = false; continue; }
-          if (c === '\\') { fixed += c; esc = true; continue; }
-          if (c === '"') {
-            if (!inStr) { inStr = true; fixed += c; continue; }
-            let j = i + 1;
-            while (j < repaired.length && (repaired[j] === ' ' || repaired[j] === '\t')) j++;
-            const nx = repaired[j] || '';
-            if (nx === ':' || nx === ',' || nx === '}' || nx === ']' || nx === '') {
-              inStr = false; fixed += c;
-            } else {
-              fixed += '\\"';
-            }
-            continue;
-          }
-          fixed += c;
-        }
-        parsed = JSON.parse(fixed);
-      }
-    }
+    const parsed = parseLooseJSON(message.content[0].text, truncated ? 'updates' : null);
     res.json({ ok: true, sourceType: parsed.sourceType || 'other', updates: parsed.updates || [], truncated });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 };
 
-// Cut a truncated reply after the last complete object in the "updates" array and close it.
-function closeTruncated(raw) {
-  const start = raw.indexOf('[', raw.indexOf('"updates"'));
+// Model reply → object, tolerating code fences, surrounding text, unquoted keys and unescaped quotes.
+// truncatedKey: name of the array to cut back to its last complete item when the reply hit max_tokens.
+function parseLooseJSON(text, truncatedKey) {
+  let raw = String(text || '').trim()
+    .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  // Strip ALL raw control characters illegal inside JSON strings (0x00-0x1F, 0x7F)
+  // Structural whitespace between tokens becomes spaces — JSON.parse handles that fine.
+  raw = raw.replace(/[\x00-\x1F\x7F]/g, ' ');
+  if (truncatedKey) raw = closeTruncated(raw, truncatedKey);
+  // Extract outermost {...} in case the model added surrounding text
+  const objMatch = raw.match(/\{[\s\S]*\}/);
+  if (objMatch) raw = objMatch[0];
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    // Repair unquoted property names (e.g. {key: val} → {"key": val})
+    let repaired = raw.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)\s*:/g, '$1"$2":');
+    try {
+      return JSON.parse(repaired);
+    } catch (__) {
+      // Repair unescaped double-quotes inside string values (e.g. בע"מ in Hebrew company names).
+      // Walk char-by-char: when inside a string, a '"' not followed by :,}] is unescaped.
+      let fixed = '', inStr = false, esc = false;
+      for (let i = 0; i < repaired.length; i++) {
+        const c = repaired[i];
+        if (esc) { fixed += c; esc = false; continue; }
+        if (c === '\\') { fixed += c; esc = true; continue; }
+        if (c === '"') {
+          if (!inStr) { inStr = true; fixed += c; continue; }
+          let j = i + 1;
+          while (j < repaired.length && (repaired[j] === ' ' || repaired[j] === '\t')) j++;
+          const nx = repaired[j] || '';
+          if (nx === ':' || nx === ',' || nx === '}' || nx === ']' || nx === '') {
+            inStr = false; fixed += c;
+          } else {
+            fixed += '\\"';
+          }
+          continue;
+        }
+        fixed += c;
+      }
+      return JSON.parse(fixed);
+    }
+  }
+}
+
+// ── SO → PO: Bank of Israel exchange rates (ILS per unit) ───────────
+async function boiRates() {
+  const r = await fetch('https://boi.org.il/PublicApi/GetExchangeRates');
+  if (!r.ok) throw new Error('BOI ' + r.status);
+  const d = await r.json();
+  const rates = { ILS: 1 };
+  (d.exchangeRates || []).forEach(x => {
+    if (['USD', 'EUR', 'GBP'].includes(x.key) && x.currentExchangeRate) rates[x.key] = x.currentExchangeRate / (x.unit || 1);
+  });
+  return { ok: true, rates, date: (d.exchangeRates || [])[0]?.lastUpdate || '' };
+}
+
+// ── SO → PO: quote Excel the client could not map → offers ──────────
+async function parseQuote(content) {
+  const client = new Anthropic();
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 16000,
+    system: `You read supplier quotation spreadsheets for electronic components (one supplier per file, or a comparison of several suppliers per part).
+The input is a JSON object of sheet name → array of rows (each row an array of cell values).
+Return ONLY a JSON object: { "offers": [ { "mpn", "mfg", "supplier", "unitPrice", "currency", "qty", "moq", "mult", "leadDays" } ] }
+- One offer per part per supplier price. unitPrice is the unit price as a number (not an extended/total price, not a target or customer price).
+- currency: 3-letter code (USD, EUR, GBP, ILS) or "".
+- qty: the quantity the supplier quoted (number, 0 if unknown). moq: minimum order qty (0 if none). mult: order multiple / SPQ (0 if none).
+- leadDays: lead time in days as a number (weeks × 7, "stock" = 0), or null if not given.
+- supplier: the supplier name from the sheet name, a column, or a header cell above its columns.
+Output only the JSON object. No explanation, no markdown, no code fences.`,
+    messages: [{ role: 'user', content }],
+  });
+  const truncated = message.stop_reason === 'max_tokens';
+  const parsed = parseLooseJSON(message.content[0].text, truncated ? 'offers' : null);
+  return { ok: true, offers: parsed.offers || [], truncated };
+}
+
+// ── SO → PO: online market price via Claude web search / fetch ──────
+const PRICE_MODEL = 'claude-opus-5-5';
+const PRICE_DOMAINS = ['octopart.com', 'findchips.com', 'digikey.com', 'mouser.com'];
+const PRICE_SYSTEM = `You check current market prices for electronic components on distributor and aggregator websites.
+For each part you are given (MPN, optional manufacturer, quantity):
+1. Search Octopart or FindChips first to see which authorised distributors stock the part and at what price.
+2. Then open (web_fetch) the Digi-Key and/or Mouser product page for the exact MPN and read the price-break table at the given quantity. If those pages cannot be fetched, fetch the Octopart or FindChips page for the part instead.
+Only report a price you read on a page you fetched yourself in this conversation, and report that page's exact URL. Never estimate or recall a price.
+Use the price break that applies to the requested quantity (the largest break quantity that is ≤ the requested quantity).
+Return ONLY a JSON object: { "parts": [ { "mpn", "offers": [ { "source", "distributor", "url", "unitPrice", "currency", "priceBreakQty", "stock" } ] } ] }
+- source: the site the page is on (octopart, findchips, digikey, mouser). distributor: who sells at that price (e.g. Digi-Key, Mouser, Arrow).
+- unitPrice: number. currency: 3-letter code. priceBreakQty, stock: numbers (0 if unknown).
+- A part with no price found gets "offers": [].
+Output only the JSON object. No explanation, no markdown, no code fences.`;
+
+async function priceCheck(parts) {
+  const client = new Anthropic();
+  const list = parts.map(p => `- MPN ${p.mpn}${p.mfg ? ' (' + p.mfg + ')' : ''}, qty ${p.qty}`).join('\n');
+  const messages = [{ role: 'user', content: 'Check current prices for:\n' + list }];
+  const fetched = new Map(); // url → page text, only for pages fetched in this run
+  let message;
+  // Server tools can pause a long turn; resume a few times
+  for (let i = 0; i < 4; i++) {
+    message = await client.beta.messages.create({
+      model: PRICE_MODEL,
+      max_tokens: 16000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'medium' },
+      system: PRICE_SYSTEM,
+      tools: [
+        { type: 'web_search_20260209', name: 'web_search', max_uses: 3 * parts.length, allowed_domains: PRICE_DOMAINS },
+        // Basic fetch variant on purpose: the raw page comes back in web_fetch_tool_result, which the verification below reads
+        { type: 'web_fetch_20250910', name: 'web_fetch', max_uses: 4 * parts.length, allowed_domains: PRICE_DOMAINS, max_content_tokens: 30000 },
+      ],
+      messages,
+    });
+    for (const b of message.content) {
+      if (b.type !== 'web_fetch_tool_result' || !b.content || b.content.type !== 'web_fetch_result') continue;
+      const src = b.content.content && b.content.content.source;
+      fetched.set(normUrl(b.content.url), String((src && src.data) || ''));
+    }
+    if (message.stop_reason !== 'pause_turn') break;
+    messages.push({ role: 'assistant', content: message.content });
+  }
+  if (message.stop_reason === 'refusal') throw new Error('price check declined');
+  const text = message.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  const parsed = parseLooseJSON(text);
+  // An offer is verified only if its page was fetched in this run and shows the MPN and the price
+  const out = (parsed.parts || []).map(p => ({
+    mpn: p.mpn,
+    offers: (p.offers || []).map(o => {
+      const page = fetched.get(normUrl(o.url));
+      return { ...o, verified: !!page && pageHasMpn(page, p.mpn) && pageHasPrice(page, o.unitPrice) };
+    }),
+  }));
+  return { ok: true, parts: out, checkedAt: new Date().toISOString() };
+}
+
+const normUrl = u => String(u || '').trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();
+const squash = s => String(s || '').toUpperCase().replace(/[\s\-_/.]/g, '');
+const pageHasMpn = (page, mpn) => !!mpn && squash(page).includes(squash(mpn));
+function pageHasPrice(page, price) {
+  const p = Number(price);
+  if (!(p > 0)) return false;
+  const nums = (page.replace(/,/g, '').match(/\d+\.\d+|\d+/g) || []).map(Number);
+  return nums.some(n => Math.abs(n - p) <= p * 0.005);
+}
+
+// Cut a truncated reply after the last complete object in the given array and close it.
+function closeTruncated(raw, key) {
+  const start = raw.indexOf('[', raw.indexOf('"' + key + '"'));
   if (start < 0) return raw;
   let depth = 0, inStr = false, esc = false, lastEnd = -1;
   for (let i = start + 1; i < raw.length; i++) {

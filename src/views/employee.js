@@ -314,6 +314,7 @@ export function renderSOCard(g) {
         <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','ordered')" title="סמן הכל כ'הוזמן מהספק'">📦 הוזמן</button>
         <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','supplied')" title="סמן הכל כ'סופק ללקוח'">✅ סופק</button>
         <button class="so-action-link" onclick="setSOStatus('${esc(g.so)}','cancelled')" title="סמן הכל כ'בוטל'">❌ בוטל</button>
+        <button class="so-action-link" onclick="openSOPO('${esc(g.so)}')" title="הפוך שורות להזמנות רכש לפי הצעות ספקים — עם בדיקת מרווח, MOQ, זמן אספקה ומחיר אונליין">🧾 SO→PO</button>
       </div>
       <div onclick="event.stopPropagation()">
         <textarea class="sonote-ta ${sn ? 'hn' : ''}" rows="1"

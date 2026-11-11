@@ -56,6 +56,12 @@ import {
   addRFQRow, removeRFQRow, openRFQModal, closeRFQModal, submitRFQModal
 } from './views/rfq.js';
 
+// ── Views: SO → PO ────────────────────────────────────────────
+import {
+  openSOPO, closeSOPO, sopoRate, sopoQuoteFiles, sopoAIParse, sopoClearQuotes, sopoOnline, sopoShowOnline,
+  sopoToggle, sopoToggleAll, sopoPick, sopoOverride, sopoManual, sopoCopy
+} from './views/sopo.js';
+
 // ── RFQ Engine ────────────────────────────────────────────────
 import {
   startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ, loadRFQFromServer
@@ -228,6 +234,10 @@ Object.assign(window, {
   // views — RFQ
   renderRFQ, renderRFQList, setRFQFilter,
   addRFQRow, removeRFQRow, openRFQModal, closeRFQModal, submitRFQModal,
+
+  // views — SO → PO
+  openSOPO, closeSOPO, sopoRate, sopoQuoteFiles, sopoAIParse, sopoClearQuotes, sopoOnline, sopoShowOnline,
+  sopoToggle, sopoToggleAll, sopoPick, sopoOverride, sopoManual, sopoCopy,
 
   // rfq engine
   startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ,
