@@ -519,6 +519,8 @@ tr.st-rcv:hover,table.lt tbody tr.st-rcv.st-rcv:hover{background:#461c34}
 .sopo-grp-h .btn{margin-right:auto}
 .sopo-tsv{direction:ltr}
 .sopo-tsv td{text-align:left;padding:2px 8px}
+.sopo-tsv td.sopo-reason{direction:rtl;text-align:right;font-size:11px}
+.sopo-tsv tr.sopo-off td:first-child{opacity:1}
 .sopo-skip{font-size:11px;color:var(--ora);font-family:var(--mono)}
 .pull-badge{background:rgba(255,165,0,.15);color:var(--ora);border:1px solid rgba(255,165,0,.35);border-radius:4px;font-size:10px;padding:2px 6px;font-family:var(--mono);font-weight:600;white-space:nowrap}
 /* ── MOD SO accordion ── */

@@ -33,7 +33,7 @@ export function openSOPO(so) {
     }));
   S = {
     so, lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
-    override: saved.override || {}, online: {}, openOnline: {}, ready: false,
+    override: saved.override || {}, exclude: saved.exclude || {}, online: {}, openOnline: {}, ready: false,
     rates: { ...DEFAULT_RATES }, fxNote: 'ברירת מחדל',
   };
   _files = [];
@@ -52,7 +52,7 @@ export function closeSOPO() { persist(); document.getElementById('sopo-modal').s
 function persist() {
   if (!S) return;
   const all = load(SOPO_KEY, {});
-  all[S.so] = { sel: S.lines.filter(l => l.sel).map(l => l.nk), offers: S.offers, chosen: S.chosen, manual: S.manual, override: S.override, ts: Date.now() };
+  all[S.so] = { sel: S.lines.filter(l => l.sel).map(l => l.nk), offers: S.offers, chosen: S.chosen, manual: S.manual, override: S.override, exclude: S.exclude, ts: Date.now() };
   save(SOPO_KEY, all);
 }
 
@@ -296,15 +296,20 @@ function render() {
   renderGroups();
 }
 
+// Every selected line with a supplier goes into its supplier's table; blocked lines start unchecked with their reason
 function exportRows() {
   const groups = {}, skipped = [];
-  S.lines.filter(l => l.sel).forEach(l => {
+  S.lines.forEach((l, i) => {
+    if (!l.sel) return;
     const off = chosenOffer(l);
     if (!off) { skipped.push(`${l.mpn} (ללא ספק)`); return; }
-    if (worstLevel(runChecks(lineCtx(l), off, ctxFor(l))) === 'block' && !S.override[l.nk]) { skipped.push(`${l.mpn} (חסום)`); return; }
+    const checks = runChecks(lineCtx(l), off, ctxFor(l));
+    const blocked = worstLevel(checks) === 'block';
     (groups[off.supplier] = groups[off.supplier] || []).push({
-      mpn: l.mpn, qty: orderQty(l.need, off), date: arrivalDate(off, TODAY) || l.dd,
-      unitPrice: off.unitPrice, currency: off.currency || 'USD', overridden: !!S.override[l.nk],
+      i, mpn: l.mpn, qty: orderQty(l.need, off), date: arrivalDate(off, TODAY) || l.dd,
+      unitPrice: off.unitPrice, currency: off.currency || 'USD',
+      blocked, on: blocked ? !!S.override[l.nk] : !S.exclude[l.nk],
+      reason: checks.filter(c => c.level === (blocked ? 'block' : 'warn')).map(c => c.text).join(' · '),
       online: !!off.online, url: off.url || '',
     });
   });
@@ -315,25 +320,38 @@ function renderGroups() {
   const { groups, skipped } = exportRows();
   const names = Object.keys(groups).sort();
   const html = names.map((n, gi) => {
-    const rows = groups[n];
+    const rows = groups[n], on = rows.filter(r => r.on);
     const tot = {};
-    rows.forEach(r => { tot[r.currency] = (tot[r.currency] || 0) + r.qty * r.unitPrice; });
+    on.forEach(r => { tot[r.currency] = (tot[r.currency] || 0) + r.qty * r.unitPrice; });
     const online = rows.some(r => r.online);
     return `<div class="sopo-grp">
-      <div class="sopo-grp-h"><b>${online ? '🌐 ' : ''}${esc(n)}</b><span class="sopo-muted">${rows.length} שורות · ${Object.entries(tot).map(([c, v]) => money(v.toFixed(2), c)).join(' + ')}</span>
-        <button class="btn btn-blue" onclick="sopoCopy(${gi})">📋 העתק ל-Priority</button></div>
-      <table class="import-tbl sopo-tsv"><tbody>${rows.map(r => `<tr${r.overridden ? ' class="sopo-l-block"' : ''}>
-        <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${r.currency}</td>${online ? `<td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">🔗</a>` : ''}</td>` : ''}</tr>`).join('')}</tbody></table>
+      <div class="sopo-grp-h"><b>${online ? '🌐 ' : ''}${esc(n)}</b><span class="sopo-muted">${on.length}/${rows.length} שורות${on.length ? ' · ' + Object.entries(tot).map(([c, v]) => money(v.toFixed(2), c)).join(' + ') : ''}</span>
+        <button class="btn btn-blue" onclick="sopoCopy(${gi})" ${on.length ? '' : 'disabled'}>📋 העתק ל-Priority</button></div>
+      <table class="import-tbl sopo-tsv"><tbody>${rows.map(r => `<tr class="${r.blocked ? 'sopo-l-block' : ''}${r.on ? '' : ' sopo-off'}">
+        <td><input type="checkbox" ${r.on ? 'checked' : ''} onchange="sopoInclude(${r.i},this.checked)" title="${r.blocked ? 'חסום — סמן כדי לכלול בכל זאת' : 'כלול בהעתקה'}"></td>
+        <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${r.currency}</td>${online ? `<td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">🔗</a>` : ''}</td>` : ''}
+        <td class="sopo-reason">${r.reason ? `<span class="db ${r.blocked ? 'db-r' : 'db-o'}">${esc(r.reason)}</span>` : ''}</td></tr>`).join('')}</tbody></table>
     </div>`;
   }).join('');
   document.getElementById('sopo-groups').innerHTML = (html || '<div class="sopo-muted">בחר ספק לשורות כדי לבנות טבלאות</div>')
     + (skipped.length ? `<div class="sopo-skip">לא נכללו: ${skipped.map(esc).join(' · ')}</div>` : '');
 }
 
+// Table checkbox: for a blocked line it is the "include anyway" override, otherwise an exclude
+export function sopoInclude(i, v) {
+  const l = S.lines[i];
+  const off = chosenOffer(l);
+  const blocked = off && worstLevel(runChecks(lineCtx(l), off, ctxFor(l))) === 'block';
+  if (blocked) S.override[l.nk] = v; else if (v) delete S.exclude[l.nk]; else S.exclude[l.nk] = true;
+  persist(); render();
+}
+
 export async function sopoCopy(gi) {
   const { groups } = exportRows();
   const n = Object.keys(groups).sort()[gi];
   if (!n) return;
-  try { await navigator.clipboard.writeText(toPriorityTSV(groups[n])); toast(`📋 ${groups[n].length} שורות ל-${n} הועתקו — הדבק בשורות ההזמנה ב-Priority`); }
+  const rows = groups[n].filter(r => r.on);
+  if (!rows.length) return;
+  try { await navigator.clipboard.writeText(toPriorityTSV(rows)); toast(`📋 ${rows.length} שורות ל-${n} הועתקו — הדבק בשורות ההזמנה ב-Priority`); }
   catch (e) { toast('ההעתקה נכשלה'); }
 }
