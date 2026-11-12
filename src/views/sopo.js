@@ -4,7 +4,7 @@ import { esc, fd, toast } from '../utils.js';
 import { withXLSX } from '../upload.js';
 import {
   DEFAULT_RATES, cur3, fmtCur, parseQuoteSheet, matchQuotes, orderQty, arrivalDate,
-  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV,
+  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV, priorityCur,
 } from '../sopo/engine.js';
 
 const SOPO_KEY = 'oo_sopo', FX_KEY = 'oo_fx', PRICE_KEY = 'oo_pricecache';
@@ -329,7 +329,7 @@ function renderGroups() {
         <button class="btn btn-blue" onclick="sopoCopy(${gi})" ${on.length ? '' : 'disabled'}>📋 העתק ל-Priority</button></div>
       <table class="import-tbl sopo-tsv"><tbody>${rows.map(r => `<tr class="${r.blocked ? 'sopo-l-block' : ''}${r.on ? '' : ' sopo-off'}">
         <td><input type="checkbox" ${r.on ? 'checked' : ''} onchange="sopoInclude(${r.i},this.checked)" title="${r.blocked ? 'חסום — סמן כדי לכלול בכל זאת' : 'כלול בהעתקה'}"></td>
-        <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${r.currency}</td>${online ? `<td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">🔗</a>` : ''}</td>` : ''}
+        <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${esc(priorityCur(r.currency))}</td>${online ? `<td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">🔗</a>` : ''}</td>` : ''}
         <td class="sopo-reason">${r.reason ? `<span class="db ${r.blocked ? 'db-r' : 'db-o'}">${esc(r.reason)}</span>` : ''}</td></tr>`).join('')}</tbody></table>
     </div>`;
   }).join('');

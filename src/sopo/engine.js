@@ -313,10 +313,13 @@ export function pickBest(line, offers, ctx) {
 const p2 = n => String(n).padStart(2, '0');
 const ddmmyy = d => d ? p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2) : '';
 
+// Currency as Priority expects it: USD is '$', others keep their code
+export const priorityCur = c => (c || 'USD') === 'USD' ? '$' : c;
+
 // rows: [{ mpn, qty, date: Date|null, unitPrice, currency }]
 // Columns: MPN ⇥ — ⇥ Qty ⇥ Delivery date ⇥ — ⇥ — ⇥ Unit price ⇥ Currency
 export function toPriorityTSV(rows) {
   return rows.map(r => [
-    r.mpn, '', r.qty, ddmmyy(r.date), '', '', +Number(r.unitPrice).toFixed(5), r.currency || 'USD',
+    r.mpn, '', r.qty, ddmmyy(r.date), '', '', +Number(r.unitPrice).toFixed(5), priorityCur(r.currency),
   ].join('\t')).join('\r\n');
 }
