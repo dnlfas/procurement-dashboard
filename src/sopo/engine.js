@@ -240,19 +240,23 @@ export function distName(o) {
   return d || SOURCE_NAMES[String(o.source || '').toLowerCase()] || String(o.source || 'Online');
 }
 
-// Verified online prices → offers in the quote shape, cheapest per distributor
+// Verified online prices → offers in the quote shape, cheapest total per distributor.
+// MOQ: the reported minimum, or the price break used when it is above the needed qty (Mouser "@10" for 1 piece)
 export const ONLINE_SHIP_DAYS = 7; // distributor stock → Israel
 export function onlineOffers(online, need) {
   const best = {};
   ((online && online.offers) || []).filter(o => o.verified && +o.unitPrice > 0).forEach(o => {
+    const brk = +o.priceBreakQty || 0;
+    const moq = Math.max(+o.moq > 1 ? +o.moq : 0, brk > need ? brk : 0);
     const off = {
       mpn: '', mfg: '', supplier: distName(o), unitPrice: +o.unitPrice, currency: cur3(o.currency) || 'USD',
-      qty: 0, moq: 0, mult: 0, stock: +o.stock || 0,
+      qty: 0, moq, mult: +o.mult > 1 ? +o.mult : 0, stock: +o.stock || 0,
       leadDays: +o.stock >= need ? ONLINE_SHIP_DAYS : null,
       online: true, url: String(o.url || ''),
     };
     const cur = best[off.supplier];
-    if (!cur || fxConvert(off.unitPrice, off.currency, 'USD') < fxConvert(cur.unitPrice, cur.currency, 'USD')) best[off.supplier] = off;
+    const total = x => fxConvert(x.unitPrice, x.currency, 'USD') * orderQty(need, x);
+    if (!cur || total(off) < total(cur)) best[off.supplier] = off;
   });
   return Object.values(best);
 }

@@ -238,16 +238,16 @@ Output only the JSON object. No explanation, no markdown, no code fences.`,
 
 // ── SO → PO: online market price via Claude web search / fetch ──────
 const PRICE_MODEL = 'claude-sonnet-5-5';
-const PRICE_DOMAINS = ['octopart.com', 'findchips.com', 'digikey.com', 'mouser.com'];
+const PRICE_DOMAINS = ['octopart.com', 'findchips.com', 'digikey.com', 'mouser.com', 'tti.com', 'arrow.com', 'avnet.com', 'newark.com', 'farnell.com', 'rs-online.com', 'tme.eu', 'verical.com'];
 const PRICE_SYSTEM = `You check current market prices for electronic components on distributor and aggregator websites.
 For each part you are given (MPN, optional manufacturer, quantity):
-1. Search Octopart or FindChips first to see which authorised distributors stock the part and at what price.
-2. Then open (web_fetch) the Digi-Key and/or Mouser product page for the exact MPN and read the price-break table at the given quantity. If those pages cannot be fetched, fetch the Octopart or FindChips page for the part instead.
+1. Fetch (web_fetch) the Octopart and/or FindChips page for the exact MPN. It lists every authorised distributor (Digi-Key, Mouser, TTI, Arrow, Avnet, Newark/Farnell, RS, TME, Verical, …) with stock, MOQ and price breaks. Report each authorised distributor with stock from that page as its own offer.
+2. Then fetch the Digi-Key and/or Mouser product page for the exact MPN to confirm their price-break table and minimum order quantity.
 Only report a price you read on a page you fetched yourself in this conversation, and report that page's exact URL. Never estimate or recall a price.
-Use the price break that applies to the requested quantity (the largest break quantity that is ≤ the requested quantity).
-Return ONLY a JSON object: { "parts": [ { "mpn", "offers": [ { "source", "distributor", "url", "unitPrice", "currency", "priceBreakQty", "stock" } ] } ] }
-- source: the site the page is on (octopart, findchips, digikey, mouser). distributor: who sells at that price (e.g. Digi-Key, Mouser, Arrow).
-- unitPrice: number. currency: 3-letter code. priceBreakQty, stock: numbers (0 if unknown).
+Price at the requested quantity: use the largest price break ≤ the requested quantity. If the requested quantity is below the smallest break or the distributor's minimum, use the smallest break's price and report that minimum as moq.
+Return ONLY a JSON object: { "parts": [ { "mpn", "offers": [ { "source", "distributor", "url", "unitPrice", "currency", "priceBreakQty", "moq", "mult", "stock" } ] } ] }
+- source: the site the page is on (octopart, findchips, digikey, mouser, …). distributor: who sells at that price (e.g. Digi-Key, Mouser, TTI, Arrow).
+- unitPrice: number. currency: 3-letter code. priceBreakQty: the break used. moq: the distributor's minimum order quantity (1 when there is none). mult: order multiple (0 if none). stock: number in stock (0 if unknown).
 - A part with no price found gets "offers": [].
 Output only the JSON object. No explanation, no markdown, no code fences.`;
 

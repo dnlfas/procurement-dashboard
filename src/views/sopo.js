@@ -9,6 +9,7 @@ import {
 
 const SOPO_KEY = 'oo_sopo', FX_KEY = 'oo_fx', PRICE_KEY = 'oo_pricecache';
 const PRICE_TTL = 7 * 86400000;
+const PRICE_V = 2; // bump when the price check returns new fields (v2: MOQ, more distributors) so older results are re-checked
 const CLOSED = ['cancelled', 'cancelled_bts', 'supplied'];
 const LVL_CLS = { ok: 'db-g', warn: 'db-o', block: 'db-r', info: 'db-x' };
 
@@ -175,7 +176,7 @@ function applyCachedPrices() {
   if (!S) return;
   S.lines.forEach(l => {
     const c = _priceCache[priceKey(l)];
-    if (c && Date.now() - c.ts < PRICE_TTL) S.online[l.nk] = c;
+    if (c && c.v >= PRICE_V && Date.now() - c.ts < PRICE_TTL) S.online[l.nk] = c;
   });
 }
 
@@ -195,7 +196,7 @@ export async function sopoOnline() {
       if (!res.ok || !j.ok) throw new Error(j.error || res.status);
       batch.forEach(l => {
         const p = (j.parts || []).find(x => String(x.mpn || '').toUpperCase() === l.mpn.toUpperCase()) || { offers: [] };
-        const entry = { ts: Date.now(), offers: p.offers || [] };
+        const entry = { v: PRICE_V, ts: Date.now(), offers: p.offers || [] };
         _priceCache[priceKey(l)] = entry;
         if (S) S.online[l.nk] = entry;
       });
@@ -277,7 +278,7 @@ function render() {
     const nVer = on ? on.offers.filter(o => o.verified).length : 0;
     const onCell = on ? `<button class="sopo-link" onclick="sopoShowOnline(${i})" title="${nVer} מקורות מאומתים מתוך ${on.offers.length}">🌐 ${med ? money(med.toFixed(4), l.currency) : 'אין מאומת'}</button>` : '';
     const onDet = on && S.openOnline[l.nk] ? `<tr class="sopo-det"><td></td><td colspan="7">${on.offers.length ? on.offers.map(o =>
-      `<div class="${o.verified ? '' : 'sopo-unver'}">${o.verified ? '✓' : '✗ לא מאומת'} ${esc(o.distributor || o.source)} — ${money(o.unitPrice, o.currency)}${o.priceBreakQty ? ' @' + o.priceBreakQty : ''}${o.stock ? ' · מלאי ' + o.stock : ''} · <a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.source || 'link')}</a></div>`).join('')
+      `<div class="${o.verified ? '' : 'sopo-unver'}">${o.verified ? '✓' : '✗ לא מאומת'} ${esc(o.distributor || o.source)} — ${money(o.unitPrice, o.currency)}${o.priceBreakQty ? ' @' + o.priceBreakQty : ''}${o.moq > 1 ? ' · MOQ ' + o.moq : ''}${o.stock ? ' · מלאי ' + o.stock : ''} · <a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.source || 'link')}</a></div>`).join('')
       : 'לא נמצא מחיר אונליין'} <span class="sopo-muted">נבדק ${fd(new Date(on.ts))}</span></td></tr>` : '';
     const ovr = lvl === 'block' ? `<label class="sopo-ovr"><input type="checkbox" ${S.override[l.nk] ? 'checked' : ''} onchange="sopoOverride(${i},this.checked)"> כלול בכל זאת</label>` : '';
     const qty = off ? orderQty(l.need, off) : l.need;
