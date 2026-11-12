@@ -3,6 +3,7 @@
 
 export const SOPO_RULES = {
   minMargin: 0.07,     // warn below 7% margin, block at 0% or less
+  onlineLoss: 0.07,    // online-market offers: a loss of up to 7% is approved (warn, not block)
   aboveMarket: 1.5,    // warn when the quote is > 1.5× the verified online median
   belowMarket: 0.5,    // warn when the quote is < 0.5× (counterfeit / typo risk)
 };
@@ -267,7 +268,8 @@ export function runChecks(line, offer, ctx) {
   if (line.price > 0) {
     const m = (line.price - cost) / line.price;
     const pct = (m * 100).toFixed(1) + '%';
-    if (m <= 0) out.push({ key: 'margin', level: 'block', text: `הפסד: עלות ${cost.toFixed(4)} ≥ מכירה ${line.price} (${pct})` });
+    if (m <= 0 && offer.online && m >= -R.onlineLoss - 1e-9) out.push({ key: 'margin', level: 'warn', text: `הפסד ${(-m * 100).toFixed(1)}% — מאושר (מחיר שוק אונליין, עד ${Math.round(R.onlineLoss * 100)}%)` });
+    else if (m <= 0) out.push({ key: 'margin', level: 'block', text: `הפסד: עלות ${cost.toFixed(4)} ≥ מכירה ${line.price} (${pct})` });
     else if (m < R.minMargin) out.push({ key: 'margin', level: 'warn', text: `מרווח נמוך ${pct}` });
     else out.push({ key: 'margin', level: 'ok', text: `מרווח ${pct}` });
   } else out.push({ key: 'margin', level: 'warn', text: 'אין מחיר מכירה ב-SO' });
