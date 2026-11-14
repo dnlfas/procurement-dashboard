@@ -50,8 +50,9 @@ function openSession(key, rows, batch, defSel, title) {
     nk: r.nk, mpn: r.mpn, so: r.so, customer: r.customer || '',
     need: r.short > 0 ? r.short : (r.qtyR || r.qtyO),
     price: r.price || 0, currency: cur3(r.currency) || 'ILS', dd: r.dd || null,
-    sel: saved.sel ? saved.sel.includes(r.nk) : defSel(r),
+    defSel: !!defSel(r),
   }));
+  lines.forEach(l => { l.sel = saved.sel ? saved.sel.includes(l.nk) : l.defSel; });
   S = {
     so: key, batch, filter: '', lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
     override: saved.override || {}, exclude: saved.exclude || {}, online: {}, openOnline: {}, ready: false,
@@ -179,9 +180,15 @@ export async function sopoAIParse() {
   toast(`✨ ${n} הצעות זוהו ע"י AI`);
 }
 
+// Start over: as the window first opens after loading the SO file — no quotes, picks, manual prices,
+// overrides or exclusions, default line selection. Online prices stay (a 7-day cache that costs AI calls to refill).
 export function sopoClearQuotes() {
-  S.offers = []; S.chosen = {}; _files = [];
+  if (!confirm('לנקות הכל ולהתחיל מחדש? ההצעות, בחירות הספקים, המחירים הידניים והסימונים יימחקו.')) return;
+  S.offers = []; S.chosen = {}; S.manual = {}; S.override = {}; S.exclude = {}; S.openOnline = {}; _files = [];
+  S.lines.forEach(l => { l.sel = l.defSel; });
+  S.filter = ''; document.getElementById('sopo-filter').value = '';
   rematch(); persist(); render();
+  toast('↺ SO → PO אופס');
 }
 
 // ── Online price check ──────────────────────────────────────────

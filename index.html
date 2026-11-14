@@ -504,14 +504,14 @@
     <div class="sopo-bar">
       <span class="sopo-step">1 · שורות</span>
       <button class="btn btn-ghost" onclick="sopoToggleAll(true)">סמן הכל</button>
-      <button class="btn btn-ghost" onclick="sopoToggleAll(false)">נקה</button>
+      <button class="btn btn-ghost" onclick="sopoToggleAll(false)">בטל סימון</button>
       <input id="sopo-filter" class="sopo-filter" placeholder="סינון: פריט / SO / לקוח / ספק" oninput="sopoFilter(this.value)" style="display:none">
       <span id="sopo-count" class="sopo-muted"></span>
       <span class="sopo-step">2 · הצעות</span>
       <button class="btn btn-blue" onclick="document.getElementById('fi-sopo').click()">📊 העלה הצעות (Excel)</button>
       <input type="file" id="fi-sopo" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="sopoQuoteFiles(event)">
       <button class="btn btn-ghost" id="sopo-ai" onclick="sopoAIParse()" title="קרא מחדש את הקבצים עם AI אם העמודות לא זוהו נכון">✨ נתח עם AI</button>
-      <button class="btn btn-ghost" onclick="sopoClearQuotes()">נקה הצעות</button>
+      <button class="btn btn-ghost" onclick="sopoClearQuotes()" title="התחל מחדש: מוחק את ההצעות, בחירות הספקים, המחירים הידניים והסימונים — כמו בפתיחה הראשונה. מחירי אונליין נשמרים">↺ נקה הכל</button>
       <span id="sopo-quote-info" class="sopo-muted"></span>
       <button class="btn btn-ghost" id="sopo-online" onclick="sopoOnline()" title="Octopart / FindChips / Digi-Key / Mouser דרך חיפוש AI — רק מחירים שנקראו מדף שנפתח נחשבים מאומתים">🌐 בדיקת מחיר אונליין</button>
     </div>
