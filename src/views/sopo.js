@@ -297,7 +297,7 @@ function render() {
     const lvl = off ? worstLevel(checks) : 'none';
     const opts = (l.offers || []).map(o => {
       const k = offerKey(o);
-      const lt = o.leadDays == null ? '' : ` · ${o.leadDays}י׳`;
+      const lt = o.leadDays == null ? ' · זמן אספקה ?' : o.leadDays === 0 && !o.online ? ' · במלאי' : ` · ${o.leadDays}י׳`;
       const moq = o.moq ? ` · MOQ ${o.moq}` : '';
       const stk = o.online ? ` · מלאי ${o.stock || '?'}` : '';
       return `<option value="${esc(k)}" ${S.chosen[l.nk] === k ? 'selected' : ''}>${o.online ? '🌐 ' : ''}${esc(o.supplier)} — ${money(o.unitPrice, o.currency)}${moq}${stk}${lt}</option>`;

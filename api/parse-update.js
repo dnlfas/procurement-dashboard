@@ -226,7 +226,7 @@ Return ONLY a JSON object: { "offers": [ { "mpn", "mfg", "supplier", "unitPrice"
 - One offer per part per supplier price. unitPrice is the unit price as a number (not an extended/total price, not a target or customer price).
 - currency: 3-letter code (USD, EUR, GBP, ILS) or "". A number written as "5 USD" is in that currency (taken from the cell's format). A converted or total column (e.g. "NIS 1$ = 3.21") is not a supplier price and does not set a supplier's currency.
 - qty: the quantity the supplier quoted (number, 0 if unknown). moq: minimum order qty (0 if none). mult: order multiple / SPQ (0 if none).
-- leadDays: lead time in days as a number (weeks × 7, "stock" = 0), or null if not given.
+- leadDays: lead time in days as a number (weeks × 7). 0 only when the supplier says the part is in stock. "No stock" / "out of stock" / stock 0 is NOT 0: use its weeks if given, else null. A blank or 0 lead time is null.
 - supplier: the supplier name from the sheet name, a column, or a header cell above its columns.
 Output only the JSON object. No explanation, no markdown, no code fences.`,
     messages: [{ role: 'user', content }],

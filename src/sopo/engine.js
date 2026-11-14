@@ -40,13 +40,18 @@ export function fxConvert(amount, from, to, rates) {
   return amount * f / t;
 }
 
-// "6-8 wks" → 56, "10 days" → 10, "stock" → 0, 6 (with weeks header) → 42; null when unknown
+// "6-8 wks" → 56, "10 days" → 10, "stock" → 0, 6 (with weeks header) → 42; null when unknown.
+// "No stock" / "out of stock" / "אין מלאי" is not stock: its weeks if given ("no stock, 8 wks" → 56), else null.
+// A bare 0 is a blank, not "in stock" — only words say a supplier has the part on the shelf.
+const NO_STOCK = /\b(no|not|out\s*of|zero|0)\s*(in\s*)?stock|non[-\s]?stock|stock\s*[:=]?\s*(0|no|none|n\/?a)\b|אין\s*(ב)?מלאי|לא\s*(קיים\s*)?ב?מלאי|חסר\s*במלאי/i;
 export function leadDays(v, headerUnit) {
   if (v == null || v === '') return null;
-  if (typeof v === 'number') return Math.round(v * (headerUnit === 'days' ? 1 : 7));
+  if (typeof v === 'number') return v > 0 ? Math.round(v * (headerUnit === 'days' ? 1 : 7)) : null;
   const t = String(v).toLowerCase().trim();
-  if (/stock|מלאי|asap|immediate|מיידי/.test(t)) return 0;
-  const nums = (t.match(/\d+(\.\d+)?/g) || []).map(Number);
+  const noStock = NO_STOCK.test(t);
+  if (!noStock && /stock|מלאי|asap|immediate|מיידי/.test(t)) return 0;
+  // in "no stock" text the stock count is not a lead time: "0 stock, 8 weeks" → only 8 counts
+  const nums = (noStock ? t.replace(NO_STOCK, ' ') : t).match(/\d+(\.\d+)?/g)?.map(Number).filter(n => n > 0) || [];
   if (!nums.length) return null;
   const n = Math.max(...nums);
   if (/day|יום|ימים|\bd\b/.test(t)) return Math.round(n);
@@ -171,6 +176,10 @@ export function parseQuoteSheet(aoa, sheetName, curs) {
       const p = parsePrice(row[pc]);
       if (!(p.value > 0)) continue;
       const lc = b.lead != null ? b.lead : shared('lead') ? common.lead : null;
+      let lead = lc != null ? leadDays(row[lc], leadUnit(lc)) : null;
+      // "stock" in the lead column but the quote's own stock column says 0 / none → lead unknown
+      const sc = b.stock != null ? b.stock : shared('stock') ? common.stock : null;
+      if (lead === 0 && sc != null && String(row[sc]).trim() !== '' && !(num(row[sc]) > 0)) lead = null;
       offers.push({
         mpn,
         mfg: String(cell(b, 'mfg') || '').trim() || lastMfg,
@@ -180,7 +189,7 @@ export function parseQuoteSheet(aoa, sheetName, curs) {
         qty: num(cell(b, 'qty')) || 0,
         moq: num(cell(b, 'moq')) || 0,
         mult: num(cell(b, 'mult')) || 0,
-        leadDays: lc != null ? leadDays(row[lc], leadUnit(lc)) : null,
+        leadDays: lead,
         stock: num(cell(b, 'stock')) || 0,
       });
     }
