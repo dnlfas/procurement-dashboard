@@ -220,14 +220,15 @@
           <div class="today-list" style="padding:8px 10px" id="fu-list"></div>
         </div>
         <div class="panel">
-          <div class="phead">⏳ ממתינים ל-PO <span id="aging-count" style="color:var(--ora)"></span></div>
+          <div class="phead">⏳ ממתינים ל-PO <span id="aging-count" style="color:var(--ora)"></span>
+            <button class="btn btn-ghost aging-batch" onclick="openSOPOBatch('all')" title="SO→PO מרוכז: כל הפריטים הממתינים מכל ההזמנות במסך אחד — הצעות נטענות פעם אחת, טבלת Priority אחת לכל ספק, ואותו פריט מכמה הזמנות מאוחד לשורה אחת">🧾 SO→PO מרוכז</button></div>
           <div class="aging-split">
             <div class="aging-sub mod">
-              <div class="aging-sub-hdr">🛡️ משרד הביטחון <span id="aging-mod-count" style="color:var(--ora)"></span></div>
+              <div class="aging-sub-hdr">🛡️ משרד הביטחון <span id="aging-mod-count" style="color:var(--ora)"></span> <button class="sopo-link" onclick="openSOPOBatch('mod')" title="SO→PO מרוכז למשרד הביטחון בלבד">🧾 מרוכז</button></div>
               <div class="today-list" id="aging-mod-list"></div>
             </div>
             <div class="aging-sub">
-              <div class="aging-sub-hdr">🏢 לקוחות אחרים <span id="aging-other-count" style="color:var(--ora)"></span></div>
+              <div class="aging-sub-hdr">🏢 לקוחות אחרים <span id="aging-other-count" style="color:var(--ora)"></span> <button class="sopo-link" onclick="openSOPOBatch('other')" title="SO→PO מרוכז ללקוחות אחרים בלבד">🧾 מרוכז</button></div>
               <div class="today-list" id="aging-other-list"></div>
             </div>
           </div>
@@ -504,6 +505,8 @@
       <span class="sopo-step">1 · שורות</span>
       <button class="btn btn-ghost" onclick="sopoToggleAll(true)">סמן הכל</button>
       <button class="btn btn-ghost" onclick="sopoToggleAll(false)">נקה</button>
+      <input id="sopo-filter" class="sopo-filter" placeholder="סינון: פריט / SO / לקוח / ספק" oninput="sopoFilter(this.value)" style="display:none">
+      <span id="sopo-count" class="sopo-muted"></span>
       <span class="sopo-step">2 · הצעות</span>
       <button class="btn btn-blue" onclick="document.getElementById('fi-sopo').click()">📊 העלה הצעות (Excel)</button>
       <input type="file" id="fi-sopo" accept=".xlsx,.xls,.csv" multiple style="display:none" onchange="sopoQuoteFiles(event)">

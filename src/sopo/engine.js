@@ -313,6 +313,31 @@ export function pickBest(line, offers, ctx) {
   return scored[0].i;
 }
 
+// One supplier's rows → Priority lines. Included rows with the same part, price and currency (e.g. the same MPN
+// on several SOs) become one line: quantity is recomputed from the combined need so MOQ / pack rounding applies
+// once, and the date is the earliest. Excluded rows stay one per SO line.
+// rows: [{ i, so, mpn, need, offer, qty, date, unitPrice, currency, on, blocked, reason, url }] → rows + { idx: [i], sos: [so] }
+export function mergeRows(rows) {
+  const out = [], by = {};
+  rows.forEach(r => {
+    const row = { ...r, idx: [r.i], sos: r.so ? [r.so] : [], reasons: r.reason ? [r.reason] : [] };
+    if (!r.on) { out.push(row); return; }
+    const k = [String(r.mpn).trim().toUpperCase(), r.unitPrice, r.currency].join('|');
+    const m = by[k];
+    if (!m) { by[k] = row; out.push(row); return; }
+    m.idx.push(r.i);
+    if (r.so && !m.sos.includes(r.so)) m.sos.push(r.so);
+    if (r.reason && !m.reasons.includes(r.reason)) m.reasons.push(r.reason);
+    m.need += r.need;
+    m.qty = orderQty(m.need, r.offer);
+    if (r.date && (!m.date || r.date < m.date)) m.date = r.date;
+    m.blocked = m.blocked || r.blocked;
+    m.url = m.url || r.url;
+  });
+  out.forEach(r => { r.reason = r.reasons.join(' · '); delete r.reasons; });
+  return out;
+}
+
 // ── Priority paste ──────────────────────────────────────────────
 const p2 = n => String(n).padStart(2, '0');
 const ddmmyy = d => d ? p2(d.getDate()) + '/' + p2(d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2) : '';

@@ -4,8 +4,10 @@ import { esc, fd, toast } from '../utils.js';
 import { withXLSX } from '../upload.js';
 import {
   DEFAULT_RATES, cur3, fmtCur, parseQuoteSheet, matchQuotes, orderQty, arrivalDate,
-  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV, priorityCur,
+  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV, priorityCur, mergeRows,
 } from '../sopo/engine.js';
+import { needsPO } from '../tracker.js';
+import { isMOD } from './mod.js';
 
 const SOPO_KEY = 'oo_sopo', FX_KEY = 'oo_fx', PRICE_KEY = 'oo_pricecache';
 const PRICE_TTL = 7 * 86400000;
@@ -22,18 +24,36 @@ const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 const offerKey = o => [o.supplier, o.unitPrice, o.currency].join('|');
 const priceKey = l => l.mpn.trim().toUpperCase() + '|' + l.need;
 
+const isOpenRow = r => !CLOSED.includes(state.statusOvr[r.nk] || r.status);
+
 export function openSOPO(so) {
-  const saved = load(SOPO_KEY, {})[so] || {};
-  const lines = state.allRows
-    .filter(r => r.so === so && !CLOSED.includes(state.statusOvr[r.nk] || r.status))
-    .map(r => ({
-      nk: r.nk, mpn: r.mpn,
-      need: r.short > 0 ? r.short : (r.qtyR || r.qtyO),
-      price: r.price || 0, currency: cur3(r.currency) || 'ILS', dd: r.dd || null,
-      sel: saved.sel ? saved.sel.includes(r.nk) : (r.cov !== 'green' || r.short > 0),
-    }));
+  const rows = state.allRows.filter(r => r.so === so && isOpenRow(r));
+  const cust = rows[0] ? ' · ' + (rows[0].customer || '') : '';
+  openSession(so, rows, false, r => r.cov !== 'green' || r.short > 0, `🧾 SO → PO · ${so}${cust}`);
+}
+
+// Batch: every open line still waiting for a PO, across all SOs (scope 'mod' / 'other' narrows by customer),
+// most urgent first — one set of quotes, one Priority table per supplier with the same part merged across SOs
+export function openSOPOBatch(scope) {
+  const rows = state.allRows
+    .filter(r => !r.isTemp && isOpenRow(r) && needsPO(r) && (scope === 'mod' ? isMOD(r) : scope === 'other' ? !isMOD(r) : true))
+    .sort((a, b) => (a.dd || Infinity) - (b.dd || Infinity));
+  if (!rows.length) { toast('אין פריטים ממתינים ל-PO'); return; }
+  const label = scope === 'mod' ? 'משרד הביטחון' : scope === 'other' ? 'לקוחות אחרים' : 'כל הממתינים';
+  const nSO = new Set(rows.map(r => r.so)).size;
+  openSession('__batch_' + (scope || 'all'), rows, true, () => true, `🧾 SO → PO מרוכז · ${label} · ${rows.length} שורות מ-${nSO} הזמנות`);
+}
+
+function openSession(key, rows, batch, defSel, title) {
+  const saved = load(SOPO_KEY, {})[key] || {};
+  const lines = rows.map(r => ({
+    nk: r.nk, mpn: r.mpn, so: r.so, customer: r.customer || '',
+    need: r.short > 0 ? r.short : (r.qtyR || r.qtyO),
+    price: r.price || 0, currency: cur3(r.currency) || 'ILS', dd: r.dd || null,
+    sel: saved.sel ? saved.sel.includes(r.nk) : defSel(r),
+  }));
   S = {
-    so, lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
+    so: key, batch, filter: '', lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
     override: saved.override || {}, exclude: saved.exclude || {}, online: {}, openOnline: {}, ready: false,
     rates: { ...DEFAULT_RATES }, fxNote: 'ברירת מחדל',
   };
@@ -43,7 +63,9 @@ export function openSOPO(so) {
   if (fx && fx.day === new Date().toDateString()) { S.rates = fx.rates; S.fxNote = fx.note; }
   else loadFX();
   loadPriceCache().then(() => { if (!S) return; applyCachedPrices(); S.ready = true; rematch(); render(); });
-  document.getElementById('sopo-title').textContent = `🧾 SO → PO · ${so}` + (lines[0] ? ' · ' + (state.allRows.find(r => r.so === so)?.customer || '') : '');
+  document.getElementById('sopo-title').textContent = title;
+  const f = document.getElementById('sopo-filter');
+  f.value = ''; f.style.display = batch ? '' : 'none';
   document.getElementById('sopo-modal').style.display = 'flex';
   render();
 }
@@ -181,8 +203,12 @@ function applyCachedPrices() {
 }
 
 export async function sopoOnline() {
-  const todo = S.lines.filter(l => l.sel && !S.online[l.nk]);
+  // lines with the same part and quantity (common in batch mode) share one lookup
+  const byKey = {};
+  S.lines.filter(l => l.sel && !S.online[l.nk]).forEach(l => { (byKey[priceKey(l)] = byKey[priceKey(l)] || []).push(l); });
+  const todo = Object.values(byKey).map(ls => ls[0]);
   if (!todo.length) { toast('כל השורות המסומנות כבר נבדקו (7 ימים אחרונים)'); return; }
+  if (todo.length > 30 && !confirm(`לבדוק ${todo.length} פריטים אונליין? זה ייקח כמה דקות ויעלה בקריאות AI.\nכדי לצמצם — סנן ובטל סימון לפריטים שאינם קטלוגיים.`)) return;
   const btn = document.getElementById('sopo-online'); btn.disabled = true;
   const batches = [];
   for (let i = 0; i < todo.length; i += 2) batches.push(todo.slice(i, i + 2));
@@ -198,7 +224,7 @@ export async function sopoOnline() {
         const p = (j.parts || []).find(x => String(x.mpn || '').toUpperCase() === l.mpn.toUpperCase()) || { offers: [] };
         const entry = { v: PRICE_V, ts: Date.now(), offers: p.offers || [] };
         _priceCache[priceKey(l)] = entry;
-        if (S) S.online[l.nk] = entry;
+        if (S) byKey[priceKey(l)].forEach(x => { S.online[x.nk] = entry; });
       });
     } catch (e) { failed += batch.length; }
     done += batch.length;
@@ -221,7 +247,11 @@ export function sopoShowOnline(i) { const l = S.lines[i]; S.openOnline[l.nk] = !
 
 // ── Line edits ──────────────────────────────────────────────────
 export function sopoToggle(i, v) { S.lines[i].sel = v; persist(); render(); }
-export function sopoToggleAll(v) { S.lines.forEach(l => { l.sel = v; }); persist(); render(); }
+// "Select all" / "clear" act on the lines the filter shows
+export function sopoToggleAll(v) { S.lines.filter(shown).forEach(l => { l.sel = v; }); persist(); render(); }
+let _filterT = 0;
+export function sopoFilter(v) { clearTimeout(_filterT); _filterT = setTimeout(() => { if (S) { S.filter = v.trim().toUpperCase(); render(); } }, 200); }
+const shown = l => !S.filter || [l.mpn, l.so, l.customer, (chosenOffer(l) || {}).supplier].some(x => String(x || '').toUpperCase().includes(S.filter));
 export function sopoPick(i, v) { S.chosen[S.lines[i].nk] = v; persist(); render(); }
 export function sopoOverride(i, v) { S.override[S.lines[i].nk] = v; persist(); render(); }
 export function sopoManual(i, field, v) {
@@ -254,6 +284,7 @@ function render() {
     ? `${S.offers.length} הצעות מ-${new Set(S.offers.map(o => o.supplier)).size} ספקים` : 'טרם נטענו הצעות';
 
   const rows = S.lines.map((l, i) => {
+    if (!shown(l)) return '';
     const off = chosenOffer(l);
     const checks = off ? runChecks(lineCtx(l), off, ctxFor(l)) : [];
     const lvl = off ? worstLevel(checks) : 'none';
@@ -284,7 +315,7 @@ function render() {
     const qty = off ? orderQty(l.need, off) : l.need;
     return `<tr class="sopo-l-${lvl}${l.sel ? '' : ' sopo-off'}">
       <td><input type="checkbox" ${l.sel ? 'checked' : ''} onchange="sopoToggle(${i},this.checked)"></td>
-      <td class="mpn">${esc(l.mpn)}</td>
+      <td class="mpn">${esc(l.mpn)}${S.batch ? `<div class="sopo-so" title="${esc(l.customer)}">${esc(l.so)} · ${esc(l.customer.slice(0, 22))}</div>` : ''}</td>
       <td>${l.need}${qty !== l.need ? ` <span class="sopo-muted">→ ${qty}</span>` : ''}</td>
       <td>${l.price ? money(l.price, l.currency) : '—'}</td>
       <td>${fd(l.dd)}</td>
@@ -293,7 +324,11 @@ function render() {
       <td>${checks.map(badge).join('')}${ovr}</td>
     </tr>${onDet}`;
   }).join('');
-  document.getElementById('sopo-lines').innerHTML = rows || '<tr><td colspan="8" class="sopo-muted">אין שורות פתוחות בהזמנה</td></tr>';
+  const nShown = S.lines.filter(shown).length;
+  document.getElementById('sopo-lines').innerHTML = rows
+    || `<tr><td colspan="8" class="sopo-muted">${S.lines.length ? 'אין שורות שמתאימות לסינון' : 'אין שורות פתוחות בהזמנה'}</td></tr>`;
+  document.getElementById('sopo-count').textContent = `${S.lines.filter(l => l.sel).length} מסומנות`
+    + (nShown < S.lines.length ? ` · מוצגות ${nShown}/${S.lines.length}` : '');
   renderGroups();
 }
 
@@ -307,13 +342,15 @@ function exportRows() {
     const checks = runChecks(lineCtx(l), off, ctxFor(l));
     const blocked = worstLevel(checks) === 'block';
     (groups[off.supplier] = groups[off.supplier] || []).push({
-      i, mpn: l.mpn, qty: orderQty(l.need, off), date: arrivalDate(off, TODAY) || l.dd,
+      i, so: l.so, mpn: l.mpn, need: l.need, offer: off, qty: orderQty(l.need, off), date: arrivalDate(off, TODAY) || l.dd,
       unitPrice: off.unitPrice, currency: off.currency || 'USD',
       blocked, on: blocked ? !!S.override[l.nk] : !S.exclude[l.nk],
-      reason: checks.filter(c => c.level === (blocked ? 'block' : 'warn')).map(c => c.text).join(' · '),
+      // the MOQ note is worked out per table row (merged rows round up once), not per SO line
+      reason: checks.filter(c => c.level === (blocked ? 'block' : 'warn') && !(c.key === 'qty' && c.text.startsWith('MOQ'))).map(c => c.text).join(' · '),
       online: !!off.online, url: off.url || '',
     });
   });
+  Object.keys(groups).forEach(n => { groups[n] = mergeRows(groups[n]); });
   return { groups, skipped };
 }
 
@@ -325,25 +362,30 @@ function renderGroups() {
     const tot = {};
     on.forEach(r => { tot[r.currency] = (tot[r.currency] || 0) + r.qty * r.unitPrice; });
     const online = rows.some(r => r.online);
+    const nSO = new Set(on.flatMap(r => r.sos)).size;
     return `<div class="sopo-grp">
-      <div class="sopo-grp-h"><b>${online ? '🌐 ' : ''}${esc(n)}</b><span class="sopo-muted">${on.length}/${rows.length} שורות${on.length ? ' · ' + Object.entries(tot).map(([c, v]) => money(v.toFixed(2), c)).join(' + ') : ''}</span>
+      <div class="sopo-grp-h"><b>${online ? '🌐 ' : ''}${esc(n)}</b><span class="sopo-muted">${on.length}/${rows.length} שורות${S.batch && on.length ? ` · ${nSO} הזמנות` : ''}${on.length ? ' · ' + Object.entries(tot).map(([c, v]) => money(v.toFixed(2), c)).join(' + ') : ''}</span>
         <button class="btn btn-blue" onclick="sopoCopy(${gi})" ${on.length ? '' : 'disabled'}>📋 העתק ל-Priority</button></div>
       <table class="import-tbl sopo-tsv"><tbody>${rows.map(r => `<tr class="${r.blocked ? 'sopo-l-block' : ''}${r.on ? '' : ' sopo-off'}">
-        <td><input type="checkbox" ${r.on ? 'checked' : ''} onchange="sopoInclude(${r.i},this.checked)" title="${r.blocked ? 'חסום — סמן כדי לכלול בכל זאת' : 'כלול בהעתקה'}"></td>
+        <td><input type="checkbox" ${r.on ? 'checked' : ''} onchange="sopoInclude('${r.idx.join(',')}',this.checked)" title="${r.blocked ? 'חסום — סמן כדי לכלול בכל זאת' : 'כלול בהעתקה'}"></td>
         <td>${esc(r.mpn)}</td><td></td><td>${r.qty}</td><td>${fd(r.date)}</td><td></td><td></td><td>${+Number(r.unitPrice).toFixed(5)}</td><td>${esc(priorityCur(r.currency))}</td>${online ? `<td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">🔗</a>` : ''}</td>` : ''}
-        <td class="sopo-reason">${r.reason ? `<span class="db ${r.blocked ? 'db-r' : 'db-o'}">${esc(r.reason)}</span>` : ''}</td></tr>`).join('')}</tbody></table>
+        ${S.batch ? `<td class="sopo-reason sopo-muted" title="${esc(r.sos.join(', '))}">${r.idx.length > 1 ? `⊕ ${r.idx.length} שורות: ` : ''}${esc(r.sos.slice(0, 3).join(', '))}${r.sos.length > 3 ? ` +${r.sos.length - 3}` : ''}</td>` : ''}
+        <td class="sopo-reason">${r.reason ? `<span class="db ${r.blocked ? 'db-r' : 'db-o'}">${esc(r.reason)}</span>` : ''}${r.qty > r.need ? `<span class="db db-o" title="נדרש ${r.need}, MOQ/אריזה מעגל ל-${r.qty}">MOQ: +${r.qty - r.need}</span>` : ''}</td></tr>`).join('')}</tbody></table>
     </div>`;
   }).join('');
   document.getElementById('sopo-groups').innerHTML = (html || '<div class="sopo-muted">בחר ספק לשורות כדי לבנות טבלאות</div>')
     + (skipped.length ? `<div class="sopo-skip">לא נכללו: ${skipped.map(esc).join(' · ')}</div>` : '');
 }
 
-// Table checkbox: for a blocked line it is the "include anyway" override, otherwise an exclude
-export function sopoInclude(i, v) {
-  const l = S.lines[i];
-  const off = chosenOffer(l);
-  const blocked = off && worstLevel(runChecks(lineCtx(l), off, ctxFor(l))) === 'block';
-  if (blocked) S.override[l.nk] = v; else if (v) delete S.exclude[l.nk]; else S.exclude[l.nk] = true;
+// Table checkbox: for a blocked line it is the "include anyway" override, otherwise an exclude.
+// idx: the SO line indexes behind one table row ("3" or "3,8,12" when merged)
+export function sopoInclude(idx, v) {
+  String(idx).split(',').map(Number).forEach(i => {
+    const l = S.lines[i];
+    const off = chosenOffer(l);
+    const blocked = off && worstLevel(runChecks(lineCtx(l), off, ctxFor(l))) === 'block';
+    if (blocked) S.override[l.nk] = v; else if (v) delete S.exclude[l.nk]; else S.exclude[l.nk] = true;
+  });
   persist(); render();
 }
 
