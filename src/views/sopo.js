@@ -4,7 +4,7 @@ import { esc, fd, toast } from '../utils.js';
 import { withXLSX } from '../upload.js';
 import {
   DEFAULT_RATES, cur3, fmtCur, parseQuoteSheet, matchQuotes, orderQty, arrivalDate,
-  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV, priorityCur, mergeRows,
+  onlineMedian, onlineOffers, runChecks, worstLevel, pickBest, toPriorityTSV, priorityCur, mergeRows, parseCatalogPrices, mpnMatch,
 } from '../sopo/engine.js';
 import { needsPO } from '../tracker.js';
 import { isMOD } from './mod.js';
@@ -120,7 +120,7 @@ export function sopoQuoteFiles(e) {
   const files = [...e.target.files]; e.target.value = '';
   if (!files.length) return;
   withXLSX(async () => {
-    let added = 0;
+    let added = 0, catalog = 0;
     for (const file of files) {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: false, cellNF: true });
@@ -135,14 +135,44 @@ export function sopoQuoteFiles(e) {
         // generic sheet names fall back to the file name as the supplier
         const label = /^(sheet|גיליון)\s*\d*$/i.test(n.trim()) ? base : n;
         offers = offers.concat(parseQuoteSheet(aoa, label, curs));
+        catalog += preloadCatalog(parseCatalogPrices(aoa, curs), file.name);
       });
       _files.push({ name: file.name, sheets });
       if (offers.length) { S.offers = S.offers.concat(offers); added += offers.length; }
       else { toast(`${file.name}: לא זוהו עמודות — מנתח עם AI...`); added += await aiParse({ name: file.name, sheets }); }
     }
+    if (catalog) savePriceCache();
     rematch(); persist(); render();
-    toast(`📊 ${added} הצעות נטענו`);
+    toast(`📊 ${added} הצעות נטענו` + (catalog ? ` · 🌐 ${catalog} מחירי קטלוג מהקובץ (ללא בדיקת AI)` : ''));
   });
+}
+
+// Catalog prices from the quote file become a line's online prices when it has none yet, so the AI online check
+// skips it. Saved to the shared price cache like a real check (7 days); a later AI check only runs if it expires.
+function preloadCatalog(prices, fileName) {
+  if (!prices.length) return 0;
+  let n = 0;
+  S.lines.forEach(l => {
+    if (S.online[l.nk]) return;
+    const hits = prices.filter(p => mpnMatch(l.mpn, p.mpn));
+    if (!hits.length) return;
+    const entry = {
+      v: PRICE_V, ts: Date.now(), file: fileName,
+      offers: hits.map(p => ({ source: 'Excel', distributor: p.distributor, url: '', unitPrice: p.unitPrice, currency: p.currency, priceBreakQty: 0, moq: 0, mult: 0, stock: 0, verified: true })),
+    };
+    S.online[l.nk] = entry;
+    if (_priceCache) _priceCache[priceKey(l)] = entry;
+    n++;
+  });
+  return n;
+}
+
+function savePriceCache() {
+  if (!_priceCache) return;
+  // keep the cache small: drop expired entries before saving
+  Object.keys(_priceCache).forEach(k => { if (Date.now() - _priceCache[k].ts > PRICE_TTL) delete _priceCache[k]; });
+  save(PRICE_KEY, _priceCache);
+  fetch('/api/overrides?doc=pricecache', { method: 'POST', body: JSON.stringify(_priceCache), headers: { 'Content-Type': 'application/json' } }).catch(() => {});
 }
 
 // Grid aligned with sheet_to_json(header:1) rows: the currency each cell's number format displays, '' when none
@@ -241,10 +271,7 @@ export async function sopoOnline() {
   // three requests at a time
   const queue = [...batches];
   await Promise.all([0, 1, 2].map(async () => { while (queue.length) await run(queue.shift()); }));
-  // keep the cache small: drop expired entries before saving
-  Object.keys(_priceCache).forEach(k => { if (Date.now() - _priceCache[k].ts > PRICE_TTL) delete _priceCache[k]; });
-  save(PRICE_KEY, _priceCache);
-  fetch('/api/overrides?doc=pricecache', { method: 'POST', body: JSON.stringify(_priceCache), headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+  savePriceCache();
   btn.disabled = false; btn.textContent = '🌐 בדיקת מחיר אונליין';
   if (failed) toast(`⚠ ${failed} פריטים לא נבדקו — נסה שוב`);
   if (S) { rematch(); persist(); render(); }
@@ -316,8 +343,8 @@ function render() {
     const nVer = on ? on.offers.filter(o => o.verified).length : 0;
     const onCell = on ? `<button class="sopo-link" onclick="sopoShowOnline(${i})" title="${nVer} מקורות מאומתים מתוך ${on.offers.length}">🌐 ${med ? money(med.toFixed(4), l.currency) : 'אין מאומת'}</button>` : '';
     const onDet = on && S.openOnline[l.nk] ? `<tr class="sopo-det"><td></td><td colspan="7">${on.offers.length ? on.offers.map(o =>
-      `<div class="${o.verified ? '' : 'sopo-unver'}">${o.verified ? '✓' : '✗ לא מאומת'} ${esc(o.distributor || o.source)} — ${money(o.unitPrice, o.currency)}${o.priceBreakQty ? ' @' + o.priceBreakQty : ''}${o.moq > 1 ? ' · MOQ ' + o.moq : ''}${o.stock ? ' · מלאי ' + o.stock : ''} · <a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.source || 'link')}</a></div>`).join('')
-      : 'לא נמצא מחיר אונליין'} <span class="sopo-muted">נבדק ${fd(new Date(on.ts))}</span></td></tr>` : '';
+      `<div class="${o.verified ? '' : 'sopo-unver'}">${o.verified ? '✓' : '✗ לא מאומת'} ${esc(o.distributor || o.source)} — ${money(o.unitPrice, o.currency)}${o.priceBreakQty ? ' @' + o.priceBreakQty : ''}${o.moq > 1 ? ' · MOQ ' + o.moq : ''}${o.stock ? ' · מלאי ' + o.stock : ''} · ${o.url ? `<a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.source || 'link')}</a>` : esc(o.source || '')}</div>`).join('')
+      : 'לא נמצא מחיר אונליין'} <span class="sopo-muted">${on.file ? `מחיר קטלוג מהקובץ ${esc(on.file)} · ${fd(new Date(on.ts))}` : `נבדק ${fd(new Date(on.ts))}`}</span></td></tr>` : '';
     const ovr = lvl === 'block' ? `<label class="sopo-ovr"><input type="checkbox" ${S.override[l.nk] ? 'checked' : ''} onchange="sopoOverride(${i},this.checked)"> כלול בכל זאת</label>` : '';
     const qty = off ? orderQty(l.need, off) : l.need;
     return `<tr class="sopo-l-${lvl}${l.sel ? '' : ' sopo-off'}">

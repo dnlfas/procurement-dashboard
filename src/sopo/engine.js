@@ -114,6 +114,40 @@ function findHeaderRow(aoa) {
   return best;
 }
 
+// Catalog / online prices already in a quote sheet (e.g. "OCTOPART" price + "תמכור לפי אתר" = DIGIKEY/MOUSER).
+// Only headers that aren't a supplier field count, so "Mouser Price" stays a supplier quote as before.
+const CAT_PRICE_RX = /octopart|findchips|digi\s*-?\s*key|mouser|online|catalog|קטלוג|אונליין|מחיר\s*(ה?אתר|ה?שוק)/i;
+const CAT_EXCL_RX = /discount|הנחה|total|סה["']?כ|\bnis\b|₪|ש["']?ח|qty|כמות|link|url|stock|מלאי/i;
+const CAT_SITE_RX = /אתר|website|\bsite\b|\bweb\b/i;
+// → [{ mpn, unitPrice, currency, distributor }] (currency defaults to USD, like distributor sites)
+export function parseCatalogPrices(aoa, curs) {
+  const hr = findHeaderRow(aoa);
+  if (hr < 0) return [];
+  const head = aoa[hr].map(h => String(h || '').trim());
+  const fields = head.map(classify);
+  const mpnCol = fields.indexOf('mpn');
+  // "OCTOPART" ends in "part", so the MPN pattern claims it — any column but the first MPN one may still be a price
+  const free = c => c !== mpnCol && (!fields[c] || fields[c] === 'mpn');
+  const priceCol = head.findIndex((h, c) => free(c) && CAT_PRICE_RX.test(h) && !CAT_EXCL_RX.test(h));
+  if (mpnCol < 0 || priceCol < 0) return [];
+  const siteCol = head.findIndex((h, c) => free(c) && c !== priceCol && CAT_SITE_RX.test(h) && !CAT_PRICE_RX.test(h));
+  const hdrName = head[priceCol].replace(/price|מחיר|\(.*?\)|\$|usd/gi, '').trim();
+  const out = [];
+  for (let r = hr + 1; r < aoa.length; r++) {
+    const row = aoa[r] || [];
+    const mpn = String(row[mpnCol] || '').trim();
+    const p = parsePrice(row[priceCol]);
+    if (!mpn || !(p.value > 0)) continue;
+    const site = siteCol >= 0 ? String(row[siteCol] || '').trim() : '';
+    out.push({
+      mpn, unitPrice: p.value,
+      currency: p.cur || ((curs && curs[r]) || [])[priceCol] || cur3(head[priceCol]) || 'USD',
+      distributor: site || hdrName || 'Online',
+    });
+  }
+  return out;
+}
+
 // One sheet as array-of-arrays → offers [{mpn, mfg, supplier, unitPrice, currency, qty, moq, mult, leadDays, stock}]
 // Handles a long layout (one row per offer) and a wide QuoteLens-style layout (one block of columns per supplier).
 // curs: optional grid aligned with aoa holding each cell's number-format currency (prices are often plain numbers shown as $)
