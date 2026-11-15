@@ -55,7 +55,7 @@ function openSession(key, rows, batch, defSel, title) {
   lines.forEach(l => { l.sel = saved.sel ? saved.sel.includes(l.nk) : l.defSel; });
   S = {
     so: key, batch, filter: '', lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
-    override: saved.override || {}, exclude: saved.exclude || {}, online: {}, openOnline: {}, ready: false,
+    override: saved.override || {}, exclude: saved.exclude || {}, online: {}, openOnline: {}, ready: false, noOnline: !!saved.noOnline,
     rates: { ...DEFAULT_RATES }, fxNote: 'ברירת מחדל',
   };
   _files = [];
@@ -63,7 +63,7 @@ function openSession(key, rows, batch, defSel, title) {
   const fx = load(FX_KEY, null);
   if (fx && fx.day === new Date().toDateString()) { S.rates = fx.rates; S.fxNote = fx.note; }
   else loadFX();
-  loadPriceCache().then(() => { if (!S) return; applyCachedPrices(); S.ready = true; rematch(); render(); });
+  loadPriceCache().then(() => { if (!S) return; applyCachedPrices(S.noOnline); S.ready = true; rematch(); render(); });
   document.getElementById('sopo-title').textContent = title;
   const f = document.getElementById('sopo-filter');
   f.value = ''; f.style.display = batch ? '' : 'none';
@@ -76,7 +76,7 @@ export function closeSOPO() { persist(); document.getElementById('sopo-modal').s
 function persist() {
   if (!S) return;
   const all = load(SOPO_KEY, {});
-  all[S.so] = { sel: S.lines.filter(l => l.sel).map(l => l.nk), offers: S.offers, chosen: S.chosen, manual: S.manual, override: S.override, exclude: S.exclude, ts: Date.now() };
+  all[S.so] = { sel: S.lines.filter(l => l.sel).map(l => l.nk), offers: S.offers, chosen: S.chosen, manual: S.manual, override: S.override, exclude: S.exclude, noOnline: S.noOnline, ts: Date.now() };
   save(SOPO_KEY, all);
 }
 
@@ -210,10 +210,16 @@ export async function sopoAIParse() {
   toast(`✨ ${n} הצעות זוהו ע"י AI`);
 }
 
-// Start over: as the window first opens after loading the SO file — no quotes, picks, manual prices,
-// overrides or exclusions, default line selection. Online prices stay (a 7-day cache that costs AI calls to refill).
+// Start over: no quotes, online prices, picks, manual prices, overrides or exclusions; default line selection.
+// Catalog prices that came from a quote file are deleted. AI-checked prices stay in the 7-day cache (they cost
+// credits) but are hidden until "online check" is pressed again, which brings them back without new AI calls.
 export function sopoClearQuotes() {
-  if (!confirm('לנקות הכל ולהתחיל מחדש? ההצעות, בחירות הספקים, המחירים הידניים והסימונים יימחקו.')) return;
+  if (!confirm('לנקות הכל ולהתחיל מחדש? ההצעות, מחירי האונליין, בחירות הספקים, המחירים הידניים והסימונים יימחקו.')) return;
+  if (_priceCache) {
+    S.lines.forEach(l => { const c = _priceCache[priceKey(l)]; if (c && c.file) delete _priceCache[priceKey(l)]; });
+    savePriceCache();
+  }
+  S.online = {}; S.noOnline = true;
   S.offers = []; S.chosen = {}; S.manual = {}; S.override = {}; S.exclude = {}; S.openOnline = {}; _files = [];
   S.lines.forEach(l => { l.sel = l.defSel; });
   S.filter = ''; document.getElementById('sopo-filter').value = '';
@@ -231,15 +237,18 @@ async function loadPriceCache() {
   } catch (e) {}
 }
 
-function applyCachedPrices() {
+// fileOnly: after "clear all", only catalog prices from a quote file uploaded since then
+function applyCachedPrices(fileOnly) {
   if (!S) return;
   S.lines.forEach(l => {
     const c = _priceCache[priceKey(l)];
-    if (c && c.v >= PRICE_V && Date.now() - c.ts < PRICE_TTL) S.online[l.nk] = c;
+    if (c && (!fileOnly || c.file) && c.v >= PRICE_V && Date.now() - c.ts < PRICE_TTL) S.online[l.nk] = c;
   });
 }
 
 export async function sopoOnline() {
+  // after "clear all": cached results come back first, free; only parts without one go to the AI
+  if (S.noOnline) { S.noOnline = false; await loadPriceCache(); applyCachedPrices(); rematch(); persist(); render(); }
   // lines with the same part and quantity (common in batch mode) share one lookup
   const byKey = {};
   S.lines.filter(l => l.sel && !S.online[l.nk]).forEach(l => { (byKey[priceKey(l)] = byKey[priceKey(l)] || []).push(l); });
