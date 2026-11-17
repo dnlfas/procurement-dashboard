@@ -9,7 +9,7 @@ import {
 import { needsPO } from '../tracker.js';
 import { isMOD } from './mod.js';
 
-const SOPO_KEY = 'oo_sopo', FX_KEY = 'oo_fx', PRICE_KEY = 'oo_pricecache', INFO_KEY = 'oo_partinfo';
+const SOPO_KEY = 'oo_sopo', FX_KEY = 'oo_fx', PRICE_KEY = 'oo_pricecache';
 const PRICE_TTL = 7 * 86400000;
 const PRICE_V = 2; // bump when the price check returns new fields (v2: MOQ, more distributors) so older results are re-checked
 const CLOSED = ['cancelled', 'cancelled_bts', 'supplied'];
@@ -18,7 +18,6 @@ const LVL_CLS = { ok: 'db-g', warn: 'db-o', block: 'db-r', info: 'db-x' };
 let S = null;           // current session
 let _files = [];        // [{ name, sheets: {name: aoa} }] — kept for "parse with AI"
 let _priceCache = null; // { 'MPN|qty': { ts, offers } }
-let _info = null;       // { MPN: { mfg, desc, ts } } — RFQ table lookups, kept for good
 
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -288,30 +287,14 @@ export async function sopoOnline() {
 }
 
 // ── RFQ table ───────────────────────────────────────────────────
-// Selected lines → MPN / Manufacturer / Description / Quantity, copied as a table for a new RFQ email.
-// Manufacturer and a short description come from an online lookup, cached per MPN (local + server) so each part
-// is looked up once. The same part on several lines (batch mode) is one row with the combined quantity.
-const INFO_RETRY = 86400000; // a part not found is tried again after a day
-async function loadInfo() {
-  if (_info) return;
-  _info = load(INFO_KEY, {});
-  try { const res = await fetch('/api/overrides?doc=partinfo'); if (res.ok) _info = { ...(await res.json()), ..._info }; } catch (e) {}
-}
-function saveInfo() {
-  save(INFO_KEY, _info);
-  fetch('/api/overrides?doc=partinfo', { method: 'POST', body: JSON.stringify(_info), headers: { 'Content-Type': 'application/json' } }).catch(() => {});
-}
-const infoKey = mpn => String(mpn).trim().toUpperCase();
-const infoKnown = e => e && (e.mfg || e.desc || Date.now() - e.ts < INFO_RETRY);
-
+// Selected lines → MPN / Quantity, copied as a table for a new RFQ email.
+// The same part on several lines (batch mode) is one row with the combined quantity.
 function rfqRows() {
   const rows = [], by = {};
   S.lines.filter(l => l.sel).forEach(l => {
-    const k = infoKey(l.mpn);
+    const k = String(l.mpn).trim().toUpperCase();
     if (by[k]) { by[k].qty += l.need; return; }
-    // a quote's manufacturer helps the lookup and stands in when it finds nothing
-    const mfg = ((l.offers || []).find(o => o.mfg) || {}).mfg || '';
-    rows.push(by[k] = { mpn: l.mpn.trim(), qty: l.need, mfgHint: mfg });
+    rows.push(by[k] = { mpn: l.mpn.trim(), qty: l.need });
   });
   return rows;
 }
@@ -319,36 +302,8 @@ function rfqRows() {
 export async function sopoRFQ() {
   const rows = rfqRows();
   if (!rows.length) { toast('סמן שורות לטבלת RFQ'); return; }
-  const btn = document.getElementById('sopo-rfq');
-  await loadInfo();
-  const todo = rows.filter(r => !infoKnown(_info[infoKey(r.mpn)]));
-  if (todo.length) {
-    btn.disabled = true;
-    let done = 0, failed = 0;
-    btn.textContent = `📧 מאתר יצרן ותיאור 0/${todo.length}...`;
-    const queue = [];
-    for (let i = 0; i < todo.length; i += 8) queue.push(todo.slice(i, i + 8));
-    const run = async batch => {
-      try {
-        const res = await fetch('/api/parse-update', { method: 'POST', body: JSON.stringify({ type: 'partinfo', content: JSON.stringify(batch.map(r => ({ mpn: r.mpn, mfg: r.mfgHint }))) }), headers: { 'Content-Type': 'application/json' } });
-        const j = await res.json();
-        if (!res.ok || !j.ok) throw new Error(j.error || res.status);
-        batch.forEach(r => {
-          const p = (j.parts || []).find(x => infoKey(x.mpn) === infoKey(r.mpn)) || {};
-          _info[infoKey(r.mpn)] = { mfg: p.mfg || '', desc: p.desc || '', ts: Date.now() };
-        });
-      } catch (e) { failed += batch.length; }
-      done += batch.length;
-      btn.textContent = `📧 מאתר יצרן ותיאור ${done}/${todo.length}...`;
-    };
-    // three requests at a time
-    await Promise.all([0, 1, 2].map(async () => { while (queue.length) await run(queue.shift()); }));
-    saveInfo();
-    btn.disabled = false; btn.textContent = '📧 טבלת RFQ';
-    if (failed) toast(`⚠ ${failed} פריטים לא אותרו — לחץ שוב לניסיון נוסף`);
-  }
-  const table = rows.map(r => { const e = _info[infoKey(r.mpn)] || {}; return [r.mpn, e.mfg || r.mfgHint, e.desc || '', r.qty]; });
-  const head = ['MPN', 'Manufacturer', 'Description', 'Quantity'];
+  const table = rows.map(r => [r.mpn, r.qty]);
+  const head = ['MPN', 'Quantity'];
   const td = (v, h) => `<${h ? 'th' : 'td'} style="border:1px solid #999;padding:4px 8px;text-align:left;color:#000;${h ? 'background:#e8eef7;' : ''}">${esc(String(v))}</${h ? 'th' : 'td'}>`;
   const html = `<table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt" dir="ltr"><tr>${head.map(h => td(h, true)).join('')}</tr>`
     + table.map(r => `<tr>${r.map(v => td(v)).join('')}</tr>`).join('') + '</table>';
@@ -356,11 +311,9 @@ export async function sopoRFQ() {
   try {
     if (window.ClipboardItem) await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([tsv], { type: 'text/plain' }) })]);
     else await navigator.clipboard.writeText(tsv);
-    const missing = table.filter(r => !r[1] && !r[2]).length;
-    toast(`📧 טבלת RFQ עם ${table.length} פריטים הועתקה — הדבק במייל חדש` + (missing ? ` · ${missing} ללא יצרן/תיאור` : ''));
+    toast(`📧 טבלת RFQ עם ${table.length} פריטים הועתקה — הדבק במייל חדש`);
   } catch (e) {
-    // the lookup took long enough for the browser to drop the click's copy permission; the data is cached now
-    toast('📧 הטבלה מוכנה — לחץ שוב על "טבלת RFQ" כדי להעתיק');
+    toast('⚠ ההעתקה ללוח נכשלה');
   }
 }
 
