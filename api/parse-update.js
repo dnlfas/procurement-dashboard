@@ -48,6 +48,7 @@ module.exports = async function handler(req, res) {
     if (!content || !content.trim()) return res.status(400).json({ error: 'empty' });
     if (type === 'pricecheck') return res.json(await priceCheck(JSON.parse(content)));
     if (type === 'quote') return res.json(await parseQuote(content));
+    if (type === 'partinfo') return res.json(await partInfo(JSON.parse(content)));
 
     // --- Server-side pre-detection for BTS Sales Order Excel files ---
     // The AI cannot reliably distinguish SO Excel from customer PO, so we detect
@@ -293,6 +294,41 @@ async function priceCheck(parts) {
     }),
   }));
   return { ok: true, parts: out, checkedAt: new Date().toISOString() };
+}
+
+// ── SO → PO: manufacturer + short description for an RFQ email ──────
+const INFO_SYSTEM = `You look up electronic components for a purchasing RFQ email.
+For each MPN you are given, search distributor or aggregator sites (Octopart, FindChips, Digi-Key, Mouser, …) for that exact part number and report:
+- mfg: the manufacturer's usual short name (e.g. "Texas Instruments", "TE Connectivity", "Murata").
+- desc: a short description in English, at most 40 characters, in distributor style: part type plus the key values (e.g. "IC REG LDO 3.3V 1A SOT-223", "CAP CER 10UF 25V X7R 1206", "CONN HEADER 10POS 2.54MM").
+Use what the search results show for that exact MPN; never guess from a similar part number. If the part can't be identified, use "" for both.
+Return ONLY a JSON object: { "parts": [ { "mpn", "mfg", "desc" } ] } with one entry per MPN given, mpn exactly as given.
+Output only the JSON object. No explanation, no markdown, no code fences.`;
+
+async function partInfo(parts) {
+  const client = new Anthropic();
+  const list = parts.map(p => `- ${p.mpn}${p.mfg ? ' (' + p.mfg + ')' : ''}`).join('\n');
+  const messages = [{ role: 'user', content: 'Parts:\n' + list }];
+  let message;
+  // Server tools can pause a long turn; resume a few times
+  for (let i = 0; i < 4; i++) {
+    message = await client.beta.messages.create({
+      model: PRICE_MODEL,
+      max_tokens: 8000,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      output_config: { effort: 'low' },
+      system: INFO_SYSTEM,
+      tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 2 * parts.length, allowed_domains: PRICE_DOMAINS }],
+      messages,
+    });
+    if (message.stop_reason !== 'pause_turn') break;
+    messages.push({ role: 'assistant', content: message.content });
+  }
+  if (message.stop_reason === 'refusal') throw new Error('part lookup declined');
+  const text = message.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  const parsed = parseLooseJSON(text);
+  return { ok: true, parts: (parsed.parts || []).map(p => ({ mpn: String(p.mpn || ''), mfg: String(p.mfg || '').trim(), desc: String(p.desc || '').trim().slice(0, 60) })) };
 }
 
 const normUrl = u => String(u || '').trim().replace(/^https?:\/\/(www\.)?/i, '').replace(/[?#].*$/, '').replace(/\/+$/, '').toLowerCase();

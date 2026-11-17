@@ -6,6 +6,7 @@ const PATHNAMES = {
   overrides: 'procurement/overrides.json',
   rfq: 'procurement/rfq.json',
   pricecache: 'procurement/pricecache.json', // SO → PO online price checks, keyed by MPN|qty
+  partinfo: 'procurement/partinfo.json',     // SO → PO RFQ table: manufacturer + short description, keyed by MPN
 };
 
 module.exports = async function handler(req, res) {

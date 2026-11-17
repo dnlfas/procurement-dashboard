@@ -59,7 +59,7 @@ import {
 // ── Views: SO → PO ────────────────────────────────────────────
 import {
   openSOPO, closeSOPO, sopoRate, sopoQuoteFiles, sopoAIParse, sopoClearQuotes, sopoOnline, sopoShowOnline,
-  sopoToggle, sopoToggleAll, sopoPick, sopoOverride, sopoManual, sopoCopy, sopoInclude, openSOPOBatch, sopoFilter
+  sopoToggle, sopoToggleAll, sopoPick, sopoOverride, sopoManual, sopoCopy, sopoInclude, openSOPOBatch, sopoFilter, sopoRFQ
 } from './views/sopo.js';
 
 // ── RFQ Engine ────────────────────────────────────────────────
@@ -237,7 +237,7 @@ Object.assign(window, {
 
   // views — SO → PO
   openSOPO, closeSOPO, sopoRate, sopoQuoteFiles, sopoAIParse, sopoClearQuotes, sopoOnline, sopoShowOnline,
-  sopoToggle, sopoToggleAll, sopoPick, sopoOverride, sopoManual, sopoCopy, sopoInclude, openSOPOBatch, sopoFilter,
+  sopoToggle, sopoToggleAll, sopoPick, sopoOverride, sopoManual, sopoCopy, sopoInclude, openSOPOBatch, sopoFilter, sopoRFQ,
 
   // rfq engine
   startRFQTimer, stopRFQTimer, setRFQStatus, saveRFQNote, deleteRFQ,
