@@ -43,9 +43,20 @@ export function fxConvert(amount, from, to, rates) {
 // "6-8 wks" → 56, "10 days" → 10, "stock" → 0, 6 (with weeks header) → 42; null when unknown.
 // "No stock" / "out of stock" / "אין מלאי" is not stock: its weeks if given ("no stock, 8 wks" → 56), else null.
 // A bare 0 is a blank, not "in stock" — only words say a supplier has the part on the shelf.
+// A date (an Excel date serial, as in a "Lead Time" column formatted dd/mm/yy) is the arrival date: days from today,
+// or null once it has passed (an old quote's date says nothing about when the part would arrive now).
+const DAY_MS = 86400000;
+const excelDate = n => new Date(Date.UTC(1899, 11, 30) + Math.round(n) * DAY_MS);
 const NO_STOCK = /\b(no|not|out\s*of|zero|0)\s*(in\s*)?stock|non[-\s]?stock|stock\s*[:=]?\s*(0|no|none|n\/?a)\b|אין\s*(ב)?מלאי|לא\s*(קיים\s*)?ב?מלאי|חסר\s*במלאי/i;
-export function leadDays(v, headerUnit) {
+export function leadDays(v, headerUnit, today) {
   if (v == null || v === '') return null;
+  const date = v instanceof Date ? v : typeof v === 'number' && v > 20000 && v < 80000 ? excelDate(v) : null;
+  if (date) {
+    const t0 = today ? new Date(today) : new Date();
+    t0.setHours(0, 0, 0, 0);
+    const d = Math.round((Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - Date.UTC(t0.getFullYear(), t0.getMonth(), t0.getDate())) / DAY_MS);
+    return d > 0 ? d : null;
+  }
   if (typeof v === 'number') return v > 0 ? Math.round(v * (headerUnit === 'days' ? 1 : 7)) : null;
   const t = String(v).toLowerCase().trim();
   const noStock = NO_STOCK.test(t);
@@ -114,58 +125,24 @@ function findHeaderRow(aoa) {
   return best;
 }
 
-// Catalog / online prices already in a quote sheet (e.g. "OCTOPART" price + "תמכור לפי אתר" = DIGIKEY/MOUSER).
-// Only headers that aren't a supplier field count, so "Mouser Price" stays a supplier quote as before.
-const CAT_PRICE_RX = /octopart|findchips|digi\s*-?\s*key|mouser|online|catalog|קטלוג|אונליין|מחיר\s*(ה?אתר|ה?שוק)/i;
-const CAT_EXCL_RX = /discount|הנחה|total|סה["']?כ|\bnis\b|₪|ש["']?ח|qty|כמות|link|url|stock|מלאי/i;
-const CAT_SITE_RX = /אתר|website|\bsite\b|\bweb\b/i;
-// → [{ mpn, unitPrice, currency, distributor }] (currency defaults to USD, like distributor sites)
-export function parseCatalogPrices(aoa, curs) {
+// ── Sheet layout ────────────────────────────────────────────────
+// Header row, field per column, and the supplier blocks of a wide sheet (one block of columns per supplier).
+function sheetLayout(aoa) {
   const hr = findHeaderRow(aoa);
-  if (hr < 0) return [];
-  const head = aoa[hr].map(h => String(h || '').trim());
-  const fields = head.map(classify);
-  const mpnCol = fields.indexOf('mpn');
-  // "OCTOPART" ends in "part", so the MPN pattern claims it — any column but the first MPN one may still be a price
-  const free = c => c !== mpnCol && (!fields[c] || fields[c] === 'mpn');
-  const priceCol = head.findIndex((h, c) => free(c) && CAT_PRICE_RX.test(h) && !CAT_EXCL_RX.test(h));
-  if (mpnCol < 0 || priceCol < 0) return [];
-  const siteCol = head.findIndex((h, c) => free(c) && c !== priceCol && CAT_SITE_RX.test(h) && !CAT_PRICE_RX.test(h));
-  const hdrName = head[priceCol].replace(/price|מחיר|\(.*?\)|\$|usd/gi, '').trim();
-  const out = [];
-  for (let r = hr + 1; r < aoa.length; r++) {
-    const row = aoa[r] || [];
-    const mpn = String(row[mpnCol] || '').trim();
-    const p = parsePrice(row[priceCol]);
-    if (!mpn || !(p.value > 0)) continue;
-    const site = siteCol >= 0 ? String(row[siteCol] || '').trim() : '';
-    out.push({
-      mpn, unitPrice: p.value,
-      currency: p.cur || ((curs && curs[r]) || [])[priceCol] || cur3(head[priceCol]) || 'USD',
-      distributor: site || hdrName || 'Online',
-    });
-  }
-  return out;
-}
-
-// One sheet as array-of-arrays → offers [{mpn, mfg, supplier, unitPrice, currency, qty, moq, mult, leadDays, stock}]
-// Handles a long layout (one row per offer) and a wide QuoteLens-style layout (one block of columns per supplier).
-// curs: optional grid aligned with aoa holding each cell's number-format currency (prices are often plain numbers shown as $)
-export function parseQuoteSheet(aoa, sheetName, curs) {
-  const hr = findHeaderRow(aoa);
-  if (hr < 0) return [];
+  if (hr < 0) return null;
   const head = aoa[hr].map(h => String(h || '').trim());
   const fields = head.map(classify);
   const priceCols = fields.map((f, i) => f === 'price' ? i : -1).filter(i => i >= 0);
   const above = hr > 0 ? aoa[hr - 1] || [] : [];
 
-  // Supplier label per column: wide layouts put the supplier in a (merged) cell above, or in the header text itself
+  // Supplier label per column: wide layouts put the supplier in a (merged) cell above, or in the header text itself.
+  // A cell above the part / mfg / qty columns is the sheet's title ("הזמנות בלמ 18"), not a supplier.
   let label = head.map(() => '');
   if (priceCols.length > 1) {
     let cur = '';
     for (let c = 0; c < head.length; c++) {
       const a = String(above[c] || '').trim();
-      if (a) cur = a;
+      if (a) cur = ['mpn', 'mfg', 'qty'].includes(fields[c]) ? '' : a;
       label[c] = cur;
     }
     if (priceCols.every(c => !label[c])) {
@@ -189,6 +166,55 @@ export function parseQuoteSheet(aoa, sheetName, curs) {
   });
   const wide = blocks.size > 0;
   if (!wide) blocks.set('', {});
+  return { hr, head, fields, common, blocks, wide };
+}
+
+// Catalog / online prices already in a quote sheet: a price column such as "OCTOPART" (with its site column
+// "תמכור לפי אתר" = DIGIKEY/MOUSER), or a supplier block that is a catalog distributor (DIGIKEY, MOUSER, NEWARK, TME…).
+// Those blocks are left out of the supplier quotes and come in as the part's online prices instead.
+const CAT_PRICE_RX = /octopart|findchips|digi\s*-?\s*key|mouser|online|catalog|קטלוג|אונליין|מחיר\s*(ה?אתר|ה?שוק)/i;
+const CAT_EXCL_RX = /discount|הנחה|total|סה["']?כ|\bnis\b|₪|ש["']?ח|qty|כמות|link|url|stock|מלאי/i;
+const CAT_SITE_RX = /אתר|website|\bsite\b|\bweb\b/i;
+const CAT_DIST_RX = /digi\s*-?\s*key|mouser|newark|farnell|element\s*14|\btme\b|\brs\s*(components|online)\b|\blcsc\b|octopart|findchips/i;
+// → [{ mpn, unitPrice, currency, distributor }] (currency defaults to USD, like distributor sites)
+export function parseCatalogPrices(aoa, curs) {
+  const L = sheetLayout(aoa);
+  if (!L) return [];
+  const { hr, head, fields, common, blocks } = L;
+  const mpnCol = fields.indexOf('mpn');
+  if (mpnCol < 0) return [];
+  // "OCTOPART" ends in "part", so the MPN pattern claims it — any column but the first MPN one may still be a price
+  const free = c => c !== mpnCol && (!fields[c] || fields[c] === 'mpn');
+  const priceCol = head.findIndex((h, c) => free(c) && CAT_PRICE_RX.test(h) && !CAT_EXCL_RX.test(h));
+  const siteCol = priceCol < 0 ? -1 : head.findIndex((h, c) => free(c) && c !== priceCol && CAT_SITE_RX.test(h) && !CAT_PRICE_RX.test(h));
+  const hdrName = priceCol < 0 ? '' : head[priceCol].replace(/price|מחיר|\(.*?\)|\$|usd/gi, '').trim();
+  const sources = [...blocks].filter(([lbl, b]) => lbl && CAT_DIST_RX.test(lbl) && b.price != null).map(([lbl, b]) => ({ col: b.price, name: () => lbl }));
+  if (priceCol >= 0) sources.push({ col: priceCol, name: row => (siteCol >= 0 ? String(row[siteCol] || '').trim() : '') || hdrName || 'Online' });
+  const out = [];
+  let lastMpn = '';
+  for (let r = hr + 1; r < aoa.length; r++) {
+    const row = aoa[r] || [];
+    const mpn = String(row[common.mpn != null ? common.mpn : mpnCol] || '').trim() || lastMpn;
+    if (!mpn) continue;
+    lastMpn = mpn;
+    for (const src of sources) {
+      const p = parsePrice(row[src.col]);
+      if (!(p.value > 0)) continue;
+      out.push({ mpn, unitPrice: p.value, currency: p.cur || ((curs && curs[r]) || [])[src.col] || cur3(head[src.col]) || 'USD', distributor: src.name(row) });
+    }
+  }
+  return out;
+}
+
+// One sheet as array-of-arrays → offers [{mpn, mfg, supplier, unitPrice, currency, qty, moq, mult, leadDays, stock}]
+// Handles a long layout (one row per offer) and a wide QuoteLens-style layout (one block of columns per supplier);
+// catalog-distributor blocks are read by parseCatalogPrices instead.
+// curs: optional grid aligned with aoa holding each cell's number-format currency (prices are often plain numbers shown as $)
+export function parseQuoteSheet(aoa, sheetName, curs) {
+  const L = sheetLayout(aoa);
+  if (!L) return [];
+  const { hr, head, common, wide } = L;
+  const blocks = new Map([...L.blocks].filter(([lbl]) => !(lbl && CAT_DIST_RX.test(lbl))));
   // In a wide sheet the shared qty column is the requested qty, not a supplier's quoted qty
   const shared = f => !wide || f === 'currency' || f === 'mfg';
   const leadUnit = c => /day|יום|ימים/i.test(head[c] || '') ? 'days' : 'weeks';
@@ -273,7 +299,7 @@ export function onlineMedian(online, toCur, rates) {
 
 // Distributor display names, so one distributor seen via several sites groups into one Priority table
 const DIST_NAMES = [
-  [/digi\s*-?\s*key/i, 'Digi-Key'], [/mouser/i, 'Mouser'], [/arrow/i, 'Arrow'], [/farnell|element\s*14|newark/i, 'Farnell'],
+  [/digi\s*-?\s*key/i, 'Digi-Key'], [/mouser/i, 'Mouser'], [/arrow/i, 'Arrow'], [/newark/i, 'Newark'], [/farnell|element\s*14/i, 'Farnell'],
   [/^rs\b|rs\s*(components|online|pro)/i, 'RS'], [/\btme\b/i, 'TME'], [/avnet/i, 'Avnet'], [/future/i, 'Future'], [/tti\b/i, 'TTI'],
 ];
 const SOURCE_NAMES = { digikey: 'Digi-Key', mouser: 'Mouser', octopart: 'Octopart', findchips: 'FindChips' };
