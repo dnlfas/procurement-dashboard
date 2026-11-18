@@ -236,7 +236,7 @@ Output only the JSON object. No explanation, no markdown, no code fences.`,
   return { ok: true, offers: parsed.offers || [], truncated };
 }
 
-// ── SO → PO: online market price via Claude web search / fetch ──────
+// ── SO → PO: online market price — Digi-Key / Mouser APIs, then Claude web search / fetch ──
 const PRICE_MODEL = 'claude-sonnet-5-5';
 const PRICE_DOMAINS = ['octopart.com', 'findchips.com', 'digikey.com', 'mouser.com', 'tti.com', 'arrow.com', 'avnet.com', 'newark.com', 'farnell.com', 'rs-online.com', 'tme.eu', 'verical.com'];
 const PRICE_SYSTEM = `You check current market prices for electronic components on distributor and aggregator websites.
@@ -251,7 +251,91 @@ Return ONLY a JSON object: { "parts": [ { "mpn", "offers": [ { "source", "distri
 - A part with no price found gets "offers": [].
 Output only the JSON object. No explanation, no markdown, no code fences.`;
 
+// Digi-Key and Mouser are asked through their own APIs first (exact price breaks, stock, MOQ);
+// only parts neither of them finds go to the Claude web search below.
 async function priceCheck(parts) {
+  const api = await Promise.all(parts.map(async p => {
+    const [dk, ms] = await Promise.all([digikeyOffer(p).catch(() => null), mouserOffer(p).catch(() => null)]);
+    return { mpn: p.mpn, offers: [dk, ms].filter(Boolean) };
+  }));
+  const rest = parts.filter((p, i) => !api[i].offers.length);
+  const web = rest.length ? (await webPriceCheck(rest)).parts : [];
+  const out = api.map(a => a.offers.length ? a : (web.find(w => squash(w.mpn) === squash(a.mpn)) || a));
+  return { ok: true, parts: out, checkedAt: new Date().toISOString() };
+}
+
+// Price at the requested qty: the largest break ≤ qty; below the smallest break, the smallest break (it becomes the MOQ)
+function apiOffer(distributor, source, url, breaks, qty, currency, stock, moq, mult) {
+  breaks = breaks.filter(b => b.qty > 0 && b.price > 0).sort((a, b) => a.qty - b.qty);
+  if (!breaks.length) return null;
+  const brk = breaks.filter(b => b.qty <= qty).pop() || breaks[0];
+  return {
+    source, distributor, url: url || '', unitPrice: brk.price, currency: currency || 'USD', priceBreakQty: brk.qty,
+    moq: Math.max(moq || 1, brk.qty > qty ? brk.qty : 1), mult: mult > 1 ? mult : 0, stock: stock || 0, verified: true,
+  };
+}
+
+let dkToken = null; // { token, exp } — reused while the function instance stays warm
+async function digikeyOffer(p) {
+  const id = process.env.DIGIKEY_CLIENT_ID, secret = process.env.DIGIKEY_CLIENT_SECRET;
+  if (!id || !secret) return null;
+  if (!dkToken || Date.now() > dkToken.exp) {
+    const r = await fetch('https://api.digikey.com/v1/oauth2/token', {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'client_credentials', client_id: id, client_secret: secret }),
+    });
+    if (!r.ok) throw new Error('Digi-Key auth ' + r.status);
+    const j = await r.json();
+    dkToken = { token: j.access_token, exp: Date.now() + ((j.expires_in || 600) - 60) * 1000 };
+  }
+  const r = await fetch('https://api.digikey.com/products/v4/search/keyword', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + dkToken.token, 'X-DIGIKEY-Client-Id': id, 'Content-Type': 'application/json',
+      'X-DIGIKEY-Locale-Site': 'US', 'X-DIGIKEY-Locale-Language': 'en', 'X-DIGIKEY-Locale-Currency': 'USD',
+    },
+    body: JSON.stringify({ Keywords: p.mpn, Limit: 25, Filters: { MarketplaceFilter: 'ExcludeMarketplace' } }),
+  });
+  if (!r.ok) throw new Error('Digi-Key ' + r.status);
+  const j = await r.json();
+  // exact MPN only, matching manufacturer preferred
+  const hits = (j.Products || []).filter(x => squash(x.ManufacturerProductNumber) === squash(p.mpn));
+  const mfg = String(p.mfg || '').toUpperCase();
+  const prod = (mfg && hits.find(x => String((x.Manufacturer || {}).Name || '').toUpperCase().includes(mfg))) || hits[0];
+  if (!prod) return null;
+  // one variation per packaging (cut tape, tape & reel, …): the cheapest at this qty
+  let best = null;
+  for (const v of prod.ProductVariations || []) {
+    const o = apiOffer('Digi-Key', 'digikey', prod.ProductUrl,
+      (v.StandardPricing || []).map(b => ({ qty: +b.BreakQuantity, price: +b.UnitPrice })), p.qty, 'USD',
+      +v.QuantityAvailableforPackageType || 0, +v.MinimumOrderQuantity || 0, 0);
+    if (o && (!best || o.unitPrice * Math.max(o.moq, p.qty) < best.unitPrice * Math.max(best.moq, p.qty))) best = o;
+  }
+  if (best && !best.stock) best.stock = +prod.QuantityAvailable || 0;
+  return best;
+}
+
+async function mouserOffer(p) {
+  const key = process.env.MOUSER_API_KEY;
+  if (!key) return null;
+  const r = await fetch('https://api.mouser.com/api/v1/search/partnumber?apiKey=' + encodeURIComponent(key), {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ SearchByPartRequest: { mouserPartNumber: p.mpn, partSearchOptions: 'Exact' } }),
+  });
+  if (!r.ok) throw new Error('Mouser ' + r.status);
+  const j = await r.json();
+  if ((j.Errors || []).length) throw new Error('Mouser ' + j.Errors[0].Message);
+  const hits = ((j.SearchResults || {}).Parts || []).filter(x => squash(x.ManufacturerPartNumber) === squash(p.mpn));
+  const part = hits.find(x => (x.PriceBreaks || []).length) || hits[0];
+  if (!part) return null;
+  const num = s => +String(s || '').replace(/[^0-9.]/g, '') || 0;
+  const pb = part.PriceBreaks || [];
+  return apiOffer('Mouser', 'mouser', part.ProductDetailUrl,
+    pb.map(b => ({ qty: +b.Quantity, price: num(b.Price) })), p.qty, (pb[0] || {}).Currency || 'USD',
+    num(String(part.AvailabilityInStock || '').replace(/,/g, '')), num(part.Min), num(part.Mult));
+}
+
+async function webPriceCheck(parts) {
   const client = new Anthropic();
   const list = parts.map(p => `- MPN ${p.mpn}${p.mfg ? ' (' + p.mfg + ')' : ''}, qty ${p.qty}`).join('\n');
   const messages = [{ role: 'user', content: 'Check current prices for:\n' + list }];
