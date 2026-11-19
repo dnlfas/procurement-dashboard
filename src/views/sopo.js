@@ -22,6 +22,7 @@ let _priceCache = null; // { 'MPN|qty': { ts, offers } }
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') || d; } catch (e) { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const offerKey = o => [o.supplier, o.unitPrice, o.currency].join('|');
+const quoteKey = o => [o.mpn, o.supplier, o.unitPrice, o.currency].join('|').toUpperCase();
 const priceKey = l => l.mpn.trim().toUpperCase() + '|' + l.need;
 
 const isOpenRow = r => !CLOSED.includes(state.statusOvr[r.nk] || r.status);
@@ -138,6 +139,9 @@ export function sopoQuoteFiles(e) {
         catalog += preloadCatalog(parseCatalogPrices(aoa, curs), file.name);
       });
       _files.push({ name: file.name, sheets });
+      // the same offer on several sheets (e.g. QuoteLens "Good Lines" repeats the audit), or a file loaded twice, counts once
+      const seen = new Set(S.offers.map(quoteKey));
+      offers = offers.filter(o => !seen.has(quoteKey(o)) && seen.add(quoteKey(o)));
       if (offers.length) { S.offers = S.offers.concat(offers); added += offers.length; }
       else { toast(`${file.name}: לא זוהו עמודות — מנתח עם AI...`); added += await aiParse({ name: file.name, sheets }); }
     }
@@ -154,7 +158,8 @@ function preloadCatalog(prices, fileName) {
   let n = 0;
   S.lines.forEach(l => {
     if (S.online[l.nk]) return;
-    const hits = prices.filter(p => mpnMatch(l.mpn, p.mpn));
+    const seen = new Set();
+    const hits = prices.filter(p => mpnMatch(l.mpn, p.mpn) && !seen.has(p.distributor + '|' + p.unitPrice) && seen.add(p.distributor + '|' + p.unitPrice));
     if (!hits.length) return;
     const entry = {
       v: PRICE_V, ts: Date.now(), file: fileName,

@@ -100,10 +100,14 @@ const FIELD_RX = [
   ['supplier', /supplier|vendor|distributor|source|ספק/i],
 ];
 const PRICE_EXCLUDE = /total|ext|סה["']?כ|target|sell|customer|לקוח|מכירה/i;
+// summary columns ("Best Price", "Best Supplier") repeat one of the supplier blocks
+const SUMMARY_RX = /\bbest\b|lowest|cheapest|הזול|הטוב/i;
+// a table titled as our own selling prices ("Sales Order … - selling prices") is not a supplier quote
+const SELL_TITLE_RX = /\bsell(ing)?\b|מחיר(י)?\s*מכירה/i;
 
 function classify(h) {
   const t = String(h || '').trim();
-  if (!t) return null;
+  if (!t || SUMMARY_RX.test(t)) return null;
   for (const [f, rx] of FIELD_RX) {
     if (!rx.test(t)) continue;
     if (f === 'price' && PRICE_EXCLUDE.test(t)) return null;
@@ -117,7 +121,9 @@ function classify(h) {
 function findHeaderRow(aoa) {
   let best = -1, bestScore = 0;
   for (let i = 0; i < Math.min(aoa.length, 20); i++) {
-    const fields = (aoa[i] || []).map(classify);
+    // a two-row header counts as one: the row below adds its field names (see sheetLayout)
+    const below = (aoa[i + 1] || []).map(classify);
+    const fields = (aoa[i] || []).map(classify).concat(below.filter(f => f === 'price').length > 1 ? below : []);
     if (!fields.includes('price') || !fields.includes('mpn')) continue;
     const score = new Set(fields.filter(Boolean)).size;
     if (score > bestScore) { best = i; bestScore = score; }
@@ -128,12 +134,22 @@ function findHeaderRow(aoa) {
 // ── Sheet layout ────────────────────────────────────────────────
 // Header row, field per column, and the supplier blocks of a wide sheet (one block of columns per supplier).
 function sheetLayout(aoa) {
-  const hr = findHeaderRow(aoa);
+  let hr = findHeaderRow(aoa);
   if (hr < 0) return null;
-  const head = aoa[hr].map(h => String(h || '').trim());
+  // title rows above the table: our own selling-price list is not a supplier quote
+  for (let r = 0; r < hr; r++) if ((aoa[r] || []).some(v => SELL_TITLE_RX.test(String(v || '')))) return null;
+  let head = aoa[hr].map(h => String(h || '').trim());
+  let above = hr > 0 ? aoa[hr - 1] || [] : [];
+  // Two-row header (QuoteLens audit): MPN / MFG / Qty and the supplier names in one row, each supplier's
+  // "Unit Price / Lead Time / …" in the row below. Merge them: field names from below, suppliers from above.
+  const below = (aoa[hr + 1] || []).map(h => String(h || '').trim());
+  if (below.map(classify).filter(f => f === 'price').length > 1) {
+    above = aoa[hr];
+    head = below.map((h, c) => h || head[c] || '').concat(head.slice(below.length));
+    hr++;
+  }
   const fields = head.map(classify);
   const priceCols = fields.map((f, i) => f === 'price' ? i : -1).filter(i => i >= 0);
-  const above = hr > 0 ? aoa[hr - 1] || [] : [];
 
   // Supplier label per column: wide layouts put the supplier in a (merged) cell above, or in the header text itself.
   // A cell above the part / mfg / qty columns is the sheet's title ("הזמנות בלמ 18"), not a supplier.
@@ -142,6 +158,8 @@ function sheetLayout(aoa) {
     let cur = '';
     for (let c = 0; c < head.length; c++) {
       const a = String(above[c] || '').trim();
+      // a number above a column is a setting (e.g. a margin threshold), not a supplier name
+      if (a && !isNaN(+a)) { cur = ''; label[c] = ''; continue; }
       if (a) cur = ['mpn', 'mfg', 'qty'].includes(fields[c]) ? '' : a;
       label[c] = cur;
     }
