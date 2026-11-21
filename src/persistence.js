@@ -21,7 +21,8 @@ export function syncOverrides() {
       pullOrders: state.pullOrders,
       tempOrders, soImports, pendingCPO,
       tracker: state.tracker,
-      followups: state.followups
+      followups: state.followups,
+      mpnAlias: state.mpnAlias
     });
     fetch('/api/overrides', { method: 'POST', body: payload, headers: { 'Content-Type': 'application/json' } }).catch(function() {});
   }, 1200);
@@ -41,6 +42,7 @@ export async function loadOverridesFromBlob() {
     if (d.pendingCPO && d.pendingCPO.length) { localStorage.setItem('oo_pending_cpo', JSON.stringify(d.pendingCPO)); }
     if (d.tracker) { state.tracker = mergeTracker(d.tracker, state.tracker); try { localStorage.setItem(TRACKER_KEY, JSON.stringify(state.tracker)); } catch(e) {} }
     if (d.followups) { state.followups = mergeFollowups(d.followups, state.followups); try { localStorage.setItem(FU_KEY, JSON.stringify(state.followups)); } catch(e) {} }
+    if (d.mpnAlias) { state.mpnAlias = { ...d.mpnAlias, ...state.mpnAlias }; try { localStorage.setItem('oo_mpn_alias', JSON.stringify(state.mpnAlias)); } catch(e) {} }
     state.ovrLoaded = true;
     cleanupNotes();
     if (state.allRows.length && _refreshCallback) _refreshCallback();

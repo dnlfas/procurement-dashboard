@@ -71,7 +71,7 @@ import {
 import {
   openImportModal, closeImportModal, importSelectTab, handleImportFile,
   submitImportParse, openImportPreview, closeImportPreview,
-  importChkChange, importToggleAll, applyImportChanges, applyPendingCustPOs,
+  importChkChange, importToggleAll, applyImportChanges, applyPendingCustPOs, importEditMpn, importSetMpn,
   injectTempOrders, injectSOImports, updateImportBadge
 } from './import/engine.js';
 
@@ -245,7 +245,7 @@ Object.assign(window, {
   // import
   openImportModal, closeImportModal, importSelectTab, handleImportFile,
   submitImportParse, openImportPreview, closeImportPreview,
-  importChkChange, importToggleAll, applyImportChanges, applyPendingCustPOs,
+  importChkChange, importToggleAll, applyImportChanges, applyPendingCustPOs, importEditMpn, importSetMpn,
   injectTempOrders, injectSOImports, updateImportBadge,
 
   // import email

@@ -139,6 +139,12 @@ function matchByMpn(upd, mpnRaw) {
 // manufacturer's ("NTR-SCDX" / original part number "SCDX"). Try the MPN, then the other number, then the catalog
 // number without the distributor's prefix ("NTR-SCDX" → "SCDX", exact only).
 export function matchUpdateToRows(upd) {
+  // a part number someone already linked by hand in the import preview
+  for (const m of [upd.mpn, upd.supplierRef]) {
+    const al = state.mpnAlias[String(m || '').trim().toUpperCase()];
+    const rs = al ? state.allRows.filter(x => x.mpn.trim().toUpperCase() === al) : [];
+    if (rs.length) return rs;
+  }
   let rs = matchByMpn(upd, upd.mpn);
   if (rs.length) return rs;
   const exact = m => { const k = String(m || '').trim().toUpperCase(); return k ? state.allRows.filter(x => x.mpn.trim().toUpperCase() === k) : []; };
@@ -155,9 +161,10 @@ export function matchUpdateToRows(upd) {
   return [];
 }
 
-export function openImportPreview(updates, sourceType) {
+export function openImportPreview(updates, sourceType, keep) {
   if (!updates.length) { toast('ה-AI לא מצא נתונים לעדכון'); return; }
   state._importChanges = [];
+  state._importUpdates = updates;
   state._importSourceType = sourceType;
   const fieldOrder = ['tracking', 'deliveryDate', 'status', 'supplier', 'poNum', 'custPO', 'notes'];
   updates.forEach(upd => {
@@ -261,6 +268,9 @@ export function openImportPreview(updates, sourceType) {
     }
   }
 
+  // after a part number is edited: keep the user's ticks on the changes that are still proposed
+  if (keep) state._importChanges.forEach(c => { const k = _chgKey(c); if (k in keep) c.checked = keep[k]; });
+
   const srcLabel = { 'shipping_notice':'הודעת משלוח','customer_po':'PO לקוח','invoice':'חשבונית','coc':'תעודת התאמה','so_file':'הזמנת מכירה','other':'מסמך' }[sourceType] || 'מסמך';
   document.getElementById('import-preview-title').textContent = '📋 שינויים מוצעים מ' + srcLabel;
   const realChanges = state._importChanges.filter(c => !c.empty);
@@ -270,13 +280,57 @@ export function openImportPreview(updates, sourceType) {
   document.getElementById('import-preview-modal').style.display = 'flex';
 }
 
+const _chgKey = c => [state._importUpdates.indexOf(c.upd), c.row ? c.row.nk : '', c.field, c.newVal].join('|');
+
+// ── Editing a detected part number ──────────────────────────────
+// ✎ next to a part number lets the user type the part number it stands for (with suggestions from the SO lines).
+// The link is remembered, so the next document with the same number matches by itself.
+export function importEditMpn(ui) { state._importEditing = ui; _renderPreviewTable(); setTimeout(() => { const el = document.getElementById('imp-mpn-in'); if (el) { el.focus(); el.select(); } }, 0); }
+export function importSetMpn(ui, val) {
+  state._importEditing = null;
+  const upd = state._importUpdates[ui];
+  const want = String(val || '').trim().toUpperCase();
+  const known = want && state.allRows.find(r => r.mpn.trim().toUpperCase() === want);
+  if (!upd || !want || want === String(upd.mpn || '').trim().toUpperCase()) { _renderPreviewTable(); return; }
+  if (!known) { toast('⚠ ' + val + ' לא נמצא בהזמנות — בחר פריט מהרשימה'); _renderPreviewTable(); return; }
+  const detected = String(upd._detected || upd.mpn || '').trim().toUpperCase();
+  if (detected) {
+    state.mpnAlias[detected] = want;
+    try { localStorage.setItem('oo_mpn_alias', JSON.stringify(state.mpnAlias)); } catch(e) {}
+    syncOverrides();
+  }
+  if (!upd._detected) upd._detected = upd.mpn;
+  upd.mpn = known.mpn.trim();
+  const keep = {};
+  state._importChanges.forEach(c => { keep[_chgKey(c)] = c.checked; });
+  openImportPreview(state._importUpdates, state._importSourceType, keep);
+  toast('🔗 ' + detected + ' → ' + upd.mpn + ' (יזוהה אוטומטית בפעם הבאה)');
+}
+function _mpnDatalist() {
+  let dl = document.getElementById('import-mpn-list');
+  if (!dl) { dl = document.createElement('datalist'); dl.id = 'import-mpn-list'; document.body.appendChild(dl); }
+  const mpns = [...new Set(state.allRows.map(r => r.mpn.trim()).filter(Boolean))].sort();
+  if (dl.childElementCount !== mpns.length) dl.innerHTML = mpns.map(m => `<option value="${_esc(m)}">`).join('');
+}
+
 export function closeImportPreview() { document.getElementById('import-preview-modal').style.display = 'none'; }
 
 export function _renderPreviewTable() {
   const tbody = document.getElementById('import-preview-body');
+  _mpnDatalist();
+  // part number cell: ✎ on the first row of each document line, an input while it is being edited
+  const mpnCell = (c, i, label) => {
+    const ui = state._importUpdates ? state._importUpdates.indexOf(c.upd) : -1;
+    const first = i === 0 || state._importChanges[i - 1].upd !== c.upd;
+    if (ui < 0 || c.wwhBulk || !first) return _esc(label);
+    if (state._importEditing === ui)
+      return `<input id="imp-mpn-in" class="imp-mpn-in" list="import-mpn-list" value="${_esc(c.upd.mpn || '')}" placeholder="MPN מההזמנות" onchange="importSetMpn(${ui},this.value)" onkeydown="if(event.key==='Escape')importSetMpn(${ui},'')">`;
+    const was = c.upd._detected ? `<div class="imp-was">זוהה: ${_esc(c.upd._detected)}</div>` : '';
+    return `${_esc(label)}<button class="imp-edit" onclick="importEditMpn(${ui})" title="שייך לפריט אחר מההזמנות">✎</button>${was}`;
+  };
   tbody.innerHTML = state._importChanges.map((c, i) => {
     if (c.empty) {
-      return `<tr><td></td><td class="import-new">${_esc(c.upd.mpn || c.upd.custPO || c.upd.poNum || '—')}</td><td colspan="4" style="color:var(--txt2);font-size:11px">אין שינויים לעדכון</td></tr>`;
+      return `<tr><td></td><td class="import-new">${mpnCell(c, i, c.upd.mpn || c.upd.custPO || c.upd.poNum || '—')}</td><td colspan="4" style="color:var(--txt2);font-size:11px">${c.row ? 'אין שינויים לעדכון' : '<span class="import-unmatched">לא נמצאה הזמנה — ✎ לשיוך</span>'}</td></tr>`;
     }
     const sectionHdr = (c.wwhBulk && (i === 0 || !state._importChanges[i - 1].wwhBulk))
       ? `<tr><td colspan="6" style="padding:5px 8px;font-size:11px;color:var(--txt2);background:var(--sur2);border-top:1px solid var(--bdr)">📦 הזמנות נוספות ממתינות במחסן המוצא — עדכון מספר מעקב DHL</td></tr>` : '';
@@ -289,7 +343,7 @@ export function _renderPreviewTable() {
     const unmatch = !c.row ? `<span class="import-unmatched">לא נמצאה הזמנה</span>` : '';
     return sectionHdr + `<tr>
       <td><input type="checkbox" data-idx="${i}" ${c.checked ? 'checked' : ''} onchange="importChkChange(${i},this.checked)"></td>
-      <td class="import-new">${_esc(mpnLabel)}</td>
+      <td class="import-new">${mpnCell(c, i, mpnLabel)}</td>
       <td style="font-size:11px;color:var(--txt2)">${_esc(rowLabel)}${unmatch}</td>
       <td>${_esc(FIELD_LABELS[c.field] || c.field)}</td>
       <td><span class="import-old">${_esc(oldDisp)}</span></td>
