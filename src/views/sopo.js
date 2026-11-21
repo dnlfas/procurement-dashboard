@@ -47,37 +47,41 @@ const toOrder = r => {
   const q = r.qtyR || r.qtyO;
   return Math.max(0, Math.min(r.short > 0 ? r.short : q, q - coveredQty(r)));
 };
-const otwNote = n => n ? ` · 🚚 ${n} בדרך — לא נכללו` : '';
+const otwNote = n => n ? ` · 🚚 ${n} בדרך (לא מסומנות)` : '';
 
 export function openSOPO(so) {
-  const all = state.allRows.filter(r => r.so === so && isOpenRow(r));
-  const rows = all.filter(r => toOrder(r) > 0);
-  if (!rows.length) { toast(all.length ? '🚚 כל השורות כבר בדרך — אין מה להזמין' : 'אין שורות פתוחות'); return; }
+  const rows = state.allRows.filter(r => r.so === so && isOpenRow(r));
   const cust = rows[0] ? ' · ' + (rows[0].customer || '') : '';
-  openSession(so, rows, false, r => r.cov !== 'green' || r.short > 0 || toOrder(r) < (r.qtyR || r.qtyO), `🧾 SO → PO · ${so}${cust}${otwNote(all.length - rows.length)}`);
+  // lines already on the way are listed, unchecked
+  openSession(so, rows, false, `🧾 SO → PO · ${so}${cust}${otwNote(rows.filter(r => !toOrder(r)).length)}`,
+    r => toOrder(r) > 0 && (r.cov !== 'green' || r.short > 0 || toOrder(r) < (r.qtyR || r.qtyO)));
 }
 
 // Batch: every open line still waiting for a PO, across all SOs (scope 'mod' / 'other' narrows by customer),
 // most urgent first — one set of quotes, one Priority table per supplier with the same part merged across SOs
 export function openSOPOBatch(scope) {
-  const waiting = state.allRows
-    .filter(r => !r.isTemp && isOpenRow(r) && needsPO(r) && (scope === 'mod' ? isMOD(r) : scope === 'other' ? !isMOD(r) : true));
-  const rows = waiting.filter(r => toOrder(r) > 0).sort((a, b) => (a.dd || Infinity) - (b.dd || Infinity));
-  if (!rows.length) { toast(waiting.length ? '🚚 כל הממתינים כבר בדרך — אין מה להזמין' : 'אין פריטים ממתינים ל-PO'); return; }
+  const rows = state.allRows
+    .filter(r => !r.isTemp && isOpenRow(r) && needsPO(r) && (scope === 'mod' ? isMOD(r) : scope === 'other' ? !isMOD(r) : true))
+    .sort((a, b) => (a.dd || Infinity) - (b.dd || Infinity));
+  if (!rows.length) { toast('אין פריטים ממתינים ל-PO'); return; }
   const label = scope === 'mod' ? 'משרד הביטחון' : scope === 'other' ? 'לקוחות אחרים' : 'כל הממתינים';
   const nSO = new Set(rows.map(r => r.so)).size;
-  openSession('__batch_' + (scope || 'all'), rows, true, () => true, `🧾 SO → PO מרוכז · ${label} · ${rows.length} שורות מ-${nSO} הזמנות${otwNote(waiting.length - rows.length)}`);
+  openSession('__batch_' + (scope || 'all'), rows, true, `🧾 SO → PO מרוכז · ${label} · ${rows.length} שורות מ-${nSO} הזמנות${otwNote(rows.filter(r => !toOrder(r)).length)}`,
+    r => toOrder(r) > 0);
 }
 
-function openSession(key, rows, batch, defSel, title) {
+function openSession(key, rows, batch, title, defSel) {
   const saved = load(SOPO_KEY, {})[key] || {};
   const lines = rows.map(r => ({
     nk: r.nk, mpn: r.mpn, so: r.so, customer: r.customer || '',
-    need: toOrder(r),
+    // fully on the way: if checked anyway, the whole line is ordered
+    need: toOrder(r) || (r.qtyR || r.qtyO),
+    otw: coveredQty(r), full: !toOrder(r),
     price: r.price || 0, currency: cur3(r.currency) || 'ILS', dd: r.dd || null,
     defSel: !!defSel(r),
   }));
-  lines.forEach(l => { l.sel = saved.sel ? saved.sel.includes(l.nk) : l.defSel; });
+  // a line saved as checked stays checked, unless it has gone on the way since (then it was checked for its old need)
+  lines.forEach(l => { l.sel = saved.sel ? saved.sel.includes(l.nk) && (!l.full || (saved.otw || []).includes(l.nk)) : l.defSel; });
   S = {
     so: key, batch, filter: '', lines, offers: saved.offers || [], chosen: saved.chosen || {}, manual: saved.manual || {},
     override: saved.override || {}, exclude: saved.exclude || {}, online: {}, openOnline: {}, ready: false, noOnline: !!saved.noOnline,
@@ -101,7 +105,7 @@ export function closeSOPO() { persist(); document.getElementById('sopo-modal').s
 function persist() {
   if (!S) return;
   const all = load(SOPO_KEY, {});
-  all[S.so] = { sel: S.lines.filter(l => l.sel).map(l => l.nk), offers: S.offers, chosen: S.chosen, manual: S.manual, override: S.override, exclude: S.exclude, noOnline: S.noOnline, ts: Date.now() };
+  all[S.so] = { sel: S.lines.filter(l => l.sel).map(l => l.nk), otw: S.lines.filter(l => l.full).map(l => l.nk), offers: S.offers, chosen: S.chosen, manual: S.manual, override: S.override, exclude: S.exclude, noOnline: S.noOnline, ts: Date.now() };
   save(SOPO_KEY, all);
 }
 
@@ -351,7 +355,8 @@ export function sopoShowOnline(i) { const l = S.lines[i]; S.openOnline[l.nk] = !
 // ── Line edits ──────────────────────────────────────────────────
 export function sopoToggle(i, v) { S.lines[i].sel = v; persist(); render(); }
 // "Select all" / "clear" act on the lines the filter shows
-export function sopoToggleAll(v) { S.lines.filter(shown).forEach(l => { l.sel = v; }); persist(); render(); }
+// (lines already fully on the way are left unchecked; check them one by one to order anyway)
+export function sopoToggleAll(v) { S.lines.filter(shown).forEach(l => { l.sel = v && !l.full; }); persist(); render(); }
 let _filterT = 0;
 export function sopoFilter(v) { clearTimeout(_filterT); _filterT = setTimeout(() => { if (S) { S.filter = v.trim().toUpperCase(); render(); } }, 200); }
 const shown = l => !S.filter || [l.mpn, l.so, l.customer, (chosenOffer(l) || {}).supplier].some(x => String(x || '').toUpperCase().includes(S.filter));
@@ -418,7 +423,7 @@ function render() {
     const qty = off ? orderQty(l.need, off) : l.need;
     return `<tr class="sopo-l-${lvl}${l.sel ? '' : ' sopo-off'}">
       <td><input type="checkbox" ${l.sel ? 'checked' : ''} onchange="sopoToggle(${i},this.checked)"></td>
-      <td class="mpn">${esc(l.mpn)}${S.batch ? `<div class="sopo-so" title="${esc(l.customer)}">${esc(l.so)} · ${esc(l.customer.slice(0, 22))}</div>` : ''}</td>
+      <td class="mpn">${esc(l.mpn)}${l.otw ? ` <span class="db db-g" title="כבר בדרך לפי מעקב / סטטוס / הערות">🚚 ${l.full ? 'בדרך' : l.otw + ' בדרך'}</span>` : ''}${S.batch ? `<div class="sopo-so" title="${esc(l.customer)}">${esc(l.so)} · ${esc(l.customer.slice(0, 22))}</div>` : ''}</td>
       <td>${l.need}${qty !== l.need ? ` <span class="sopo-muted">→ ${qty}</span>` : ''}</td>
       <td>${l.price ? money(l.price, l.currency) : '—'}</td>
       <td>${fd(l.dd)}</td>
