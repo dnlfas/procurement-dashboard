@@ -43,6 +43,7 @@ import {
 
 // ── Views: Supplier ───────────────────────────────────────────
 import { renderSupplierKPIs, renderSuppliers, buildPOTable } from './views/supplier.js';
+import { sopoLinkFile, loadLinksFromServer } from './sopolink.js';
 
 // ── Views: SSP ────────────────────────────────────────────────
 import { renderSSP, toggleSSP, togCG, togSODetail, sspShowAll } from './views/ssp.js';
@@ -176,7 +177,7 @@ setApiCallbacks(function onDataLoaded(type) {
 // ─────────────────────────────────────────────────────────────
 async function initApp() {
   showVersion();
-  await Promise.all([loadOverridesFromBlob(), loadRFQFromServer()]);
+  await Promise.all([loadOverridesFromBlob(), loadRFQFromServer(), loadLinksFromServer()]);
   updateImportBadge();
   refreshDataStatus();
   // If data already loaded (via wizard), render
@@ -193,6 +194,7 @@ async function initApp() {
 // Expose ALL onclick-referenced functions on window
 // ─────────────────────────────────────────────────────────────
 Object.assign(window, {
+  sopoLinkFile,
   // state (needed for onclick attribute access)
   state,
 

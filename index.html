@@ -275,6 +275,9 @@
           style="flex:1;background:var(--sur3);border:1px solid var(--bdr);border-radius:5px;padding:7px 12px;font-size:13px;font-family:var(--sans);color:var(--txt);outline:none;direction:rtl">
         <label class="chk"><input type="checkbox" id="supp-ovr-only" onchange="renderSuppliers()"> באיחור בלבד</label>
         <label class="chk"><input type="checkbox" id="supp-cross" onchange="renderSuppliers()"> הצלבת SO</label>
+        <span id="supp-link-status" style="font-size:11px;color:var(--txt2);font-family:var(--mono)"></span>
+        <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px" onclick="document.getElementById('fi-sopolink').click()" title="דוח פריוריטי: שורות הזמנת לקוח עם הזמנת הרכש המקושרת (מחיר מכירה, מחיר קנייה, תאריכים) — מוסיף מחיר יחידה אמיתי, רווח ואיחור מול הלקוח">📎 דוח SO↔PO</button>
+        <input type="file" id="fi-sopolink" accept=".xlsx,.xls" style="display:none" onchange="sopoLinkFile(event)">
       </div>
       <div id="supp-cards" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>

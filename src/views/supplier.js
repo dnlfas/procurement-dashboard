@@ -2,16 +2,35 @@ import { state, TODAY } from '../state.js';
 import { esc, fd } from '../utils.js';
 import { renderCoverage } from './boss.js';
 import { renderSSP } from './ssp.js';
-import { cur3 } from '../sopo/engine.js';
+import { cur3, fxConvert, DEFAULT_RATES, SOPO_RULES } from '../sopo/engine.js';
+import { loadLinks, linksFor, linkStatus } from '../sopolink.js';
 
 const CUR_SYM = { USD: '$', EUR: '€', GBP: '£', ILS: '₪' };
-// unit price in the PO's own currency, with enough decimals for cheap parts
-function unitPriceTxt(r) {
+const money = (v, cur) => { const c = cur3(cur) || cur || ''; return (CUR_SYM[c] || (c ? c + ' ' : '')) + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: v < 1 ? 4 : 2 }); };
+// Unit price: the PO's own price from the SO↔PO link report when it has this line; otherwise open value ÷ open qty
+function unitPriceTxt(r, link) {
+  if (link && link.buyPrice > 0) return `<span title="מחיר ליחידה מההזמנה (דוח קישור SO↔PO)">${money(link.buyPrice, link.buyCur)}</span>`;
   if (!(r.unitPrice > 0)) return '—';
-  const c = cur3(r.currency) || r.currency || '';
-  const d = r.unitPrice < 1 ? 4 : 2;
-  return (CUR_SYM[c] || (c ? c + ' ' : '')) + r.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: d });
+  return `<span class="sopo-muted" title="מחושב: שווי היתרה ÷ יתרה לאספקה">≈${money(r.unitPrice, r.currency)}</span>`;
 }
+// Linked SO line(s): SO number, sell price, and the margin over the PO price (in the sell currency)
+function linkCell(links) {
+  if (!links.length) return '<span class="sopo-muted">—</span>';
+  return links.map(l => {
+    let m = '';
+    const sc = cur3(l.sellCur), bc = cur3(l.buyCur);
+    if (l.sellPrice > 0 && l.buyPrice > 0 && DEFAULT_RATES[sc] && DEFAULT_RATES[bc]) {
+      const pct = (l.sellPrice - fxConvert(l.buyPrice, bc, sc, fxRates())) / l.sellPrice;
+      const cls = pct <= 0 ? 'db-r' : pct < SOPO_RULES.minMargin ? 'db-o' : 'db-g';
+      m = ` <span class="db ${cls}" title="רווח גולמי לפי מחיר מכירה מול מחיר קנייה">${Math.round(pct * 100)}%</span>`;
+    }
+    return `<div style="white-space:nowrap"><span class="ptxt" title="${esc(l.customer)}">${esc(l.so)}</span> · ${l.sellPrice > 0 ? money(l.sellPrice, l.sellCur) : '—'}${m}</div>`;
+  }).join('');
+}
+// the rates SO → PO last loaded (Bank of Israel), else the defaults
+function fxRates() { try { return { ...DEFAULT_RATES, ...JSON.parse(localStorage.getItem('oo_fx')).rates }; } catch (e) { return DEFAULT_RATES; } }
+// The PO arrives after the date promised to the customer
+const lateForCust = links => links.filter(l => l.buyDd && l.soDd && l.buyDd > l.soDd && l.buyRem > 0);
 
 export function renderSupplierKPIs() {
   const suppCount = [...new Set(state.poRows.map(r => r.supplier).filter(Boolean))].length;
@@ -51,6 +70,8 @@ export function renderSuppliers() {
   }
   if (ovrOnly) groups = groups.filter(g => g.rows.some(r => r.isOvr));
 
+  const ls = document.getElementById('supp-link-status');
+  if (ls) ls.textContent = linkStatus();
   const el = document.getElementById('supp-cards');
   if (!groups.length) { el.innerHTML = '<div class="empty">אין ספקים להצגה</div>'; return; }
 
@@ -114,7 +135,8 @@ export function buildPOTable(rows, soMPNs, crossSO) {
     byPO.get(k).push(r);
   });
   // insertion order already follows the PO's most urgent line
-  const cols = crossSO ? 9 : 8;
+  const hasLinks = !!loadLinks();
+  const cols = 8 + (crossSO ? 1 : 0) + (hasLinks ? 1 : 0);
   return `<table class="lt"><thead><tr>
     <th style="width:12px"></th>
     <th>פריט (MPN)</th>
@@ -124,10 +146,12 @@ export function buildPOTable(rows, soMPNs, crossSO) {
     <th>סופק</th>
     <th>יתרה</th>
     <th>מחיר יח׳</th>
+    ${hasLinks ? '<th title="שורות SO שמקושרות להזמנה בפריוריטי — מחיר מכירה ורווח">SO · מכירה</th>' : ''}
     ${crossSO ? '<th>SO</th>' : ''}
   </tr></thead><tbody>
   ${[...byPO].map(([po, lines]) => {
     const ovr = lines.filter(r => r.isOvr).length;
+    const custLate = hasLinks ? lines.filter(r => lateForCust(linksFor(po, r.mpn)).length).length : 0;
     const val = lines.reduce((t, r) => t + (r.valILS || 0), 0);
     const first = lines.find(r => r.dd);
     const due = first ? (first.isOvr ? `<span class="db db-r">${Math.floor((TODAY - first.dd) / 86400000)}י׳</span>` : '') + fd(first.dd) : '';
@@ -136,21 +160,26 @@ export function buildPOTable(rows, soMPNs, crossSO) {
       <span class="po-grp-num">${esc(po)}</span>${bell}
       <span class="po-grp-meta">${lines.length} שורות · ₪${Math.round(val).toLocaleString()}${due ? ' · אספקה ' + due : ''}</span>
       ${ovr ? `<span class="badge b-r">🔴 ${ovr} באיחור</span>` : ''}
+      ${custLate ? `<span class="badge b-o" title="הספק יספק אחרי התאריך שהובטח ללקוח">⚠ ${custLate} אחרי מועד הלקוח</span>` : ''}
     </td></tr>`;
     return head + lines.map(r => {
       const dc = r.isOvr ? 'past' : (r.dd && r.dd - TODAY < 30 * 86400000 ? 'curr' : '');
       const dayB = r.isOvr ? `<span class="db db-r" title="ימים מאז תאריך האספקה של הספק">${Math.floor((TODAY - r.dd) / 86400000)}י׳</span>` : '';
       const tl = r.isOvr ? 'r' : r.isPartial ? 'o' : 'g';
       const soMatch = crossSO && soMPNs.has(r.mpn.trim().toUpperCase());
+      const links = hasLinks ? linksFor(r.poNum, r.mpn) : [];
+      const late = lateForCust(links);
+      const lateB = late.length ? ` <span class="db db-o" title="הלקוח צריך עד ${late.map(l => fd(l.soDd) + ' (' + l.so + ')').join(', ')}">⚠ ${fd(late.reduce((a, l) => l.soDd < a ? l.soDd : a, late[0].soDd))}</span>` : '';
       return `<tr class="${r.isOvr ? 'lno' : ''}">
       <td style="text-align:center"><span class="lntl tl-${tl}"></span></td>
       <td><div class="mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div></td>
       <td style="font-size:11px;color:var(--txt2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.desc)}">${esc(r.desc)}</td>
-      <td class="ddate ${dc}">${dayB}${fd(r.dd)}</td>
+      <td class="ddate ${dc}">${dayB}${fd(r.dd)}${lateB}</td>
       <td class="qty">${r.qtyO}</td>
       <td class="qty" style="${r.qtyS > 0 ? 'color:var(--grn)' : ''}">${r.qtyS}</td>
       <td class="qty" style="${r.isOvr ? 'color:var(--red)' : ''}">${r.qtyR}</td>
-      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap" title="מחיר ליחידה במטבע ההזמנה">${unitPriceTxt(r)}</td>
+      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap" title="מחיר ליחידה במטבע ההזמנה">${unitPriceTxt(r, links[0])}</td>
+      ${hasLinks ? `<td style="font-family:var(--mono);font-size:11px">${linkCell(links)}</td>` : ''}
       ${crossSO ? `<td>${soMatch ? '<span class="badge b-a" style="font-size:10px" title="הפריט מופיע בהזמנת לקוח פתוחה">✓</span>' : '<span style="color:var(--txt2);font-size:11px">—</span>'}</td>` : ''}
     </tr>`;
     }).join('');
