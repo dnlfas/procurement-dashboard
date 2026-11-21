@@ -237,6 +237,8 @@ export function openImportPreview(updates, sourceType, keep) {
         }
         const oldVal = _currentVal(row, field);
         if (newVal === oldVal && field !== 'notes') return;
+        // the same note is already on the line (the document was imported before): nothing to add
+        if (field === 'notes' && row && String(state.notes[row.nk] || '').split('\n').includes(newVal)) return;
         state._importChanges.push({ upd, row, field, oldVal, newVal, checked: true });
       });
     });
