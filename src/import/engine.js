@@ -9,6 +9,14 @@ import { applyFilters } from '../views/employee.js';
 const FIELD_LABELS = { tracking: 'מעקב', supplier: 'ספק', poNum: 'PO רכש', custPO: 'PO לקוח', status: 'סטטוס', notes: 'הערה', deliveryDate: 'ת. אספקה' };
 const STATUS_HE = { 'ordered':'הוזמן מהספק','waiting_wh':'ממתין במחסן המוצא','in_transit':'נחת בארץ','customs_sub':'הגשות למכס','customs_rel':'שוחרר ממכס','delivery_bts':'בשליחות ל-BTS','qc':'בבקרת איכות','supplied':'סופק ללקוח','partial':'סופק חלקי','waiting_cust':'ממתין לאספקה','cancelled':'בוטל' };
 
+// How far along a line is. A document never moves a line backwards (e.g. an order confirmation arriving after
+// the shipping notice): that status change and its note are left out.
+const STATUS_RANK = ['none', 'pending', 'sourcing', 'ordered', 'waiting_wh', 'in_transit', 'customs_sub', 'customs_rel', 'delivery_bts', 'qc', 'partial', 'waiting_cust', 'supplied'];
+const isBackwards = (row, st) => {
+  const cur = STATUS_RANK.indexOf(row ? (state.statusOvr[row.nk] ?? row.status) : '');
+  return STATUS_RANK.indexOf(st) >= 0 && cur > STATUS_RANK.indexOf(st);
+};
+
 export function openImportModal() {
   state._importFile = null; state._importExcelRows = null;
   document.getElementById('import-ta').value = '';
@@ -136,6 +144,8 @@ export function openImportPreview(updates, sourceType) {
   updates.forEach(upd => {
     const matched = matchUpdateToRows(upd);
     const qty = parseFloat(upd.qty) || 0;
+    // units the supplier has on backorder: the last of the ordered qty to be allocated
+    const backorder = Math.min(parseFloat(upd.backorder) || 0, qty || Infinity);
     const st = upd.status || '';
     const verb = (st === 'supplied' || st === 'partial') ? 'סופק'
       : (['waiting_wh','in_transit','customs_sub','customs_rel','delivery_bts','qc'].includes(st) || upd.tracking) ? 'נשלח'
@@ -147,7 +157,7 @@ export function openImportPreview(updates, sourceType) {
         if (da !== db) return da - db;
         return (a.so || '').localeCompare(b.so || '');
       });
-      let remaining = qty;
+      let remaining = qty, avail = qty - backorder;
       candidates = [];
       sorted.forEach(row => {
         if (remaining <= 0) return;
@@ -155,19 +165,32 @@ export function openImportPreview(updates, sourceType) {
         const alloc = Math.min(remaining, need);
         remaining -= alloc;
         const partial = row.qtyR > 0 && alloc < row.qtyR;
+        const bo = alloc - Math.max(0, Math.min(avail, alloc));
+        avail = Math.max(0, avail - alloc);
         const allocNote = verb + ' ' + alloc + (row.qtyR > 0 ? '/' + row.qtyR : '') + ' יח׳' + (partial ? ' (חלקי)' : ' (מלא)');
-        candidates.push({ row, allocNote, partial });
+        candidates.push({ row, allocNote, partial, bo });
       });
     } else {
-      candidates = (matched.length ? matched : [null]).map(row => ({ row, allocNote: '', partial: false }));
+      candidates = (matched.length ? matched : [null]).map(row => ({ row, allocNote: '', partial: false, bo: backorder }));
     }
+    const boNote = n => n > 0 ? '⏳ ' + n + ' יח׳ ב-backorder אצל הספק' : '';
     candidates.forEach(c => {
       const row = c.row;
+      const backwards = isBackwards(row, upd.status);
       fieldOrder.forEach(field => {
         let newVal = upd[field] || '';
+        if (field === 'status' && backwards) return;
+        if (field === 'notes' && backwards) {
+          // the line is already further along: keep its notes, only add a backorder warning
+          newVal = boNote(c.bo);
+          if (!newVal || (state.notes[row.nk] || '').includes(newVal)) return;
+          state._importChanges.push({ upd, row, field, oldVal: _currentVal(row, field), newVal, checked: true, keepNotes: true });
+          return;
+        }
         if (field === 'notes') {
           const parts = [];
           if (c.allocNote) parts.push(c.allocNote);
+          if (c.bo > 0) parts.push(boNote(c.bo));
           if (upd.supplierRef) parts.push('הזמנת ספק #' + upd.supplierRef);
           if (upd.notes) parts.push(upd.notes);
           newVal = parts.join(' · ');
@@ -303,7 +326,7 @@ export function applyImportChanges() {
         else row.cov = 'orange';
       } else if (field === 'notes') {
         let lines = (state.notes[nk] || '').split('\n').filter(Boolean);
-        const token = c.upd.tracking || c.upd.supplierRef || '';
+        const token = c.keepNotes ? '' : c.upd.tracking || c.upd.supplierRef || '';
         if (token) lines = lines.filter(l => !l.includes(token));
         if (!lines.includes(newVal)) lines.push(newVal);
         state.notes[nk] = lines.join('\n');
