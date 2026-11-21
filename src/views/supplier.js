@@ -90,17 +90,25 @@ export function renderSuppliers() {
   }).join('');
 }
 
+// One header row per supplier PO (number, line count, value, earliest due date, reminder bell), its lines below.
+// POs with late lines first, then by earliest due date; lines inside a PO the same way.
 export function buildPOTable(rows, soMPNs, crossSO) {
-  const sorted = [...rows].sort((a, b) => {
+  const byDate = (a, b) => {
     if (a.isOvr && !b.isOvr) return -1; if (!a.isOvr && b.isOvr) return 1;
     if (!a.dd) return 1; if (!b.dd) return -1; return a.dd - b.dd;
+  };
+  const byPO = new Map();
+  [...rows].sort(byDate).forEach(r => {
+    const k = r.poNum || '—';
+    if (!byPO.has(k)) byPO.set(k, []);
+    byPO.get(k).push(r);
   });
-  const seenPO = new Set();
+  // insertion order already follows the PO's most urgent line
+  const cols = crossSO ? 9 : 8;
   return `<table class="lt"><thead><tr>
     <th style="width:12px"></th>
     <th>פריט (MPN)</th>
     <th>תיאור</th>
-    <th>PO</th>
     <th>ת. אספקה</th>
     <th>הוזמן</th>
     <th>סופק</th>
@@ -108,19 +116,26 @@ export function buildPOTable(rows, soMPNs, crossSO) {
     <th>ערך ₪</th>
     ${crossSO ? '<th>SO</th>' : ''}
   </tr></thead><tbody>
-  ${sorted.map(r => {
-    const dc = r.isOvr ? 'past' : (r.dd && r.dd - TODAY < 30 * 86400000 ? 'curr' : '');
-    const dayB = r.isOvr ? `<span class="db db-r" title="ימים מאז תאריך האספקה של הספק">${Math.floor((TODAY - r.dd) / 86400000)}י׳</span>` : '';
-    const tl = r.isOvr ? 'r' : r.isPartial ? 'o' : 'g';
-    const soMatch = crossSO && soMPNs.has(r.mpn.trim().toUpperCase());
-    const showBell = !seenPO.has(r.poNum);
-    seenPO.add(r.poNum);
-    const bell = showBell ? `<button class="bics" title="הגדר תזכורת" onclick="event.stopPropagation();openNotifyModal('${esc(r.poNum)}')" style="margin-inline-start:6px">🔔</button>` : '';
-    return `<tr class="${r.isOvr ? 'lno' : ''}">
+  ${[...byPO].map(([po, lines]) => {
+    const ovr = lines.filter(r => r.isOvr).length;
+    const val = lines.reduce((t, r) => t + (r.valILS || 0), 0);
+    const first = lines.find(r => r.dd);
+    const due = first ? (first.isOvr ? `<span class="db db-r">${Math.floor((TODAY - first.dd) / 86400000)}י׳</span>` : '') + fd(first.dd) : '';
+    const bell = po !== '—' ? `<button class="bics" title="הגדר תזכורת" onclick="event.stopPropagation();openNotifyModal('${esc(po)}')">🔔</button>` : '';
+    const head = `<tr class="po-grp${ovr ? ' po-grp-ovr' : ''}"><td colspan="${cols}">
+      <span class="po-grp-num">${esc(po)}</span>${bell}
+      <span class="po-grp-meta">${lines.length} שורות · ₪${Math.round(val).toLocaleString()}${due ? ' · אספקה ' + due : ''}</span>
+      ${ovr ? `<span class="badge b-r">🔴 ${ovr} באיחור</span>` : ''}
+    </td></tr>`;
+    return head + lines.map(r => {
+      const dc = r.isOvr ? 'past' : (r.dd && r.dd - TODAY < 30 * 86400000 ? 'curr' : '');
+      const dayB = r.isOvr ? `<span class="db db-r" title="ימים מאז תאריך האספקה של הספק">${Math.floor((TODAY - r.dd) / 86400000)}י׳</span>` : '';
+      const tl = r.isOvr ? 'r' : r.isPartial ? 'o' : 'g';
+      const soMatch = crossSO && soMPNs.has(r.mpn.trim().toUpperCase());
+      return `<tr class="${r.isOvr ? 'lno' : ''}">
       <td style="text-align:center"><span class="lntl tl-${tl}"></span></td>
       <td><div class="mpn" title="${esc(r.mpn)}">${esc(r.mpn)}</div></td>
       <td style="font-size:11px;color:var(--txt2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.desc)}">${esc(r.desc)}</td>
-      <td class="ptxt">${esc(r.poNum)}${bell}</td>
       <td class="ddate ${dc}">${dayB}${fd(r.dd)}</td>
       <td class="qty">${r.qtyO}</td>
       <td class="qty" style="${r.qtyS > 0 ? 'color:var(--grn)' : ''}">${r.qtyS}</td>
@@ -128,6 +143,7 @@ export function buildPOTable(rows, soMPNs, crossSO) {
       <td style="font-family:var(--mono);font-size:11px;color:var(--txt2);white-space:nowrap">₪${Math.round(r.valILS).toLocaleString()}</td>
       ${crossSO ? `<td>${soMatch ? '<span class="badge b-a" style="font-size:10px" title="הפריט מופיע בהזמנת לקוח פתוחה">✓</span>' : '<span style="color:var(--txt2);font-size:11px">—</span>'}</td>` : ''}
     </tr>`;
+    }).join('');
   }).join('')}
   </tbody></table>`;
 }

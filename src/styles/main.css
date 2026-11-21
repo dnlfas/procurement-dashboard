@@ -234,6 +234,12 @@ table.lt thead th{background:#1a2035;font-size:13px;font-family:var(--mono);colo
 table.lt tbody tr{transition:background .07s}
 table.lt tbody tr:hover{background:var(--sur2)}
 table.lt tbody tr.lno{background:var(--red-d)}
+table.lt tbody tr.po-grp td{background:var(--sur3);border-top:2px solid var(--bdr);padding:7px var(--rph);font-family:var(--mono);font-size:12px}
+table.lt tbody tr.po-grp-ovr td{border-top-color:var(--red)}
+table.lt tbody tr.po-grp:hover{background:none}
+.po-grp-num{color:var(--acc);font-weight:700;font-size:13px;margin-inline-end:6px;unicode-bidi:isolate;direction:ltr}
+.po-grp-meta{color:var(--txt2);margin-inline:10px;unicode-bidi:isolate}
+.po-grp-meta .db{margin-inline-end:4px}
 table.lt tbody tr.lno:hover{background:var(--red-m)}
 table.lt tbody td{padding:var(--rp) var(--rph);font-size:13px;border-bottom:1px solid var(--bdr);vertical-align:middle}
 table.lt tbody tr:last-child td{border-bottom:none}
