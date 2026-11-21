@@ -27,29 +27,53 @@ const priceKey = l => l.mpn.trim().toUpperCase() + '|' + l.need;
 
 const isOpenRow = r => !CLOSED.includes(state.statusOvr[r.nk] || r.status);
 
+// ── What is already on the way ──────────────────────────────────
+// The PO report can lag behind what an imported invoice / shipping notice already says. A line with a tracking
+// number or a shipped status is covered; "נשלח 4/10 יח׳ (חלקי)" notes from those imports cover their quantity.
+const ON_THE_WAY = ['in_transit', 'waiting_wh', 'customs_sub', 'customs_rel', 'delivery_bts', 'qc', 'supplied', 'partial', 'waiting_cust'];
+const NOTE_QTY_RX = /(נשלח|הוזמן|סופק)\s+(\d+(?:\.\d+)?)\/\d+/g;
+function coveredQty(r) {
+  const q = r.qtyR || r.qtyO;
+  // per verb the notes add up (two shipments); across verbs they may be the same units (shipped, then supplied)
+  const byVerb = {};
+  for (const m of String(state.notes[r.nk] || '').matchAll(NOTE_QTY_RX)) byVerb[m[1]] = (byVerb[m[1]] || 0) + +m[2];
+  const noted = Math.max(0, ...Object.values(byVerb));
+  if (noted) return Math.min(noted, q);
+  const st = state.statusOvr[r.nk] || r.status;
+  return r.tracking || (ON_THE_WAY.includes(st) && st !== 'partial') ? q : 0;
+}
+// qty still to order: the PO report's shortfall (or the whole line), less what is already on the way
+const toOrder = r => {
+  const q = r.qtyR || r.qtyO;
+  return Math.max(0, Math.min(r.short > 0 ? r.short : q, q - coveredQty(r)));
+};
+const otwNote = n => n ? ` · 🚚 ${n} בדרך — לא נכללו` : '';
+
 export function openSOPO(so) {
-  const rows = state.allRows.filter(r => r.so === so && isOpenRow(r));
+  const all = state.allRows.filter(r => r.so === so && isOpenRow(r));
+  const rows = all.filter(r => toOrder(r) > 0);
+  if (!rows.length) { toast(all.length ? '🚚 כל השורות כבר בדרך — אין מה להזמין' : 'אין שורות פתוחות'); return; }
   const cust = rows[0] ? ' · ' + (rows[0].customer || '') : '';
-  openSession(so, rows, false, r => r.cov !== 'green' || r.short > 0, `🧾 SO → PO · ${so}${cust}`);
+  openSession(so, rows, false, r => r.cov !== 'green' || r.short > 0 || toOrder(r) < (r.qtyR || r.qtyO), `🧾 SO → PO · ${so}${cust}${otwNote(all.length - rows.length)}`);
 }
 
 // Batch: every open line still waiting for a PO, across all SOs (scope 'mod' / 'other' narrows by customer),
 // most urgent first — one set of quotes, one Priority table per supplier with the same part merged across SOs
 export function openSOPOBatch(scope) {
-  const rows = state.allRows
-    .filter(r => !r.isTemp && isOpenRow(r) && needsPO(r) && (scope === 'mod' ? isMOD(r) : scope === 'other' ? !isMOD(r) : true))
-    .sort((a, b) => (a.dd || Infinity) - (b.dd || Infinity));
-  if (!rows.length) { toast('אין פריטים ממתינים ל-PO'); return; }
+  const waiting = state.allRows
+    .filter(r => !r.isTemp && isOpenRow(r) && needsPO(r) && (scope === 'mod' ? isMOD(r) : scope === 'other' ? !isMOD(r) : true));
+  const rows = waiting.filter(r => toOrder(r) > 0).sort((a, b) => (a.dd || Infinity) - (b.dd || Infinity));
+  if (!rows.length) { toast(waiting.length ? '🚚 כל הממתינים כבר בדרך — אין מה להזמין' : 'אין פריטים ממתינים ל-PO'); return; }
   const label = scope === 'mod' ? 'משרד הביטחון' : scope === 'other' ? 'לקוחות אחרים' : 'כל הממתינים';
   const nSO = new Set(rows.map(r => r.so)).size;
-  openSession('__batch_' + (scope || 'all'), rows, true, () => true, `🧾 SO → PO מרוכז · ${label} · ${rows.length} שורות מ-${nSO} הזמנות`);
+  openSession('__batch_' + (scope || 'all'), rows, true, () => true, `🧾 SO → PO מרוכז · ${label} · ${rows.length} שורות מ-${nSO} הזמנות${otwNote(waiting.length - rows.length)}`);
 }
 
 function openSession(key, rows, batch, defSel, title) {
   const saved = load(SOPO_KEY, {})[key] || {};
   const lines = rows.map(r => ({
     nk: r.nk, mpn: r.mpn, so: r.so, customer: r.customer || '',
-    need: r.short > 0 ? r.short : (r.qtyR || r.qtyO),
+    need: toOrder(r),
     price: r.price || 0, currency: cur3(r.currency) || 'ILS', dd: r.dd || null,
     defSel: !!defSel(r),
   }));
