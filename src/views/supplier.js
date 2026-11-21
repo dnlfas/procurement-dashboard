@@ -2,6 +2,16 @@ import { state, TODAY } from '../state.js';
 import { esc, fd } from '../utils.js';
 import { renderCoverage } from './boss.js';
 import { renderSSP } from './ssp.js';
+import { cur3 } from '../sopo/engine.js';
+
+const CUR_SYM = { USD: '$', EUR: '€', GBP: '£', ILS: '₪' };
+// unit price in the PO's own currency, with enough decimals for cheap parts
+function unitPriceTxt(r) {
+  if (!(r.unitPrice > 0)) return '—';
+  const c = cur3(r.currency) || r.currency || '';
+  const d = r.unitPrice < 1 ? 4 : 2;
+  return (CUR_SYM[c] || (c ? c + ' ' : '')) + r.unitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: d });
+}
 
 export function renderSupplierKPIs() {
   const suppCount = [...new Set(state.poRows.map(r => r.supplier).filter(Boolean))].length;
@@ -113,7 +123,7 @@ export function buildPOTable(rows, soMPNs, crossSO) {
     <th>הוזמן</th>
     <th>סופק</th>
     <th>יתרה</th>
-    <th>ערך ₪</th>
+    <th>מחיר יח׳</th>
     ${crossSO ? '<th>SO</th>' : ''}
   </tr></thead><tbody>
   ${[...byPO].map(([po, lines]) => {
@@ -140,7 +150,7 @@ export function buildPOTable(rows, soMPNs, crossSO) {
       <td class="qty">${r.qtyO}</td>
       <td class="qty" style="${r.qtyS > 0 ? 'color:var(--grn)' : ''}">${r.qtyS}</td>
       <td class="qty" style="${r.isOvr ? 'color:var(--red)' : ''}">${r.qtyR}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--txt2);white-space:nowrap">₪${Math.round(r.valILS).toLocaleString()}</td>
+      <td style="font-family:var(--mono);font-size:12px;white-space:nowrap" title="מחיר ליחידה במטבע ההזמנה">${unitPriceTxt(r)}</td>
       ${crossSO ? `<td>${soMatch ? '<span class="badge b-a" style="font-size:10px" title="הפריט מופיע בהזמנת לקוח פתוחה">✓</span>' : '<span style="color:var(--txt2);font-size:11px">—</span>'}</td>` : ''}
     </tr>`;
     }).join('');

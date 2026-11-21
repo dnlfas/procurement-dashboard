@@ -22,6 +22,10 @@ export function parsePORows(raw) {
     curr:    _findKey(keys, ['מטבע']),
     date:    _findKey(keys, ['ת. אספקה', 'תאריך אספקה']),
   };
+  // "שווי היתרה" is also part of "שווי היתרה בשקלים": take a value column that is not the shekel one
+  PK.valOrig = keys.find(k => k.includes('שווי') && k !== PK.valILS && !k.includes('שקל')) || PK.valOrig;
+  // a unit price column, when the report has one (otherwise it is derived from the open value / open qty)
+  PK.price = keys.find(k => /מחיר/.test(k) && !/שקל|סה"?כ|כולל/.test(k));
   console.log('[PO keys used]', PK);
   return raw.map(r => {
     const poNum = s(r[PK.poNum]);
@@ -36,6 +40,7 @@ export function parsePORows(raw) {
     const valILS = parseFloat(r[PK.valILS]) || 0;
     const valOrig = parseFloat(r[PK.valOrig]) || 0;
     const currency = s(r[PK.curr]) || 'ILS';
+    const unitPrice = (PK.price && parseFloat(r[PK.price])) || (qtyR > 0 && valOrig ? valOrig / qtyR : 0);
     let dd = null;
     const rd = r[PK.date];
     if (rd instanceof Date && !isNaN(rd)) dd = new Date(rd.getFullYear(), rd.getMonth(), rd.getDate());
@@ -43,7 +48,7 @@ export function parsePORows(raw) {
     else if (typeof rd === 'string' && rd) { const d = new Date(rd); if (!isNaN(d)) dd = new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
     const isOvr = !!(dd && dd < TODAY);
     const isPartial = qtyS > 0 && qtyR > 0;
-    return { poNum, mpn, supplier, desc, qtyO, qtyS, qtyR, valILS, valOrig, currency, dd, isOvr, isPartial };
+    return { poNum, mpn, supplier, desc, qtyO, qtyS, qtyR, valILS, valOrig, currency, unitPrice, dd, isOvr, isPartial };
   }).filter(Boolean);
 }
 
