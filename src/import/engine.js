@@ -106,8 +106,8 @@ export async function submitImportParse() {
   }
 }
 
-export function matchUpdateToRows(upd) {
-  const mpnUp = (upd.mpn || '').trim().toUpperCase();
+function matchByMpn(upd, mpnRaw) {
+  const mpnUp = (mpnRaw || '').trim().toUpperCase();
   const so = (upd.so || '').trim();
   const stripSfx = s => s.replace(/[-_](ND|CT|DKR|TR|T\/R|1|2|3|4|5|6|CT-ND|DKR-ND)$/, '');
   const mpnBase = stripSfx(mpnUp);
@@ -130,6 +130,25 @@ export function matchUpdateToRows(upd) {
       return (before === '' || /[\s\-]/.test(before)) && (after === '' || /[\s\-]/.test(after));
     });
     if (rs.length) return rs;
+  }
+  return [];
+}
+
+
+// Invoices from distributors (TME, Digi-Key, Mouser, Farnell…) list their own catalog number next to the
+// manufacturer's ("NTR-SCDX" / original part number "SCDX"). Try the MPN, then the other number, then the catalog
+// number without the distributor's prefix ("NTR-SCDX" → "SCDX", exact only).
+export function matchUpdateToRows(upd) {
+  let rs = matchByMpn(upd, upd.mpn);
+  if (rs.length) return rs;
+  const exact = m => { const k = String(m || '').trim().toUpperCase(); return k ? state.allRows.filter(x => x.mpn.trim().toUpperCase() === k) : []; };
+  const ref = String(upd.supplierRef || '').trim();
+  // an order / invoice number is not a part number: other numbers are only matched exactly
+  if (ref && /[A-Z]/i.test(ref)) rs = matchByMpn({}, ref); else rs = exact(ref);
+  if (rs.length) return rs;
+  for (const m of [upd.mpn, ref]) {
+    const t = String(m || '').trim().match(/^[A-Z0-9]{2,4}-(.{3,})$/i);
+    if (t && (rs = exact(t[1])).length) return rs;
   }
   if (upd.poNum) { const rs = state.allRows.filter(x => (x.poNum || state.fieldOvr[x.nk + '__po'] || '') === (upd.poNum || '')); if (rs.length) return rs; }
   if (upd.custPO) { const rs = state.allRows.filter(x => (x.custPO || state.fieldOvr[x.nk + '__custPO'] || '') === (upd.custPO || '')); if (rs.length) return rs; }
